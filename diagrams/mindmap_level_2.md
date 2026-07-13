@@ -1,0 +1,233 @@
+- Database Object
+    - Database Management
+        - Database Definition
+        - Database Configuration
+        - Database Registry
+    - Schema Management
+        - Schema Definition
+        - Schema Ownership
+        - Schema Versioning
+    - Table Management
+        - Table Definition
+        - Table Organization
+        - Table Scope
+    - View Management
+        - View Definition
+        - View Dependencies
+    - Relationship Management
+        - Relationship Definition
+        - Referential Actions
+    - Column Management
+        - Column Definition
+        - Column Rules
+    - Constraint Management
+        - Constraint Definition
+        - Constraint Enforcement
+    - Data Type Management
+        - Type Validation
+        - Type Conversion
+    - Index Management
+        - Index Definition
+        - Index Access Structure
+        - Index Organization
+        - Index Maintenance
+    - Stored Procedure
+        - Procedure Definition
+        - Procedure Execution
+    - Trigger Management
+        - Trigger Definition
+        - Trigger Event Binding
+        - Trigger Execution
+    - Metadata Management
+        - System Catalog
+        - Dependency Management
+        - Statistics Management
+
+- Transaction
+    - Transaction Manager
+        - Begin
+        - Commit
+        - Rollback
+        - Savepoint
+        - State Tracking
+    - Concurrency
+        - Multi-user Access
+        - Read Consistency
+        - Write Conflict Handling
+        - MVCC
+    - Lock Management
+        - Shared Lock
+        - Exclusive Lock
+        - Row-level Lock
+        - Lock Timeout
+    - Isolation Management
+        - Read Committed
+        - Repeatable Read
+        - Serializable
+        - Snapshot Isolation
+    - Deadlock Management
+        - Detection
+        - Victim Selection
+        - Retry
+    - ACID
+        - Atomicity
+        - Consistency
+        - Isolation
+        - Durability
+
+- Storage Engine
+    - Data File Management
+        - File Organization
+        - File I/O
+        - File Metadata
+        - File Space Control
+    - Page Management
+        - Page Allocation
+        - Page Split
+        - Page Merge
+        - Free Space Tracking
+    - Buffer Pool + Cache
+        - Page Cache
+        - Dirty Page Tracking
+        - Cache Replacement Policy
+        - Read-ahead
+    - Record Management
+        - Record Format
+        - Record Access
+        - Record Modification
+        - Record Versioning
+    - Storage Allocation
+        - Allocation Units
+        - Spacing Mapping
+    - Log File
+        - Write-ahead Logging
+        - Redo Log
+        - Undo Log
+        - Log Sequence Management
+
+- Durability
+    - Backup Management
+        - Full Backup
+        - Incremental Backup
+        - Scheduling
+        - Verification
+    - Restore Management
+        - Full Restore
+        - Point-in-time Restore
+        - Validation
+    - Transaction Log Management
+        - Log Writing
+        - Log Truncation
+        - Log Backup
+        - Log Replay
+    - Checkpoint
+        - Automatic Checkpoint
+        - Dirty Page Flush
+        - Recovery Boundary
+    - Recovery
+        - Crash Recovery
+        - Redo Phase
+        - Undo Phase
+        - Consistency Check
+    - Replication
+        - Primary-replica
+        - Sync/Async
+        - Log Shipping
+        - Failover
+
+- Query Processing
+    - SQL Parser
+        - Lexical Analysis
+        - Syntax Analysis
+        - Parse Tree
+    - Query Validation
+        - Object Check
+        - Column Check
+        - Type Check
+        - Permission Check
+    - Query Optimizer
+        - Cost-based Optimization
+        - Join Order
+        - Index Selection
+        - Predicate Pushdown
+    - Execution Planning
+        - Logical Plan
+        - Physical Plan
+        - Join Strategy
+        - Parallel Plan
+    - Query Executor
+        - Scan Execution
+        - Join Execution
+        - Filter
+        - Aggregation
+        - Result Set
+
+- Security & Access Control
+    - User Management
+        - User Identity
+        - User Session
+    - Authentication
+        - Authentication Methods
+            - Password Authentication
+            - Token Authentication
+            - External Authentication
+        - Credential Management
+            - Credential Verification
+            - Credential Expiration
+            - Credential Recovery
+        - Authentication Session
+            - Login
+            - Logout
+            - Session Validation
+    - Authorization
+        - Permission Management
+            - User Permission
+            - Role Permission
+            - Permission Inheritance
+        - Object-level Permission
+        - Fine-grained Permission
+        - Access Decision
+        - Data Protection
+    - Encryption
+        - Key Management
+            - Master Key
+            - Data Key
+            - Key Rotation
+    - Auditing
+        - Audit Event
+        - Audit Log
+        - Audit Policy
+    - Role Management
+        - Role Definition
+            - Role Identity
+            - Role Permissions
+            - Default Role
+        - Role Assignment
+            - User-to-Role Mapping
+            - Active Role
+        - Role Hierarchy
+
+- Administration & Operations
+    - Monitoring & Logging
+        - Health
+        - Metrics
+        - Error Log
+        - Query Log
+        - Alerting
+    - Import & Export
+        - CSV
+        - JSON
+        - SQL Dump
+        - Export
+        - Bulk Load
+    - Configuration Management
+        - Server Config
+        - DB Config
+        - Runtime Params
+        - Resource Limits
+    - Operational Logging
+        - Startup
+        - Shutdown
+        - Maintenance
+        - Backup
+        - Error

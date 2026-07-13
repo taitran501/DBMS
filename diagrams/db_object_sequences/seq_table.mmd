@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor Client as DDL Client
+    participant TM as TableManager
+    participant CM as ColumnManager
+    participant DTM as DataTypeManager
+    participant CSM as ConstraintManager
+    participant MM as MetadataManager
+
+    Client->>TM: createTable(tableRequest)
+    TM->>TM: Build TableDescriptor
+    TM->>TM: Resolve TableOrganization & Scope
+
+    %% Column Definition
+    loop For each column
+        TM->>CM: defineColumn(columnDefinition)
+        CM->>DTM: resolveDataType(typeDefinition)
+        DTM->>DTM: Validate using TypeValidator
+        opt Conversion required
+            DTM->>DTM: Convert using TypeConverter
+        end
+        DTM-->>CM: Validated data type
+        CM->>CM: Build ColumnDescriptor & Apply ColumnRuleSet
+        CM-->>TM: Column definition accepted
+    end
+
+    %% Constraint Registration (Triggered by TableManager or Event)
+    opt Table contains constraints
+        TM->>CSM: defineConstraints(constraintDefinitions)
+        loop For each constraint
+            CSM->>CSM: Build ConstraintDescriptor
+            CSM->>CSM: Configure ConstraintEnforcer
+        end
+        CSM-->>TM: Constraints configured
+    end
+
+    %% Metadata Registration
+    TM->>MM: registerTable(TableDescriptor)
+    MM->>MM: Update SystemCatalog
+    MM->>MM: Register dependencies in DependencyManager
+    MM->>MM: Initialize statistics in StatisticsManager
+    TM-->>Client: Table created

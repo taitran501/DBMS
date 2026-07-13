@@ -1,0 +1,403 @@
+---
+config:
+  layout: elk
+---
+classDiagram
+direction TB
+
+class DatabaseObjectManager {
+    +metadata_manager: MetadataManager
+    +database_manager: DatabaseManager
+    +schema_manager: SchemaManager
+    +table_manager: TableManager
+    +column_manager: ColumnManager
+    +data_type_manager: DataTypeManager
+    +constraint_manager: ConstraintManager
+    +index_manager: IndexManager
+    +view_manager: ViewManager
+    +stored_procedure_manager: StoredProcedureManager
+    +trigger_manager: TriggerManager
+    +relationship_manager: RelationshipManager
+}
+
+namespace MetadataManagement {
+    class MetadataManager {
+        +system_catalog: SystemCatalog
+        +dependency_manager: DependencyManager
+        +statistics_manager: StatisticsManager
+        +register_database(db: DatabaseDescriptor)
+        +register_schema(schema: SchemaDescriptor)
+        +register_table(table: TableDescriptor)
+        +register_view(view: ViewDescriptor)
+        +register_procedure(proc: ProcedureDescriptor)
+        +register_trigger(trigger: TriggerDescriptor)
+    }
+
+    class SystemCatalog {
+        +databases: dict
+        +schemas: dict
+        +tables: dict
+        +add_entry(category, name, metadata)
+        +get_entry(category, name)
+    }
+
+    class DependencyManager {
+        +dependencies: dict
+        +add_dependency(source, target)
+        +get_dependencies(source)
+    }
+
+    class StatisticsManager {
+        +table_stats: dict
+        +index_stats: dict
+        +update_statistics(table_name)
+    }
+}
+
+namespace DatabaseManagement {
+    class DatabaseManager {
+        +create_database(name, config: DatabaseConfiguration)
+        +drop_database(name)
+        +get_database(name)
+    }
+    class Database {
+        +name: str
+        +descriptor: DatabaseDescriptor
+    }
+    class DatabaseDescriptor {
+        +name: str
+        +config: DatabaseConfiguration
+    }
+    class DatabaseConfiguration {
+        +charset: str
+        +collation: str
+    }
+    class DatabaseRegistry {
+        +databases: dict
+    }
+}
+
+namespace SchemaManagement {
+    class SchemaManager {
+        +create_schema(db_name, schema_name)
+        +drop_schema(db_name, schema_name)
+        +get_schema(db_name, schema_name)
+    }
+    class Schema {
+        +name: str
+        +descriptor: SchemaDescriptor
+    }
+    class SchemaDescriptor {
+        +name: str
+        +version: str
+    }
+    class SchemaCatalog {
+        +schemas: list
+    }
+    class SchemaOwnershipPolicy {
+        +owner_id: str
+        +validate_access()
+    }
+    class SchemaMigrationLedger {
+        +versions: list
+        +record_migration()
+    }
+}
+
+namespace TableManagement {
+    class TableManager {
+        +create_table(schema_name, table_name, schema)
+        +drop_table(schema_name, table_name)
+        +get_table(schema_name, table_name)
+    }
+    class Table {
+        +name: str
+        +schema: TableSchema
+        +descriptor: TableDescriptor
+    }
+    class TableDescriptor {
+        +name: str
+        +columns: List~ColumnDescriptor~
+        +organization: TableOrganization
+        +scope: TableScope
+    }
+    class TableOrganization {
+        <<enumeration>>
+        HEAP
+        INDEX_ORGANIZED
+    }
+    class TableScope {
+        <<enumeration>>
+        PERSISTENT
+        TEMPORARY
+    }
+}
+
+namespace ColumnManagement {
+    class ColumnManager {
+        +define_column(def)
+    }
+    class Column {
+        +name: str
+        +data_type: str
+        +descriptor: ColumnDescriptor
+    }
+    class ColumnDescriptor {
+        +name: str
+        +data_type: str
+        +nullable: bool
+        +default_value: str
+    }
+    class ColumnRuleSet {
+        +rules: list
+        +apply_rules()
+    }
+}
+
+namespace DataTypeManagement {
+    class DataTypeManager {
+        +resolve_data_type(type_def)
+        +validate_value(type, value)
+        +convert_value(type, value)
+    }
+    class DataType {
+        +name: str
+        +descriptor: DataTypeDescriptor
+        +validator: TypeValidator
+        +converter: TypeConverter
+    }
+    class TypeValidator {
+        +validate(type_name, value)
+    }
+    class TypeConverter {
+        +convert(type_name, value)
+    }
+    class DataTypeDescriptor {
+        +name: str
+        +precision: int
+        +scale: int
+    }
+}
+
+namespace ConstraintManagement {
+    class ConstraintManager {
+        +create_constraint(table_name, constraint)
+        +drop_constraint(table_name, constraint_name)
+        +get_constraint(table_name, constraint_name)
+    }
+    class Constraint {
+        +name: str
+        +constraint_type: str
+        +descriptor: ConstraintDescriptor
+        +enforcer: ConstraintEnforcer
+    }
+    class ConstraintDescriptor {
+        +name: str
+        +constraint_type: str
+        +columns: list
+    }
+    class ConstraintEnforcer {
+        +enforce(record, constraint)
+    }
+}
+
+namespace IndexManagement {
+    class IndexManager {
+        +create_index(table_name, index)
+        +drop_index(table_name, index_name)
+        +get_index(table_name, index_name)
+    }
+    class Index {
+        +name: str
+        +index_type: str
+        +descriptor: IndexDescriptor
+        +organization: IndexOrganization
+        +maintainer: IndexMaintainer
+    }
+    class IndexDescriptor {
+        +name: str
+        +index_type: str
+        +columns: list
+        +unique: bool
+    }
+    class IndexAccessMethod {
+        <<abstract>>
+        +search()
+        +insert()
+    }
+    class IndexOrganization {
+        +type: str
+    }
+    class IndexMaintainer {
+        +update_index(record)
+    }
+}
+
+namespace ViewManagement {
+    class ViewManager {
+        +create_view(schema_name, view_name, query)
+        +drop_view(schema_name, view_name)
+        +get_view(schema_name, view_name)
+    }
+    class View {
+        +name: str
+        +select_query: str
+        +descriptor: ViewDescriptor
+    }
+    class ViewDescriptor {
+        +name: str
+        +select_query: str
+    }
+    class ViewDependencyGraph {
+        +resolve_dependencies()
+    }
+}
+
+namespace StoredProcedureManagement {
+    class StoredProcedureManager {
+        +create_procedure(database_name, proc_name, parameters, body)
+        +drop_procedure(database_name, proc_name)
+        +get_procedure(database_name, proc_name)
+    }
+    class StoredProcedure {
+        +name: str
+        +parameters: list
+        +body: str
+        +descriptor: ProcedureDescriptor
+        +executor: ProcedureExecutor
+    }
+    class ProcedureDescriptor {
+        +name: str
+        +parameters: list
+        +body: str
+    }
+    class ProcedureExecutor {
+        <<abstract>>
+        +execute()
+    }
+}
+
+namespace TriggerManagement {
+    class TriggerManager {
+        +create_trigger(schema_name, trigger_name, table, event, action)
+        +drop_trigger(schema_name, trigger_name)
+        +get_trigger(schema_name, trigger_name)
+    }
+    class Trigger {
+        +name: str
+        +table: str
+        +descriptor: TriggerDescriptor
+        +executor: TriggerExecutor
+        +binding: TriggerEventBinding
+    }
+    class TriggerDescriptor {
+        +name: str
+        +table: str
+        +event_type: str
+        +action: str
+    }
+    class TriggerEventBinding {
+        +event_type: str
+        +match_event()
+    }
+    class TriggerExecutor {
+        +execute_trigger()
+    }
+}
+
+namespace RelationshipManagement {
+    class RelationshipManager {
+        +create_relationship(rel)
+        +drop_relationship(name)
+        +get_relationship(name)
+    }
+    class Relationship {
+        +name: str
+        +source_table: str
+        +target_table: str
+        +descriptor: RelationshipDescriptor
+        +policy: ReferentialActionPolicy
+    }
+    class RelationshipDescriptor {
+        +name: str
+        +source_table: str
+        +target_table: str
+        +relationship_type: str
+    }
+    class ReferentialActionPolicy {
+        +on_delete: str
+        +on_update: str
+        +apply_action()
+    }
+}
+
+DatabaseManager --> Database
+Database --> DatabaseDescriptor
+DatabaseManager --> DatabaseRegistry
+
+SchemaManager --> Schema
+Schema --> SchemaDescriptor
+SchemaManager --> SchemaCatalog
+SchemaManager --> SchemaOwnershipPolicy
+SchemaManager --> SchemaMigrationLedger
+
+TableManager --> Table
+Table --> TableDescriptor
+TableManager --> TableOrganization
+TableManager --> TableScope
+
+ColumnManager --> Column
+Column --> ColumnDescriptor
+ColumnManager --> ColumnRuleSet
+
+DataTypeManager --> DataType
+DataType --> DataTypeDescriptor
+DataTypeManager --> TypeValidator
+DataTypeManager --> TypeConverter
+
+ConstraintManager --> Constraint
+Constraint --> ConstraintDescriptor
+ConstraintManager --> ConstraintEnforcer
+
+IndexManager --> Index
+Index --> IndexDescriptor
+IndexManager --> IndexAccessMethod
+IndexManager --> IndexOrganization
+IndexManager --> IndexMaintainer
+
+ViewManager --> View
+View --> ViewDescriptor
+ViewManager --> ViewDependencyGraph
+
+StoredProcedureManager --> StoredProcedure
+StoredProcedure --> ProcedureDescriptor
+StoredProcedureManager --> ProcedureExecutor
+
+TriggerManager --> Trigger
+Trigger --> TriggerDescriptor
+TriggerManager --> TriggerEventBinding
+TriggerManager --> TriggerExecutor
+
+RelationshipManager --> Relationship
+Relationship --> RelationshipDescriptor
+RelationshipManager --> ReferentialActionPolicy
+
+MetadataManager --> SystemCatalog
+MetadataManager --> DependencyManager
+MetadataManager --> StatisticsManager
+
+DatabaseObjectManager *-- MetadataManager
+DatabaseObjectManager *-- DatabaseManager
+
+DatabaseManager ..> SchemaManager : "contains"
+SchemaManager ..> TableManager : "contains"
+SchemaManager ..> ViewManager : "contains"
+SchemaManager ..> StoredProcedureManager : "contains"
+SchemaManager ..> TriggerManager : "contains"
+
+TableManager ..> ColumnManager : "contains"
+TableManager ..> ConstraintManager : "contains"
+TableManager ..> IndexManager : "contains"
+TableManager ..> RelationshipManager : "contains"
+
+ColumnManager ..> DataTypeManager : "resolves data types"

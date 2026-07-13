@@ -1,0 +1,59 @@
+sequenceDiagram
+    autonumber
+
+    actor Client as DDL Client
+
+    participant DBM as DatabaseManager
+    participant SM as SchemaManager
+    participant TM as TableManager
+    participant CM as ColumnManager
+    participant DTM as DataTypeManager
+    participant CSM as ConstraintManager
+    participant IM as IndexManager
+    participant MM as MetadataManager
+
+    Note over Client,MM: Core Database Object creation and registration workflow
+
+    %% =========================================================
+    %% Database & Schema Creation
+    %% =========================================================
+    Client->>DBM: createDatabase(name)
+    DBM->>DBM: Build DatabaseDescriptor
+    DBM->>MM: registerDatabase(DatabaseDescriptor)
+    DBM-->>Client: Database created
+
+    Client->>SM: createSchema(database, schema_name)
+    SM->>SM: Build SchemaDescriptor
+    SM->>MM: registerSchema(SchemaDescriptor)
+    SM-->>Client: Schema created
+
+    %% =========================================================
+    %% Table Creation Workflow (Core DDL Flow)
+    %% =========================================================
+    Client->>TM: createTable(schema, table_name, tableRequest)
+    TM->>TM: Build TableDescriptor
+
+    loop For each column in tableRequest
+        TM->>CM: defineColumn(columnDefinition)
+        CM->>DTM: resolveDataType(typeDefinition)
+        DTM->>DTM: Validate and resolve Type
+        DTM-->>CM: Validated DataType
+        CM->>CM: Build ColumnDescriptor
+        CM-->>TM: Column definition accepted
+    end
+
+    opt Table contains constraints (PK, FK, UNIQUE, etc.)
+        TM->>CSM: defineConstraints(constraintDefinitions)
+        CSM->>CSM: Configure ConstraintEnforcers
+        CSM-->>TM: Constraints configured
+    end
+
+    opt Table requires indexes
+        TM->>IM: createIndexes(indexDefinitions)
+        IM->>IM: Build IndexDescriptors
+        IM-->>TM: Indexes created
+    end
+
+    TM->>MM: registerTable(TableDescriptor)
+    MM->>MM: Update SystemCatalog and register dependencies
+    TM-->>Client: Table created successfully

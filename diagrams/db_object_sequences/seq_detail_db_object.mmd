@@ -1,0 +1,227 @@
+sequenceDiagram
+    autonumber
+
+    actor Client as DDL Client
+
+    participant DBM as DatabaseManager
+    participant SM as SchemaManager
+    participant TM as TableManager
+    participant CM as ColumnManager
+    participant DTM as DataTypeManager
+    participant CSM as ConstraintManager
+    participant RM as RelationshipManager
+    participant IM as IndexManager
+    participant VM as ViewManager
+    participant SPM as StoredProcedureManager
+    participant TRM as TriggerManager
+    participant MM as MetadataManager
+
+    Note over Client,MM: Database Object creation and registration workflow
+
+    %% =========================================================
+    %% Database Management
+    %% =========================================================
+
+    Client->>DBM: createDatabase(databaseRequest)
+
+    DBM->>DBM: Validate DatabaseConfiguration
+    DBM->>DBM: Build DatabaseDescriptor
+    DBM->>DBM: Register database in DatabaseRegistry
+
+    DBM->>MM: registerDatabase(DatabaseDescriptor)
+    MM->>MM: Update SystemCatalog
+
+    DBM-->>Client: Database created
+
+    %% =========================================================
+    %% Schema Management
+    %% =========================================================
+
+    Client->>SM: createSchema(schemaRequest)
+
+    SM->>SM: Validate SchemaOwnershipPolicy
+    SM->>SM: Build SchemaDescriptor
+    SM->>SM: Register schema in SchemaCatalog
+    SM->>SM: Record version in SchemaMigrationLedger
+
+    SM->>MM: registerSchema(SchemaDescriptor)
+    MM->>MM: Update SystemCatalog
+    MM->>MM: Record schema dependencies
+
+    SM-->>Client: Schema created
+
+    %% =========================================================
+    %% Table Management
+    %% =========================================================
+
+    Client->>TM: createTable(tableRequest)
+
+    TM->>TM: Build TableDescriptor
+    TM->>TM: Resolve TableOrganization
+    TM->>TM: Resolve TableScope
+
+    %% =========================================================
+    %% Column and Data Type Management
+    %% =========================================================
+
+    loop For each column
+        TM->>CM: defineColumn(columnDefinition)
+
+        CM->>DTM: resolveDataType(typeDefinition)
+
+        DTM->>DTM: Load DataTypeDescriptor
+        DTM->>DTM: Validate type using TypeValidator
+
+        alt Value or default expression requires conversion
+            DTM->>DTM: Convert value using TypeConverter
+        end
+
+        DTM-->>CM: Validated data type
+
+        CM->>CM: Build ColumnDescriptor
+        CM->>CM: Apply ColumnRuleSet
+
+        CM-->>TM: Column definition accepted
+    end
+
+    %% =========================================================
+    %% Constraint Management
+    %% =========================================================
+
+    opt Table contains constraints
+        TM->>CSM: defineConstraints(constraintDefinitions)
+
+        loop For each constraint
+            CSM->>CSM: Build ConstraintDescriptor
+            CSM->>CSM: Configure ConstraintEnforcer
+        end
+
+        CSM-->>TM: Constraints configured
+    end
+
+    %% =========================================================
+    %% Relationship Management
+    %% =========================================================
+
+    opt Table contains relationships
+        TM->>RM: defineRelationships(relationshipDefinitions)
+
+        loop For each relationship
+            RM->>RM: Build RelationshipDescriptor
+            RM->>RM: Apply ReferentialActionPolicy
+        end
+
+        RM->>CSM: Create referential constraints
+        CSM->>CSM: Configure ConstraintEnforcer
+
+        CSM-->>RM: Referential constraints configured
+        RM-->>TM: Relationships configured
+    end
+
+    %% =========================================================
+    %% Index Management
+    %% =========================================================
+
+    opt Table requires indexes
+        TM->>IM: createIndexes(indexDefinitions)
+
+        loop For each index
+            IM->>IM: Build IndexDescriptor
+            IM->>IM: Select IndexAccessMethod
+            IM->>IM: Configure IndexOrganization
+            IM->>IM: Initialize IndexMaintainer
+        end
+
+        IM-->>TM: Indexes created
+    end
+
+    %% =========================================================
+    %% Table Registration
+    %% =========================================================
+
+    TM->>MM: registerTable(TableDescriptor)
+
+    MM->>MM: Update SystemCatalog
+    MM->>MM: Register dependencies in DependencyManager
+    MM->>MM: Initialize table statistics in StatisticsManager
+
+    TM-->>Client: Table created
+
+    %% =========================================================
+    %% View Management
+    %% =========================================================
+
+    opt Create database view
+        Client->>VM: createView(viewDefinition)
+
+        VM->>VM: Build ViewDescriptor
+        VM->>VM: Analyze ViewDependencyGraph
+
+        VM->>MM: registerView(ViewDescriptor)
+        MM->>MM: Update SystemCatalog
+        MM->>MM: Register view dependencies in DependencyManager
+
+        VM-->>Client: View created
+    end
+
+    %% =========================================================
+    %% Stored Procedure Management
+    %% =========================================================
+
+    opt Create stored procedure
+        Client->>SPM: createProcedure(procedureDefinition)
+
+        SPM->>SPM: Build ProcedureDescriptor
+        SPM->>SPM: Compile and bind ProcedureExecutor
+
+        SPM->>MM: registerProcedure(ProcedureDescriptor)
+        MM->>MM: Update SystemCatalog
+        MM->>MM: Register procedure dependencies
+
+        SPM-->>Client: Stored procedure created
+    end
+
+    %% =========================================================
+    %% Trigger Management
+    %% =========================================================
+
+    opt Create trigger
+        Client->>TRM: createTrigger(triggerDefinition)
+
+        TRM->>TRM: Build TriggerDescriptor
+        TRM->>TRM: Configure TriggerEventBinding
+        TRM->>TRM: Bind TriggerExecutor
+
+        TRM->>MM: registerTrigger(TriggerDescriptor)
+        MM->>MM: Update SystemCatalog
+        MM->>MM: Register trigger dependencies
+
+        TRM-->>Client: Trigger created
+    end
+
+    %% =========================================================
+    %% Runtime execution
+    %% =========================================================
+
+    opt Execute stored procedure
+        Client->>SPM: executeProcedure(arguments)
+        SPM->>SPM: Execute using ProcedureExecutor
+        SPM-->>Client: Procedure result
+    end
+
+    opt Trigger event occurs
+        TM->>TRM: publishTableEvent(event)
+
+        TRM->>TRM: Match TriggerEventBinding
+        TRM->>TRM: Execute using TriggerExecutor
+        TRM->>CSM: Validate affected constraints
+        CSM->>CSM: Enforce using ConstraintEnforcer
+
+        TRM->>IM: Notify index changes
+        IM->>IM: Update indexes using IndexMaintainer
+
+        TRM->>MM: Notify metadata/statistics changes
+        MM->>MM: Refresh StatisticsManager
+    end
+
+    MM-->>Client: Database metadata synchronized
