@@ -1,17 +1,17 @@
 sequenceDiagram
     autonumber
     actor Client as Application/Client
-    participant TM as TableManager / TransactionManager
+    participant DOM as DatabaseObjectManager
+    participant TM as TableManager
     participant TRM as TriggerManager
     participant CSM as ConstraintManager
     participant IM as IndexManager
     participant MM as MetadataManager
 
-    Client->>TM: executeQuery (INSERT/UPDATE/DELETE)
-    TM->>TM: Apply data modification
+    Client->>DOM: insert_row / update_row / delete_row
 
     %% Trigger execution phase
-    TM->>TRM: publishTableEvent(event)
+    DOM->>TRM: publish_table_event(event, BEFORE)
     TRM->>TRM: Match TriggerEventBinding
     
     opt Matching triggers found
@@ -19,15 +19,17 @@ sequenceDiagram
     end
 
     %% Constraint enforcement phase
-    TRM->>CSM: Validate affected constraints
+    DOM->>CSM: validate_row(values, existing_rows)
     CSM->>CSM: Enforce using ConstraintEnforcer
     
     %% Index updating phase
-    TRM->>IM: Notify index changes
+    DOM->>IM: maintain_table_indexes(...)
     IM->>IM: Update indexes using IndexMaintainer
 
     %% Metadata & Stats phase
-    TRM->>MM: Notify statistics changes
+    DOM->>TM: Apply copy-on-write row modification
+    DOM->>TRM: publish_table_event(event, AFTER)
+    DOM->>MM: record_table_change(operation)
     MM->>MM: Refresh StatisticsManager
 
-    TM-->>Client: Query result & execution success
+    DOM-->>Client: Row result / row_id

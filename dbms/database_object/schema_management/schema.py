@@ -1,7 +1,9 @@
 class ColumnSchema:
-    def __init__(self, name: str, data_type: str):
+    def __init__(self, name: str, data_type: str, nullable: bool = True, default_value=None):
         self.name = name
         self.data_type = data_type
+        self.nullable = nullable
+        self.default_value = default_value
 
 
 class TableSchema:

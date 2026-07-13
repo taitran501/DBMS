@@ -1,26 +1,29 @@
 sequenceDiagram
     autonumber
     actor Client as DDL Client
+    participant DOM as DatabaseObjectManager
     participant DBM as DatabaseManager
     participant SM as SchemaManager
     participant MM as MetadataManager
 
     %% Database Provisioning
-    Client->>DBM: createDatabase(databaseRequest)
+    Client->>DOM: provision_database(name, config)
+    DOM->>DBM: create_database(name, config)
     DBM->>DBM: Validate DatabaseConfiguration
     DBM->>DBM: Build DatabaseDescriptor
     DBM->>DBM: Register in DatabaseRegistry
-    DBM->>MM: registerDatabase(DatabaseDescriptor)
+    DOM->>MM: register("database", name, descriptor)
     MM->>MM: Update SystemCatalog
     DBM-->>Client: Database created
 
     %% Schema Provisioning
-    Client->>SM: createSchema(schemaRequest)
+    Client->>DOM: provision_schema(database, schema, version)
+    DOM->>SM: create_schema(database, schema, version)
     SM->>SM: Validate SchemaOwnershipPolicy
     SM->>SM: Build SchemaDescriptor
     SM->>SM: Register in SchemaCatalog
     SM->>SM: Record version in SchemaMigrationLedger
-    SM->>MM: registerSchema(SchemaDescriptor)
+    DOM->>MM: register("schema", name, descriptor, dependencies)
     MM->>MM: Update SystemCatalog
     MM->>MM: Record schema dependencies
     SM-->>Client: Schema created

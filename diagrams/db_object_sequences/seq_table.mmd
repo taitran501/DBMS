@@ -1,20 +1,22 @@
 sequenceDiagram
     autonumber
     actor Client as DDL Client
+    participant DOM as DatabaseObjectManager
     participant TM as TableManager
     participant CM as ColumnManager
     participant DTM as DataTypeManager
     participant CSM as ConstraintManager
     participant MM as MetadataManager
 
-    Client->>TM: createTable(tableRequest)
+    Client->>DOM: provision_table(schema, name, table_schema)
+    DOM->>DTM: resolve(column.data_type)
+    DOM->>TM: create_table(schema, name, table_schema)
     TM->>TM: Build TableDescriptor
     TM->>TM: Resolve TableOrganization & Scope
 
     %% Column Definition
     loop For each column
-        TM->>CM: defineColumn(columnDefinition)
-        CM->>DTM: resolveDataType(typeDefinition)
+        DOM->>CM: add_column(table_name, column)
         DTM->>DTM: Validate using TypeValidator
         opt Conversion required
             DTM->>DTM: Convert using TypeConverter
@@ -35,8 +37,8 @@ sequenceDiagram
     end
 
     %% Metadata Registration
-    TM->>MM: registerTable(TableDescriptor)
+    DOM->>MM: register("table", name, descriptor, dependencies)
     MM->>MM: Update SystemCatalog
     MM->>MM: Register dependencies in DependencyManager
     MM->>MM: Initialize statistics in StatisticsManager
-    TM-->>Client: Table created
+    DOM-->>Client: Table created

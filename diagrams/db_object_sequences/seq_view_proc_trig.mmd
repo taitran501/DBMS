@@ -1,6 +1,7 @@
 sequenceDiagram
     autonumber
     actor Client as DDL Client
+    participant DOM as DatabaseObjectManager
     participant VM as ViewManager
     participant SPM as StoredProcedureManager
     participant TRM as TriggerManager
@@ -8,30 +9,33 @@ sequenceDiagram
 
     %% View Creation
     opt Create View
-        Client->>VM: createView(viewDefinition)
+        Client->>DOM: provision_view(...)
+        DOM->>VM: create_view(...)
         VM->>VM: Build ViewDescriptor
         VM->>VM: Analyze ViewDependencyGraph
-        VM->>MM: registerView(ViewDescriptor)
+        DOM->>MM: register("view", name, descriptor, dependencies)
         MM->>MM: Update SystemCatalog & Dependencies
         VM-->>Client: View created
     end
 
     %% Procedure Creation
     opt Create Procedure
-        Client->>SPM: createProcedure(procedureDefinition)
+        Client->>DOM: provision_procedure(...)
+        DOM->>SPM: create_procedure(...)
         SPM->>SPM: Build ProcedureDescriptor
         SPM->>SPM: Compile and bind ProcedureExecutor
-        SPM->>MM: registerProcedure(ProcedureDescriptor)
+        DOM->>MM: register("procedure", name, descriptor, dependencies)
         MM->>MM: Update SystemCatalog & Dependencies
         SPM-->>Client: Stored procedure created
     end
 
     %% Trigger Creation
     opt Create Trigger
-        Client->>TRM: createTrigger(triggerDefinition)
+        Client->>DOM: provision_trigger(...)
+        DOM->>TRM: create_trigger(...)
         TRM->>TRM: Build TriggerDescriptor
         TRM->>TRM: Configure TriggerEventBinding & Executor
-        TRM->>MM: registerTrigger(TriggerDescriptor)
+        DOM->>MM: register("trigger", name, descriptor, dependencies)
         MM->>MM: Update SystemCatalog & Dependencies
         TRM-->>Client: Trigger created
     end

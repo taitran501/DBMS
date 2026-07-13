@@ -62,3 +62,12 @@ class DatabaseManager:
         if name not in self.databases:
             raise ValueError(f"Database {name} not found")
         return self.databases[name]
+
+    def alter_configuration(self, name: str, config: DatabaseConfiguration) -> Database:
+        if config.page_size <= 0:
+            raise ValueError("Page size must be positive")
+        database = self.get_database(name)
+        descriptor = DatabaseDescriptor(name, config)
+        database.descriptor = descriptor
+        self._registry.register(descriptor)
+        return database

@@ -12,3 +12,9 @@ class TableAlreadyExistsError(DBMSError):
 class TableNotFoundError(DBMSError):
     def __init__(self, name: str):
         super().__init__(f"Table '{name}' not found.")
+
+class ObjectNotFoundError(DBMSError): pass
+class DependencyExistsError(DBMSError): pass
+class ConstraintViolationError(DBMSError, ValueError): pass
+class RowNotFoundError(DBMSError): pass
+class ProcedureNotExecutableError(DBMSError): pass

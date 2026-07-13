@@ -45,6 +45,7 @@ class SchemaManager:
         self._migration_ledger = migration_ledger or SchemaMigrationLedger()
         # database_name -> dict of schemas (schema_name -> Schema)
         self.schemas: dict[str, dict[str, Schema]] = {}
+        self.owners: dict[tuple[str, str], str] = {}
 
     def create_schema(self, database_name: str, schema_name: str, version: str = "1.0.0") -> Schema:
         if database_name not in self.schemas:
@@ -63,6 +64,7 @@ class SchemaManager:
 
         schema = Schema(descriptor)
         self.schemas[database_name][schema_name] = schema
+        self.owners[(database_name, schema_name)] = "admin"
         return schema
 
     def drop_schema(self, database_name: str, schema_name: str) -> None:
@@ -72,8 +74,16 @@ class SchemaManager:
             self._catalog.remove(schema_name)
             self._migration_ledger.record_migration(schema_name, "Dropped schema")
             del self.schemas[database_name][schema_name]
+            self.owners.pop((database_name, schema_name), None)
 
     def get_schema(self, database_name: str, schema_name: str) -> Schema:
         if database_name not in self.schemas or schema_name not in self.schemas[database_name]:
             raise ValueError(f"Schema {schema_name} not found in database {database_name}")
         return self.schemas[database_name][schema_name]
+
+    def change_owner(self, database_name: str, schema_name: str, new_owner_id: str, actor_id: str = "admin") -> None:
+        self.get_schema(database_name, schema_name)
+        if not self._ownership_policy.can_change_owner(actor_id, schema_name, new_owner_id):
+            raise PermissionError("Schema owner change rejected by policy")
+        self.owners[(database_name, schema_name)] = new_owner_id
+        self._migration_ledger.record_migration(schema_name, f"Owner changed to {new_owner_id}")
