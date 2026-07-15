@@ -13,13 +13,13 @@ from dbms.database_object.schema_management.schema import ColumnSchema, TableSch
 from dbms.database_object.table_management import TableManager
 
 
-def test_database_configuration_validates_runtime_settings_and_database_can_be_renamed():
+def test_database_configuration_validates_runtime_settings_and_database_can_be_renamed(tmp_path):
     manager = DatabaseManager()
     config = DatabaseConfiguration(
         page_size=8192,
         encoding="utf-8",
         max_size_mb=32,
-        storage_location="C:\\db-data\\shop",
+        storage_location=str(tmp_path / "shop"),
         default_schema="public",
     )
 
