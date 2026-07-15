@@ -25,10 +25,10 @@ namespace MetadataManagement {
         +system_catalog: SystemCatalog
         +dependency_manager: DependencyManager
         +statistics_manager: StatisticsManager
-        +register(object_type, name, descriptor, dependencies)
-        +update(object_type, name, descriptor)
-        +remove(object_type, name, cascade)
-        +get(object_type, name)
+        +register_metadata(object_type, name, descriptor, dependencies)
+        +update_metadata(object_type, name, descriptor)
+        +remove_metadata(object_type, name, cascade)
+        +get_metadata(object_type, name)
     }
 
     class SystemCatalog {
@@ -98,7 +98,7 @@ namespace SchemaManagement {
     }
     class SchemaMigrationLedger {
         +versions: list
-        +record_migration()
+        +record_schema_migration()
     }
 }
 
@@ -168,10 +168,10 @@ namespace DataTypeManagement {
         +converter: TypeConverter
     }
     class TypeValidator {
-        +validate(type_name, value)
+        +validate_type_value(type_name, value)
     }
     class TypeConverter {
-        +convert(type_name, value)
+        +convert_type_value(type_name, value)
     }
     class DataTypeDescriptor {
         +name: str
@@ -198,7 +198,7 @@ namespace ConstraintManagement {
         +columns: list
     }
     class ConstraintEnforcer {
-        +validate(descriptor, row, existing_rows)
+        +validate_constraint(descriptor, row, existing_rows)
     }
 }
 
@@ -230,8 +230,8 @@ namespace IndexManagement {
         +type: str
     }
     class IndexMaintainer {
-        +maintain(index, key, row_id, operation)
-        +lookup(key)
+        +maintain_index_entry(index, key, row_id, operation)
+        +find_row_ids_by_key(key)
     }
 }
 
@@ -275,7 +275,7 @@ namespace StoredProcedureManagement {
     }
     class ProcedureExecutor {
         <<abstract>>
-        +execute(descriptor, arguments)
+        +execute_procedure_body(descriptor, arguments)
     }
 }
 
@@ -304,7 +304,7 @@ namespace TriggerManagement {
         +match_event()
     }
     class TriggerExecutor {
-        +execute(descriptor, context)
+        +execute_trigger_action(descriptor, context)
     }
 }
 

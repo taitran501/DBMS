@@ -64,31 +64,31 @@ def test_missing_entities_raise_value_error(db_object_manager):
     with pytest.raises(ValueError, match="not found"):
         table_manager.get_table("schema1", "missing_table")
         
-def test_schema_ownership_policy_violations(db_object_manager, monkeypatch):
+def test_schema_create_and_drop_raise_permission_error_when_policy_denies(db_object_manager, monkeypatch):
     schema_manager = db_object_manager.schema_manager
     db_manager = db_object_manager.database_manager
     db_manager.create_database("db1")
     
     # Mock policy to simulate guest user rejection
-    def mock_can_create(actor_id, db_id):
+    def mock_can_create_schema(actor_id, db_id):
         return False
-    def mock_can_drop(actor_id, schema_id):
+    def mock_can_drop_schema(actor_id, schema_id):
         return False
         
-    monkeypatch.setattr(schema_manager._ownership_policy, "can_create", mock_can_create)
-    monkeypatch.setattr(schema_manager._ownership_policy, "can_drop", mock_can_drop)
+    monkeypatch.setattr(schema_manager._ownership_policy, "can_create_schema", mock_can_create_schema)
+    monkeypatch.setattr(schema_manager._ownership_policy, "can_drop_schema", mock_can_drop_schema)
     
     with pytest.raises(PermissionError, match="Schema creation rejected by policy"):
         schema_manager.create_schema("db1", "schema1")
         
     # Temporarily allow creation so we can test drop
-    monkeypatch.setattr(schema_manager._ownership_policy, "can_create", lambda a, b: True)
+    monkeypatch.setattr(schema_manager._ownership_policy, "can_create_schema", lambda a, b: True)
     schema_manager.create_schema("db1", "schema2")
     
     with pytest.raises(PermissionError, match="Schema deletion rejected by policy"):
         schema_manager.drop_schema("db1", "schema2")
 
-def test_extended_objects_edge_cases(db_object_manager):
+def test_extended_object_managers_reject_duplicate_and_missing_objects(db_object_manager):
     idx_manager = db_object_manager.index_manager
     constraint_manager = db_object_manager.constraint_manager
     rel_manager = db_object_manager.relationship_manager
@@ -120,7 +120,7 @@ def test_extended_objects_edge_cases(db_object_manager):
     with pytest.raises(ValueError, match="not found"):
         rel_manager.get_relationship("missing_rel")
 
-def test_datatype_conversion_and_validation(db_object_manager):
+def test_datatype_conversion_preserves_invalid_input_and_validation_checks_python_types(db_object_manager):
     data_type_manager = db_object_manager.data_type_manager
     
     int_type = data_type_manager.types["INT"]
@@ -141,9 +141,9 @@ def test_datatype_conversion_and_validation(db_object_manager):
     
     # Unregistered type fallback
     # The validator returns True for unknown types
-    assert data_type_manager._validator.validate("UNKNOWN_TYPE", 123) is True
+    assert data_type_manager._validator.validate_type_value("UNKNOWN_TYPE", 123) is True
     
-def test_drop_methods_edge_cases(db_object_manager):
+def test_drop_methods_ignore_or_reject_missing_objects_by_contract(db_object_manager):
     idx_manager = db_object_manager.index_manager
     constraint_manager = db_object_manager.constraint_manager
     rel_manager = db_object_manager.relationship_manager
@@ -153,7 +153,7 @@ def test_drop_methods_edge_cases(db_object_manager):
     constraint_manager.drop_constraint("t1", "missing_constraint")
     rel_manager.drop_relationship("missing_rel")
     
-def test_drop_and_get_methods_for_other_managers(db_object_manager):
+def test_drop_then_get_raises_not_found_for_registered_objects(db_object_manager):
     db_manager = db_object_manager.database_manager
     view_manager = db_object_manager.view_manager
     proc_manager = db_object_manager.stored_procedure_manager

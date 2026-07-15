@@ -3,7 +3,7 @@ from dbms.database_object.metadata_management.system_catalog import Catalog
 from dbms.database_object.schema_management.schema import TableSchema, ColumnSchema
 from dbms.errors import TableAlreadyExistsError, TableNotFoundError, ColumnNotFoundError
 
-def test_create_and_get_table():
+def test_create_table_registers_schema_for_lookup():
     catalog = Catalog()
 
     schema = TableSchema(
@@ -19,7 +19,7 @@ def test_create_and_get_table():
     assert catalog.has_table("users") is True
     assert catalog.get_table("users").column_names() == ["id", "name"]
 
-def test_create_duplicate_table():
+def test_create_table_rejects_duplicate_name():
     catalog = Catalog()
     schema = TableSchema("users", [])
     catalog.create_table(schema)
@@ -27,12 +27,12 @@ def test_create_duplicate_table():
     with pytest.raises(TableAlreadyExistsError):
         catalog.create_table(schema)
 
-def test_get_nonexistent_table():
+def test_get_table_rejects_unknown_name():
     catalog = Catalog()
     with pytest.raises(TableNotFoundError):
         catalog.get_table("users")
 
-def test_get_column_schema():
+def test_get_column_returns_schema_and_rejects_unknown_column():
     schema = TableSchema("users", [ColumnSchema("id", "INT")])
     col = schema.get_column("id")
     assert col.name == "id"

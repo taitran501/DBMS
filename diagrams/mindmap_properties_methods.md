@@ -1,0 +1,291 @@
+- Database Object
+    - Database Management
+        - Database Definition
+            - Properties
+                - name
+                - config
+            - Methods
+                - create_database()
+                - get_database()
+                - drop_database()
+                - rename_database()
+        - Database Configuration
+            - Properties
+                - page_size
+                - encoding
+                - max_size_mb
+                - storage_location
+                - default_schema
+            - Methods
+                - alter_configuration()
+        - Database Registry
+            - Properties
+                - databases
+            - Methods
+                - register_database()
+                - find_database_by_name()
+                - remove_database()
+    - Schema Management
+        - Schema Definition
+            - Properties
+                - name
+                - version
+            - Methods
+                - create_schema()
+                - get_schema()
+                - drop_schema()
+                - rename_schema()
+                - rename_database_scope()
+        - Schema Ownership
+            - Properties
+                - owners
+            - Methods
+                - change_schema_owner()
+                - can_create_schema()
+                - can_change_schema_owner()
+                - can_drop_schema()
+        - Schema Versioning
+            - Properties
+                - history
+            - Methods
+                - record_schema_migration()
+                - get_schema_migration_history()
+    - Table Management
+        - Table Definition
+            - Properties
+                - name
+                - columns
+                - rows
+                - next_row_id
+            - Methods
+                - create_table()
+                - get_table()
+                - find_table()
+                - drop_table()
+                - insert_row()
+                - update_row()
+                - delete_row()
+                - select_rows()
+                - rename_table()
+                - rename_column()
+        - Table Organization
+            - Properties
+                - organization
+                - HEAP
+                - INDEX_ORGANIZED
+        - Table Scope
+            - Properties
+                - scope
+                - PERSISTENT
+                - TEMPORARY
+    - View Management
+        - View Definition
+            - Properties
+                - name
+                - select_query
+            - Methods
+                - create_view()
+                - get_view()
+                - drop_view()
+        - View Dependencies
+            - Properties
+                - dependencies
+            - Methods
+                - add_view_dependency()
+                - rename_dependency()
+                - rename_database_scope()
+    - Relationship Management
+        - Relationship Definition
+            - Properties
+                - name
+                - source_table
+                - target_table
+                - relationship_type
+                - source_columns
+                - target_columns
+            - Methods
+                - create_relationship()
+                - get_relationship()
+                - drop_relationship()
+                - validate_row()
+                - rename_table()
+                - rename_column()
+        - Referential Actions
+            - Properties
+                - on_delete
+                - on_update
+    - Column Management
+        - Column Definition
+            - Properties
+                - name
+                - data_type
+                - nullable
+                - default_value
+            - Methods
+                - add_column()
+                - get_column()
+                - drop_column()
+                - rename_table()
+                - rename_column()
+        - Column Rules
+            - Properties
+                - is_primary_key
+                - is_unique
+    - Constraint Management
+        - Constraint Definition
+            - Properties
+                - name
+                - constraint_type
+                - columns
+            - Methods
+                - create_constraint()
+                - get_constraint()
+                - drop_constraint()
+                - validate_row()
+        - Constraint Enforcement
+            - Properties
+                - constraints
+            - Methods
+                - validate_constraint()
+    - Data Type Management
+        - Type Validation
+            - Properties
+                - name
+                - precision
+                - scale
+                - length
+                - types
+                - validator
+            - Methods
+                - register_type()
+                - resolve()
+                - validate_value()
+                - validate_type_value()
+        - Type Conversion
+            - Properties
+                - converter
+            - Methods
+                - convert_value()
+                - convert_type_value()
+                - make_descriptor()
+    - Index Management
+        - Index Definition
+            - Properties
+                - name
+                - index_type
+                - columns
+                - unique
+            - Methods
+                - create_index()
+                - get_index()
+                - drop_index()
+        - Index Access Structure
+            - Properties
+                - access_method
+            - Methods
+                - find_indexed_row_ids()
+                - find_indexed_row_ids_in_range()
+        - Index Organization
+            - Properties
+                - access_method
+        - Index Maintenance
+            - Properties
+                - entries
+            - Methods
+                - maintain_index_entry()
+                - maintain_table_indexes()
+                - rebuild_index()
+                - rename_table()
+                - rename_column()
+    - Stored Procedure
+        - Procedure Definition
+            - Properties
+                - name
+                - parameters
+                - body
+            - Methods
+                - create_procedure()
+                - get_procedure()
+                - drop_procedure()
+                - rename_database_scope()
+        - Procedure Execution
+            - Properties
+                - strict
+            - Methods
+                - execute_procedure_body()
+                - execute_procedure()
+    - Trigger Management
+        - Trigger Definition
+            - Properties
+                - name
+                - event
+                - timing
+                - action
+                - triggers
+            - Methods
+                - create_trigger()
+                - get_trigger()
+                - drop_trigger()
+                - publish_table_event()
+        - Trigger Event Binding
+            - Properties
+                - trigger_name
+                - event
+        - Trigger Execution
+            - Methods
+                - execute_trigger_action()
+    - Metadata Management
+        - System Catalog
+            - Properties
+                - objects
+                - tables
+            - Methods
+                - add_metadata()
+                - get_metadata()
+                - update_metadata()
+                - remove_metadata()
+                - list_metadata()
+                - rename_metadata()
+                - rename_metadata_scope()
+        - Dependency Management
+            - Properties
+                - dependencies
+            - Methods
+                - add_metadata_dependency()
+                - get_metadata_dependencies()
+                - get_metadata_dependents()
+                - remove_metadata_dependent()
+                - rename_metadata_key()
+        - Statistics Management
+            - Properties
+                - stats
+            - Methods
+                - update_statistics()
+                - get_statistics()
+                - record_table_change()
+    - Object Lifecycle Coordination
+        - Canonical Object References
+            - Properties
+                - database.schema
+                - database.schema.table
+            - Methods
+                - create_database()
+                - create_schema()
+                - create_table_in_schema()
+                - create_index_for_table()
+                - create_constraint_for_table()
+                - create_relationship()
+                - provision_view()
+                - provision_procedure()
+                - provision_trigger()
+                - insert_row()
+                - update_row()
+                - delete_row()
+                - select_rows()
+        - Rename And Drop Lifecycle
+            - Methods
+                - rename_database()
+                - rename_table_in_schema()
+                - rename_column_in_table()
+                - drop_table_from_schema()
+                - drop_database()

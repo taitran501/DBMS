@@ -10,7 +10,7 @@ class ProcedureDescriptor:
 
 class ProcedureExecutor:
     def __init__(self, strict=False): self.strict = strict
-    def execute(self, descriptor, args):
+    def execute_procedure_body(self, descriptor, args):
         if not callable(descriptor.body):
             if self.strict: raise ProcedureNotExecutableError(f"Procedure {descriptor.name} has no executable body")
             return descriptor.body
@@ -34,4 +34,8 @@ class StoredProcedureManager:
         try: return self.procedures[database_name][proc_name]
         except KeyError as exc: raise ValueError(f"Procedure {proc_name} not found in database {database_name}") from exc
     def execute_procedure(self, database_name, proc_name, arguments):
-        proc = self.get_procedure(database_name, proc_name); return proc.executor.execute(proc.descriptor, list(arguments))
+        proc = self.get_procedure(database_name, proc_name); return proc.executor.execute_procedure_body(proc.descriptor, list(arguments))
+    def rename_database_scope(self, database_name, new_name):
+        old_prefix, new_prefix = f"{database_name}.", f"{new_name}."
+        for scope in tuple(self.procedures):
+            if scope.startswith(old_prefix): self.procedures[f"{new_prefix}{scope[len(old_prefix):]}"] = self.procedures.pop(scope)

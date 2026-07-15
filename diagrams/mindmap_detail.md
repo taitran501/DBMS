@@ -1,91 +1,191 @@
 - Database Object
     - Database Management
-        - DatabaseManager
         - Database Definition
-            - DatabaseDescriptor
+            - Create Database
+            - Rename Database
+            - Drop Database
         - Database Configuration
-            - DatabaseConfiguration
+            - Storage Location
+            - Character Encoding
+            - Default Schema
         - Database Registry
-            - DatabaseRegistry
+            - Register Database
+            - Lookup Database
     - Schema Management
-        - SchemaManager
         - Schema Definition
-            - SchemaDescriptor
-            - SchemaCatalog
+            - Create Schema
+            - Rename Schema
+            - Drop Schema
         - Schema Ownership
-            - SchemaOwnershipPolicy
+            - Assign Owner
+            - Change Owner
         - Schema Versioning
-            - SchemaMigrationLedger
+            - Record Migration
+            - View History
     - Table Management
-        - TableManager
         - Table Definition
-            - TableDescriptor
+            - Create Table
+            - Rename Table
+            - Drop Table
         - Table Organization
-            - TableOrganization
+            - Heap Organization
+            - Index-Organized
         - Table Scope
-            - TableScope
+            - Persistent Scope
+            - Temporary Scope
     - View Management
-        - ViewManager
         - View Definition
-            - ViewDescriptor
+            - Create View
+            - Drop View
         - View Dependencies
-            - ViewDependencyGraph
+            - Track Dependencies
     - Relationship Management
-        - RelationshipManager
         - Relationship Definition
-            - RelationshipDescriptor
+            - Create Relationship
+            - Drop Relationship
         - Referential Actions
-            - ReferentialActionPolicy
+            - On Delete Action
+            - On Update Action
     - Column Management
-        - ColumnManager
         - Column Definition
-            - ColumnDescriptor
+            - Add Column
+            - Drop Column
+            - Rename Column
         - Column Rules
-            - ColumnRuleSet
+            - Nullable Rule
+            - Default Value Rule
     - Constraint Management
-        - ConstraintManager
         - Constraint Definition
-            - ConstraintDescriptor
+            - Create Constraint
+            - Drop Constraint
         - Constraint Enforcement
-            - ConstraintEnforcer
+            - Validate Constraints
     - Data Type Management
-        - DataTypeManager
         - Type Validation
-            - TypeValidator
+            - Validate Value
         - Type Conversion
-            - TypeConverter
+            - Convert Value
     - Index Management
-        - IndexManager
         - Index Definition
-            - IndexDescriptor
+            - Create Index
+            - Drop Index
         - Index Access Structure
-            - IndexAccessMethod
+            - B-Tree Access
+            - Hash Access
         - Index Organization
-            - IndexOrganization
+            - Clustered Organization
+            - Non-clustered Organization
         - Index Maintenance
-            - IndexMaintainer
+            - Rebuild Index
+            - Update Entries
     - Stored Procedure
-        - StoredProcedureManager
         - Procedure Definition
-            - ProcedureDescriptor
+            - Create Procedure
+            - Drop Procedure
         - Procedure Execution
-            - ProcedureExecutor
+            - Execute Procedure
     - Trigger Management
-        - TriggerManager
         - Trigger Definition
-            - TriggerDescriptor
+            - Create Trigger
+            - Drop Trigger
         - Trigger Event Binding
-            - TriggerEventBinding
+            - Bind Event
         - Trigger Execution
-            - TriggerExecutor
+            - Execute Action
     - Metadata Management
-        - MetadataManager
         - System Catalog
-            - SystemCatalog
+            - Query Catalog
+            - Update Catalog
         - Dependency Management
-            - DependencyManager
+            - Track Dependencies
+            - Resolve Dependencies
         - Statistics Management
-            - StatisticsManager
+            - Collect Statistics
+            - View Statistics
+
+- Storage Engine
+    - StorageEngine
+    - Data File Management
+        - FileManager
+        - File Definition
+            - FileDescriptor
+        - File Space Control
+            - FreeSpaceMap
+        - File I/O
+            - DiskIO
+    - Page Management
+        - PageManager
+        - Page Definition
+            - Page
+            - PageHeader
+            - PageDescriptor
+        - Free Space Tracking
+            - FreeSpaceTracker
+    - Buffer Pool + Cache
+        - BufferPoolManager
+        - Page Cache
+            - BufferFrame
+        - Dirty Page Tracking
+            - DirtyPageRegistry
+        - Cache Replacement Policy
+            - EvictionPolicy
+            - LRUEvictionPolicy
+    - Record Management
+        - RecordManager
+        - Record Format
+            - RecordDescriptor
+            - RecordSerializer
+        - Record Access
+            - RecordReader
+        - Record Modification
+            - RecordWriter
+    - Storage Allocation
+        - StorageAllocator
+        - Allocation Units
+            - AllocationUnit
+        - Space Mapping
+            - SpaceMap
+    - Log File
+        - WriteAheadLog
+        - Log Entry Format
+            - LogEntry
+            - LogEntryType
+        - Log Writer
+            - LogWriter
+        - Log Reader
+            - LogReader
+        - Log Sequence Management
+            - LogSequenceNumber
+    - Checkpoint & Recovery
+        - CheckpointManager
+        - RecoveryManager
+
+- Query Processing
+    - SQL Parser
+        - Lexical Analysis
+        - Syntax Analysis
+        - Parse Tree
+    - Query Validation
+        - Object Check
+        - Column Check
+        - Type Check
+        - Permission Check
+    - Query Optimizer
+        - Cost-based Optimization
+        - Join Order
+        - Index Selection
+        - Predicate Pushdown
+    - Execution Planning
+        - Logical Plan
+        - Physical Plan
+        - Join Strategy
+        - Parallel Plan
+    - Query Executor
+        - Scan Execution
+        - Join Execution
+        - Filter
+        - Aggregation
+        - Result Set
 
 - Transaction
     - Transaction Manager
@@ -119,36 +219,6 @@
         - Isolation
         - Durability
 
-- Storage Engine
-    - Data File Management
-        - File Organization
-        - File I/O
-        - File Metadata
-        - File Space Control
-    - Page Management
-        - Page Allocation
-        - Page Split
-        - Page Merge
-        - Free Space Tracking
-    - Buffer Pool + Cache
-        - Page Cache
-        - Dirty Page Tracking
-        - Cache Replacement Policy
-        - Read-ahead
-    - Record Management
-        - Record Format
-        - Record Access
-        - Record Modification
-        - Record Versioning
-    - Storage Allocation
-        - Allocation Units
-        - Spacing Mapping
-    - Log File
-        - Write-ahead Logging
-        - Redo Log
-        - Undo Log
-        - Log Sequence Management
-
 - Durability
     - Backup Management
         - Full Backup
@@ -178,33 +248,6 @@
         - Sync/Async
         - Log Shipping
         - Failover
-
-- Query Processing
-    - SQL Parser
-        - Lexical Analysis
-        - Syntax Analysis
-        - Parse Tree
-    - Query Validation
-        - Object Check
-        - Column Check
-        - Type Check
-        - Permission Check
-    - Query Optimizer
-        - Cost-based Optimization
-        - Join Order
-        - Index Selection
-        - Predicate Pushdown
-    - Execution Planning
-        - Logical Plan
-        - Physical Plan
-        - Join Strategy
-        - Parallel Plan
-    - Query Executor
-        - Scan Execution
-        - Join Execution
-        - Filter
-        - Aggregation
-        - Result Set
 
 - Security & Access Control
     - User Management

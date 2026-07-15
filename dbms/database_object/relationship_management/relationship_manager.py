@@ -38,3 +38,16 @@ class RelationshipManager:
             target = table_manager.find_table(d.target_table)
             if not any(tuple(item.get(c) for c in d.target_columns) == values for item in target.rows.values()):
                 raise ValueError(f"Relationship {rel.name} rejected row")
+    def rename_table(self, table_name, new_table_name):
+        for relationship in self.relationships.values():
+            descriptor = relationship.descriptor
+            source = new_table_name if descriptor.source_table == table_name else descriptor.source_table
+            target = new_table_name if descriptor.target_table == table_name else descriptor.target_table
+            relationship.descriptor = RelationshipDescriptor(descriptor.name, source, target, descriptor.relationship_type, descriptor.source_columns, descriptor.target_columns)
+            relationship.source_table, relationship.target_table = source, target
+    def rename_column(self, table_name, column_name, new_name):
+        for relationship in self.relationships.values():
+            descriptor = relationship.descriptor
+            source_columns = tuple(new_name if descriptor.source_table == table_name and column == column_name else column for column in descriptor.source_columns)
+            target_columns = tuple(new_name if descriptor.target_table == table_name and column == column_name else column for column in descriptor.target_columns)
+            relationship.descriptor = RelationshipDescriptor(descriptor.name, descriptor.source_table, descriptor.target_table, descriptor.relationship_type, source_columns, target_columns)

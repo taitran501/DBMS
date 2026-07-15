@@ -18,7 +18,7 @@ def db_object_manager():
         metadata_manager=metadata_manager
     )
 
-def test_database_schema_provisioning(db_object_manager):
+def test_provision_database_and_schema_registers_retrievable_objects(db_object_manager):
     """
     Test the Database & Schema Provisioning workflow.
     """
@@ -36,7 +36,7 @@ def test_database_schema_provisioning(db_object_manager):
     assert schema.descriptor.name == "public"
     assert schema_manager.get_schema("test_db", "public") == schema
 
-def test_table_definition_workflow(db_object_manager):
+def test_define_table_registers_descriptor_columns_and_lookup(db_object_manager):
     """
     Test the core DDL flow for creating a Table.
     """
@@ -65,7 +65,7 @@ def test_table_definition_workflow(db_object_manager):
     retrieved_table = table_manager.get_table("public", "users")
     assert retrieved_table == table
 
-def test_data_type_validation_workflow(db_object_manager):
+def test_validate_and_convert_data_types_returns_contract_results(db_object_manager):
     """
     Test DataType resolution and validation.
     """
@@ -84,7 +84,7 @@ def test_data_type_validation_workflow(db_object_manager):
     converted = data_type_manager.convert_value(int_type, "456")
     assert converted == 456
     
-def test_advanced_objects_workflow(db_object_manager):
+def test_create_view_procedure_and_trigger_registers_retrievable_objects(db_object_manager):
     """
     Test View, Stored Procedure, and Trigger creation workflows.
     """
@@ -104,7 +104,7 @@ def test_advanced_objects_workflow(db_object_manager):
     trigger = trigger_manager.create_trigger("public", "after_insert_user", "users", "INSERT", "EXECUTE archive_users")
     assert trigger.name == "after_insert_user"
 
-def test_table_extended_objects_workflow(db_object_manager):
+def test_create_index_constraint_and_relationship_registers_retrievable_objects(db_object_manager):
     from dbms.database_object.index_management.index_manager import Index
     from dbms.database_object.constraint_management.constraint_manager import Constraint
     from dbms.database_object.relationship_management.relationship_manager import Relationship

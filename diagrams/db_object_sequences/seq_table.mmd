@@ -9,7 +9,10 @@ sequenceDiagram
     participant MM as MetadataManager
 
     Client->>DOM: provision_table(schema, name, table_schema)
-    DOM->>DTM: resolve(column.data_type)
+    loop For each column
+        DOM->>DTM: resolve(column.data_type)
+        DTM-->>DOM: DataType
+    end
     DOM->>TM: create_table(schema, name, table_schema)
     TM->>TM: Build TableDescriptor
     TM->>TM: Resolve TableOrganization & Scope
@@ -17,23 +20,15 @@ sequenceDiagram
     %% Column Definition
     loop For each column
         DOM->>CM: add_column(table_name, column)
-        DTM->>DTM: Validate using TypeValidator
-        opt Conversion required
-            DTM->>DTM: Convert using TypeConverter
-        end
-        DTM-->>CM: Validated data type
-        CM->>CM: Build ColumnDescriptor & Apply ColumnRuleSet
-        CM-->>TM: Column definition accepted
+        CM-->>DOM: Column registered
     end
 
-    %% Constraint Registration (Triggered by TableManager or Event)
-    opt Table contains constraints
-        TM->>CSM: defineConstraints(constraintDefinitions)
+    %% Constraint registration is a separate manager operation after table provisioning
+    opt Register table constraints
         loop For each constraint
-            CSM->>CSM: Build ConstraintDescriptor
-            CSM->>CSM: Configure ConstraintEnforcer
+            Client->>CSM: create_constraint(table_name, constraint)
+            CSM-->>Client: Constraint registered
         end
-        CSM-->>TM: Constraints configured
     end
 
     %% Metadata Registration

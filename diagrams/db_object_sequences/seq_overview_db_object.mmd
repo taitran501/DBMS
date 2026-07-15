@@ -1,59 +1,42 @@
 sequenceDiagram
     autonumber
-
-    actor Client as DDL Client
-
-    participant DBM as DatabaseManager
-    participant SM as SchemaManager
-    participant TM as TableManager
-    participant CM as ColumnManager
-    participant DTM as DataTypeManager
-    participant CSM as ConstraintManager
-    participant IM as IndexManager
+    actor Client
+    participant DOM as DatabaseObjectManager
+    participant Managers as Object Managers
     participant MM as MetadataManager
+    participant Catalog as SystemCatalog
 
-    Note over Client,MM: Core Database Object creation and registration workflow
+    Note over Client,Catalog: Database Object overview using the current public API
 
-    %% =========================================================
-    %% Database & Schema Creation
-    %% =========================================================
-    Client->>DBM: createDatabase(name)
-    DBM->>DBM: Build DatabaseDescriptor
-    DBM->>MM: registerDatabase(DatabaseDescriptor)
-    DBM-->>Client: Database created
+    Client->>DOM: provision_database(name, config)
+    DOM->>Managers: DatabaseManager.create_database(...)
+    DOM->>MM: register("database", name, descriptor)
+    MM->>Catalog: add(object_id, descriptor)
+    DOM-->>Client: Database
 
-    Client->>SM: createSchema(database, schema_name)
-    SM->>SM: Build SchemaDescriptor
-    SM->>MM: registerSchema(SchemaDescriptor)
-    SM-->>Client: Schema created
+    Client->>DOM: provision_schema(database, schema, version)
+    DOM->>Managers: SchemaManager.create_schema(...)
+    DOM->>MM: register("schema", name, descriptor, dependencies)
+    MM->>Catalog: add(object_id, descriptor)
+    DOM-->>Client: Schema
 
-    %% =========================================================
-    %% Table Creation Workflow (Core DDL Flow)
-    %% =========================================================
-    Client->>TM: createTable(schema, table_name, tableRequest)
-    TM->>TM: Build TableDescriptor
+    Client->>DOM: provision_table(schema, table, table_schema)
+    DOM->>Managers: Resolve types and create table/columns
+    DOM->>MM: register("table", name, descriptor, dependencies)
+    MM->>Catalog: add(object_id, descriptor)
+    DOM-->>Client: Table
 
-    loop For each column in tableRequest
-        TM->>CM: defineColumn(columnDefinition)
-        CM->>DTM: resolveDataType(typeDefinition)
-        DTM->>DTM: Validate and resolve Type
-        DTM-->>CM: Validated DataType
-        CM->>CM: Build ColumnDescriptor
-        CM-->>TM: Column definition accepted
-    end
+    Client->>DOM: provision_view / provision_procedure / provision_trigger
+    DOM->>Managers: Create advanced object
+    DOM->>MM: register(object_type, name, descriptor, dependencies)
+    MM->>Catalog: add(object_id, descriptor)
+    DOM-->>Client: Created object
 
-    opt Table contains constraints (PK, FK, UNIQUE, etc.)
-        TM->>CSM: defineConstraints(constraintDefinitions)
-        CSM->>CSM: Configure ConstraintEnforcers
-        CSM-->>TM: Constraints configured
-    end
+    Client->>DOM: insert_row / update_row / delete_row
+    DOM->>Managers: Trigger, validate, mutate row, maintain index
+    DOM->>MM: record_table_change(table, operation)
+    DOM-->>Client: row_id / row
 
-    opt Table requires indexes
-        TM->>IM: createIndexes(indexDefinitions)
-        IM->>IM: Build IndexDescriptors
-        IM-->>TM: Indexes created
-    end
-
-    TM->>MM: registerTable(TableDescriptor)
-    MM->>MM: Update SystemCatalog and register dependencies
-    TM-->>Client: Table created successfully
+    Client->>DOM: select_rows(table_ref, predicate)
+    DOM->>Managers: TableManager.select_rows(...)
+    DOM-->>Client: tuple of rows

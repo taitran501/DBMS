@@ -17,7 +17,7 @@ class MockIndexManager:
     def create_index(self, index_name, table_name, column_name):
         self.called_create_index = True
 
-def test_database_dependency_injection():
+def test_inject_database_object_dependencies_delegates_calls_to_custom_managers():
     # Injecting mock instances
     mock_catalog = MockCatalog()
     mock_index_mgr = MockIndexManager()
@@ -48,7 +48,7 @@ def test_database_exposes_database_object_subsystem():
     assert db.database_object.data_type_manager is not None
     assert db.database_object.relationship_manager is not None
 
-def test_database_object_manager_create_table():
+def test_create_table_registers_schema_in_database_catalog():
     db = Database()
     schema = TableSchema(
         name="users",
@@ -61,7 +61,7 @@ def test_database_object_manager_create_table():
     assert db.catalog.has_table("users") is True
     assert db.catalog.get_table("users").column_names() == ["id", "name"]
 
-def test_database_manager():
+def test_create_get_and_drop_database_updates_registry_and_rejects_missing_lookup():
     db = Database()
     mgr = db.database_object.database_manager
     
@@ -73,7 +73,7 @@ def test_database_manager():
     with pytest.raises(ValueError):
         mgr.get_database("test_db")
 
-def test_schema_manager():
+def test_create_get_and_drop_schema_updates_catalog_and_rejects_missing_lookup():
     db = Database()
     mgr = db.database_object.schema_manager
     
@@ -85,7 +85,7 @@ def test_schema_manager():
     with pytest.raises(ValueError):
         mgr.get_schema("db1", "public")
 
-def test_table_manager():
+def test_create_get_and_drop_table_updates_manager_and_rejects_missing_lookup():
     db = Database()
     mgr = db.database_object.table_manager
     schema = TableSchema("users", [])
@@ -98,7 +98,7 @@ def test_table_manager():
     with pytest.raises(ValueError):
         mgr.get_table("public", "users")
 
-def test_column_manager():
+def test_add_get_and_drop_column_updates_manager_and_rejects_missing_lookup():
     db = Database()
     mgr = db.database_object.column_manager
     col = Column("id", "INT", nullable=False)
@@ -110,7 +110,7 @@ def test_column_manager():
     with pytest.raises(ValueError):
         mgr.get_column("users", "id")
 
-def test_data_type_manager():
+def test_validate_value_accepts_matching_type_and_rejects_mismatched_type():
     db = Database()
     mgr = db.database_object.data_type_manager
     
@@ -118,7 +118,7 @@ def test_data_type_manager():
     assert mgr.validate_value(int_type, 42) is True
     assert mgr.validate_value(int_type, "hello") is False
 
-def test_relationship_manager():
+def test_create_and_drop_relationship_updates_relationship_registry():
     db = Database()
     mgr = db.database_object.relationship_manager
     rel = Relationship("fk_users_roles", "users", "roles", "MANY_TO_ONE")
@@ -129,7 +129,7 @@ def test_relationship_manager():
     mgr.drop_relationship("fk_users_roles")
     assert "fk_users_roles" not in mgr.relationships
 
-def test_descriptors_and_configurations():
+def test_custom_descriptors_preserve_configuration_and_reject_invalid_page_size():
     # 1. Test DatabaseConfiguration & DatabaseDescriptor
     from dbms.database_object.database_management import DatabaseConfiguration, DatabaseDescriptor
     
@@ -182,98 +182,63 @@ def test_descriptors_and_configurations():
     assert len(table_obj.descriptor.columns) == 1
     assert table_obj.descriptor.columns[0].name == "id"
 
-def test_mindmap_classes_completeness():
-    # 1. Database Registry
-    from dbms.database_object.database_management import DatabaseRegistry
-    registry = DatabaseRegistry()
-    assert registry is not None
+def test_view_dependency_graph_records_dependency():
+    from dbms.database_object.view_management import ViewDependencyGraph
 
-    # 2. Schema Catalog, Ownership Policy, Migration Ledger
-    from dbms.database_object.schema_management import SchemaCatalog, SchemaOwnershipPolicy, SchemaMigrationLedger
-    assert SchemaCatalog() is not None
-    assert SchemaOwnershipPolicy() is not None
-    assert SchemaMigrationLedger() is not None
+    graph = ViewDependencyGraph()
+    graph.add_view_dependency("active_users", "users")
 
-    # 3. Table Organization, Scope
-    from dbms.database_object.table_management import TableOrganization, TableScope
-    assert TableOrganization.HEAP == "HEAP"
-    assert TableScope.PERSISTENT == "PERSISTENT"
+    assert graph.dependencies["active_users"] == ["users"]
 
-    # 4. View Descriptor & View Dependency Graph
-    from dbms.database_object.view_management import ViewDescriptor, ViewDependencyGraph
-    v_desc = ViewDescriptor("active_users", "SELECT * FROM users WHERE active = 1")
-    assert v_desc.name == "active_users"
-    v_graph = ViewDependencyGraph()
-    v_graph.add_dependency("active_users", "users")
-    assert "users" in v_graph.dependencies["active_users"]
 
-    # 5. Relationship Descriptor & Referential Action Policy
-    from dbms.database_object.relationship_management import RelationshipDescriptor, ReferentialActionPolicy
-    r_desc = RelationshipDescriptor("fk_users_roles", "users", "roles", "MANY_TO_ONE")
-    assert r_desc.source_table == "users"
-    policy = ReferentialActionPolicy(on_delete="CASCADE")
-    assert policy.on_delete == "CASCADE"
-
-    # 6. Column RuleSet
-    from dbms.database_object.column_management import ColumnRuleSet
-    rules = ColumnRuleSet(is_primary_key=True)
-    assert rules.is_primary_key is True
-
-    # 7. Constraint Descriptor & Constraint Enforcer
+def test_constraint_and_type_contracts_validate_values():
     from dbms.database_object.constraint_management import ConstraintDescriptor, ConstraintEnforcer
-    c_desc = ConstraintDescriptor("pk_users", "PRIMARY_KEY", ["id"])
-    assert c_desc.columns == ["id"]
-    enforcer = ConstraintEnforcer()
-    assert enforcer.validate(c_desc, {"id": 1}) is True
+    from dbms.database_object.data_type_management import TypeConverter, TypeValidator
 
-    # 8. DataType Descriptor, Type Validator, Type Converter
-    from dbms.database_object.data_type_management import DataTypeDescriptor, TypeValidator, TypeConverter
-    dt_desc = DataTypeDescriptor("INT")
-    assert dt_desc.name == "INT"
-    validator = TypeValidator()
-    assert validator.validate("INT", 100) is True
-    converter = TypeConverter()
-    assert converter.convert("INT", "100") == 100
+    constraint = ConstraintDescriptor("pk_users", "PRIMARY_KEY", ["id"])
 
-    # 9. Index Descriptor, Index Access Method, Index Organization, Index Maintainer
-    from dbms.database_object.index_management import IndexDescriptor, IndexAccessMethod, IndexOrganization, IndexMaintainer
-    i_desc = IndexDescriptor("idx_users_email", "B_TREE", ["email"], unique=True)
-    assert i_desc.unique is True
-    assert IndexAccessMethod.B_TREE == "B_TREE"
-    i_org = IndexOrganization()
-    assert i_org.access_method == "B_TREE"
+    assert ConstraintEnforcer().validate_constraint(constraint, {"id": 1}) is True
+    assert TypeValidator().validate_type_value("INT", 100) is True
+    assert TypeConverter().convert_type_value("INT", "100") == 100
+
+
+def test_index_maintainer_registers_and_removes_row():
+    from dbms.database_object.index_management import IndexDescriptor, IndexMaintainer
+
+    index = IndexDescriptor("idx_users_email", "B_TREE", ["email"], unique=True)
     maintainer = IndexMaintainer()
-    maintainer.maintain(i_desc, "test@test.com", 1, "INSERT")
+    maintainer.maintain_index_entry(index, "test@test.com", 1, "INSERT")
 
-    # 10. Procedure Descriptor & Procedure Executor
+    assert maintainer.find_row_ids_by_key("test@test.com") == (1,)
+
+    maintainer.maintain_index_entry(index, "test@test.com", 1, "DELETE")
+    assert maintainer.find_row_ids_by_key("test@test.com") == ()
+
+
+def test_procedure_and_trigger_executors_run_callable_bodies():
     from dbms.database_object.stored_procedure import ProcedureDescriptor, ProcedureExecutor
-    p_desc = ProcedureDescriptor("add_user", ["username", "email"], "INSERT INTO users ...")
-    assert p_desc.parameters == ["username", "email"]
-    executor = ProcedureExecutor()
-    executor.execute(p_desc, ["alice", "alice@test.com"])
+    from dbms.database_object.trigger_management import TriggerDescriptor, TriggerExecutor
 
-    # 11. Trigger Descriptor, Event Binding, Trigger Executor
-    from dbms.database_object.trigger_management import TriggerDescriptor, TriggerEventBinding, TriggerExecutor
-    tr_desc = TriggerDescriptor("tr_audit_users", "INSERT", "AFTER", "INSERT INTO audit_log ...")
-    assert tr_desc.timing == "AFTER"
-    binding = TriggerEventBinding("tr_audit_users", "INSERT")
-    assert binding.event == "INSERT"
-    tr_exec = TriggerExecutor()
-    tr_exec.execute(tr_desc)
+    procedure = ProcedureDescriptor("add", ["a", "b"], lambda a, b: a + b)
+    events = []
+    trigger = TriggerDescriptor("audit", "INSERT", "AFTER", lambda context: events.append(context))
 
-    # 12. Metadata Manager, System Catalog, Dependency Manager, Statistics Manager
-    from dbms.database_object.metadata_management import SystemCatalog, DependencyManager, StatisticsManager, MetadataManager
-    sys_catalog = SystemCatalog()
-    assert sys_catalog is not None
-    dep_mgr = DependencyManager()
-    dep_mgr.register_dependency("view_users", "users")
-    assert "view_users" in dep_mgr.dependencies["users"]
-    stats_mgr = StatisticsManager()
-    stats_mgr.update_statistics("users", "row_count", 500)
-    assert stats_mgr.get_statistics("users", "row_count") == 500
-    
-    metadata_mgr = MetadataManager()
-    assert metadata_mgr is not None
+    assert ProcedureExecutor().execute_procedure_body(procedure, [2, 3]) == 5
+    TriggerExecutor().execute_trigger_action(trigger, {"id": 1})
+    assert events == [{"id": 1}]
 
 
+def test_metadata_components_store_dependencies_and_statistics():
+    from dbms.database_object.metadata_management import DependencyManager, MetadataManager, StatisticsManager
 
+    metadata = MetadataManager()
+    descriptor = object()
+    metadata.register_metadata("table", "users", descriptor)
+    dependencies = DependencyManager()
+    dependencies.add_metadata_dependency("view:active_users", "table:users")
+    statistics = StatisticsManager()
+    statistics.update_statistics("users", "row_count", 500)
+
+    assert metadata.get_metadata("table", "users") is descriptor
+    assert dependencies.get_metadata_dependents("table:users") == ("view:active_users",)
+    assert statistics.get_statistics("users", "row_count") == 500

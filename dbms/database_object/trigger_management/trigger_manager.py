@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, Optional
+from dbms.errors import TriggerNotExecutableError
 
 @dataclass(frozen=True)
 class TriggerDescriptor:
@@ -14,9 +15,9 @@ class TriggerEventBinding:
     event: str
 
 class TriggerExecutor:
-    def execute(self, descriptor, context=None):
+    def execute_trigger_action(self, descriptor, context=None):
         if callable(descriptor.action): return descriptor.action(context or {})
-        return None  # legacy string actions are metadata, not silently interpreted
+        raise TriggerNotExecutableError(f"Trigger {descriptor.name} has no executable action")
 
 class Trigger:
     def __init__(self, name, event=None, timing=None, action=None, binding=None, executor=None):
@@ -45,6 +46,6 @@ class TriggerManager:
         event = event.upper(); timing = timing.upper() if timing else None
         matched = [t for t in self.triggers.get(table_name, []) if t.binding.event.upper() == event and (timing is None or t.timing.upper() == timing)]
         for trigger in matched:
-            try: trigger.executor.execute(trigger.descriptor, context)
-            except TypeError: trigger.executor.execute(trigger.descriptor)
+            try: trigger.executor.execute_trigger_action(trigger.descriptor, context)
+            except TypeError: trigger.executor.execute_trigger_action(trigger.descriptor)
         return matched

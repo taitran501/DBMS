@@ -51,3 +51,14 @@ class ColumnManager:
                 if c.name == column_name:
                     return c
         raise ValueError(f"Column {column_name} not found in table {table_name}")
+
+    def rename_table(self, table_name: str, new_table_name: str) -> None:
+        if table_name in self.columns:
+            self.columns[new_table_name] = self.columns.pop(table_name)
+
+    def rename_column(self, table_name: str, column_name: str, new_name: str) -> None:
+        column = self.get_column(table_name, column_name)
+        if any(item.name == new_name for item in self.columns[table_name]):
+            raise ValueError(f"Column {new_name} already exists in table {table_name}")
+        column.name = new_name
+        column.descriptor.name = new_name

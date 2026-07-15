@@ -18,3 +18,4 @@ class DependencyExistsError(DBMSError): pass
 class ConstraintViolationError(DBMSError, ValueError): pass
 class RowNotFoundError(DBMSError): pass
 class ProcedureNotExecutableError(DBMSError): pass
+class TriggerNotExecutableError(DBMSError): pass

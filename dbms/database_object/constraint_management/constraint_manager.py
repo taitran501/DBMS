@@ -10,7 +10,7 @@ class ConstraintDescriptor:
     predicate: Optional[Callable[[dict], bool]] = None
 
 class ConstraintEnforcer:
-    def validate(self, descriptor, row, existing_rows=()):
+    def validate_constraint(self, descriptor, row, existing_rows=()):
         kind = descriptor.constraint_type.upper(); values = tuple(row.get(c) for c in descriptor.columns)
         if kind in {"NOT_NULL", "PRIMARY_KEY"} and any(v is None for v in values): return False
         if kind in {"PRIMARY_KEY", "UNIQUE"} and not (kind == "UNIQUE" and any(v is None for v in values)):
@@ -38,7 +38,16 @@ class ConstraintManager:
         raise ValueError(f"Constraint {constraint_name} not found in table {table_name}")
     def validate_row(self, table_name, values, existing_rows=()):
         for constraint in self.constraints.get(table_name, []):
-            try: valid = constraint.enforcer.validate(constraint.descriptor, values, existing_rows)
-            except TypeError: valid = constraint.enforcer.validate(constraint.descriptor, values)
+            try: valid = constraint.enforcer.validate_constraint(constraint.descriptor, values, existing_rows)
+            except TypeError: valid = constraint.enforcer.validate_constraint(constraint.descriptor, values)
             if not valid:
                 raise ConstraintViolationError(f"Constraint {constraint.name} rejected row")
+    def rename_table(self, table_name, new_table_name):
+        if table_name in self.constraints:
+            self.constraints[new_table_name] = self.constraints.pop(table_name)
+    def rename_column(self, table_name, column_name, new_name):
+        for constraint in self.constraints.get(table_name, []):
+            descriptor = constraint.descriptor
+            columns = tuple(new_name if column == column_name else column for column in descriptor.columns)
+            constraint.descriptor = ConstraintDescriptor(descriptor.name, descriptor.constraint_type, columns, descriptor.predicate)
+            constraint.columns = list(columns)

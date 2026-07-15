@@ -16,7 +16,7 @@ class IndexOrganization:
 
 class IndexMaintainer:
     def __init__(self): self.entries = {}
-    def maintain(self, index, key, row_id, op):
+    def maintain_index_entry(self, index, key, row_id, op):
         ids = self.entries.setdefault(key, set()); operation = op.upper()
         if operation == "INSERT":
             if index.unique and ids and row_id not in ids: raise ValueError(f"Unique index {index.name} conflict for key {key}")
@@ -26,8 +26,8 @@ class IndexMaintainer:
             if not ids: self.entries.pop(key, None)
         elif operation == "UPDATE": ids.add(row_id)
         else: raise ValueError(f"Unsupported index operation {op}")
-    def lookup(self, key): return tuple(sorted(self.entries.get(key, ())))
-    def range_lookup(self, start=None, end=None):
+    def find_row_ids_by_key(self, key): return tuple(sorted(self.entries.get(key, ())))
+    def find_row_ids_by_range(self, start=None, end=None):
         result = []
         for key in sorted(self.entries):
             if (start is None or key >= start) and (end is None or key <= end): result.extend(sorted(self.entries[key]))
@@ -55,13 +55,27 @@ class IndexManager:
         completed = []
         try:
             for index in self.indexes.get(table_name, []):
-                key = tuple(values.get(c) for c in index.columns); index.maintainer.maintain(index.descriptor, key, row_id, operation.upper()); completed.append((index, key))
+                key = tuple(values.get(c) for c in index.columns); index.maintainer.maintain_index_entry(index.descriptor, key, row_id, operation.upper()); completed.append((index, key))
         except Exception:
             inverse = "DELETE" if operation.upper() == "INSERT" else "INSERT"
-            for index, key in reversed(completed): index.maintainer.maintain(index.descriptor, key, row_id, inverse)
+            for index, key in reversed(completed): index.maintainer.maintain_index_entry(index.descriptor, key, row_id, inverse)
             raise
-    def lookup(self, table_name, index_name, key): return self.get_index(table_name, index_name).maintainer.lookup(tuple(key))
-    def range_lookup(self, table_name, index_name, start=None, end=None):
+    def find_indexed_row_ids(self, table_name, index_name, key): return self.get_index(table_name, index_name).maintainer.find_row_ids_by_key(tuple(key))
+    def find_indexed_row_ids_in_range(self, table_name, index_name, start=None, end=None):
         index = self.get_index(table_name, index_name)
         if index.index_type != IndexAccessMethod.B_TREE: raise ValueError("Range lookup requires B_TREE index")
-        return index.maintainer.range_lookup(tuple(start) if start is not None else None, tuple(end) if end is not None else None)
+        return index.maintainer.find_row_ids_by_range(tuple(start) if start is not None else None, tuple(end) if end is not None else None)
+    def rebuild_index(self, table_name, index_name, rows):
+        index = self.get_index(table_name, index_name)
+        index.maintainer.entries.clear()
+        for row_id, values in rows:
+            key = tuple(values.get(column) for column in index.columns)
+            index.maintainer.maintain_index_entry(index.descriptor, key, row_id, "INSERT")
+    def rename_table(self, table_name, new_table_name):
+        if table_name in self.indexes:
+            self.indexes[new_table_name] = self.indexes.pop(table_name)
+    def rename_column(self, table_name, column_name, new_name):
+        for index in self.indexes.get(table_name, []):
+            columns = tuple(new_name if column == column_name else column for column in index.columns)
+            index.descriptor = IndexDescriptor(index.name, index.index_type, columns, index.unique)
+            index.columns = list(columns)

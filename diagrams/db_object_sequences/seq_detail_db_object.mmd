@@ -1,227 +1,112 @@
 sequenceDiagram
     autonumber
-
-    actor Client as DDL Client
-
+    actor Client
+    participant DOM as DatabaseObjectManager
     participant DBM as DatabaseManager
     participant SM as SchemaManager
+    participant DTM as DataTypeManager
     participant TM as TableManager
     participant CM as ColumnManager
-    participant DTM as DataTypeManager
-    participant CSM as ConstraintManager
-    participant RM as RelationshipManager
-    participant IM as IndexManager
     participant VM as ViewManager
     participant SPM as StoredProcedureManager
     participant TRM as TriggerManager
+    participant CSM as ConstraintManager
+    participant RM as RelationshipManager
+    participant IM as IndexManager
     participant MM as MetadataManager
+    participant SC as SystemCatalog
+    participant DM as DependencyManager
+    participant STM as StatisticsManager
 
-    Note over Client,MM: Database Object creation and registration workflow
+    rect rgb(238, 246, 255)
+        Note over Client,MM: Database and schema provisioning
+        Client->>DOM: provision_database(name, config)
+        DOM->>DBM: create_database(name, config)
+        DBM-->>DOM: Database with DatabaseDescriptor
+        DOM->>MM: register("database", name, descriptor)
+        MM->>SC: add("database:name", descriptor)
+        DOM-->>Client: Database
 
-    %% =========================================================
-    %% Database Management
-    %% =========================================================
+        Client->>DOM: provision_schema(database, schema, version)
+        DOM->>SM: create_schema(database, schema, version)
+        SM-->>DOM: Schema with SchemaDescriptor
+        DOM->>MM: register("schema", schema, descriptor, [database dependency])
+        MM->>SC: add("schema:name", descriptor)
+        MM->>DM: register_dependency(schema, database)
+        DOM-->>Client: Schema
+    end
 
-    Client->>DBM: createDatabase(databaseRequest)
-
-    DBM->>DBM: Validate DatabaseConfiguration
-    DBM->>DBM: Build DatabaseDescriptor
-    DBM->>DBM: Register database in DatabaseRegistry
-
-    DBM->>MM: registerDatabase(DatabaseDescriptor)
-    MM->>MM: Update SystemCatalog
-
-    DBM-->>Client: Database created
-
-    %% =========================================================
-    %% Schema Management
-    %% =========================================================
-
-    Client->>SM: createSchema(schemaRequest)
-
-    SM->>SM: Validate SchemaOwnershipPolicy
-    SM->>SM: Build SchemaDescriptor
-    SM->>SM: Register schema in SchemaCatalog
-    SM->>SM: Record version in SchemaMigrationLedger
-
-    SM->>MM: registerSchema(SchemaDescriptor)
-    MM->>MM: Update SystemCatalog
-    MM->>MM: Record schema dependencies
-
-    SM-->>Client: Schema created
-
-    %% =========================================================
-    %% Table Management
-    %% =========================================================
-
-    Client->>TM: createTable(tableRequest)
-
-    TM->>TM: Build TableDescriptor
-    TM->>TM: Resolve TableOrganization
-    TM->>TM: Resolve TableScope
-
-    %% =========================================================
-    %% Column and Data Type Management
-    %% =========================================================
-
-    loop For each column
-        TM->>CM: defineColumn(columnDefinition)
-
-        CM->>DTM: resolveDataType(typeDefinition)
-
-        DTM->>DTM: Load DataTypeDescriptor
-        DTM->>DTM: Validate type using TypeValidator
-
-        alt Value or default expression requires conversion
-            DTM->>DTM: Convert value using TypeConverter
+    rect rgb(242, 255, 242)
+        Note over Client,STM: Table definition
+        Client->>DOM: provision_table(schema, name, table_schema)
+        loop Each column
+            DOM->>DTM: resolve(column.data_type)
+            DTM-->>DOM: DataType
         end
-
-        DTM-->>CM: Validated data type
-
-        CM->>CM: Build ColumnDescriptor
-        CM->>CM: Apply ColumnRuleSet
-
-        CM-->>TM: Column definition accepted
-    end
-
-    %% =========================================================
-    %% Constraint Management
-    %% =========================================================
-
-    opt Table contains constraints
-        TM->>CSM: defineConstraints(constraintDefinitions)
-
-        loop For each constraint
-            CSM->>CSM: Build ConstraintDescriptor
-            CSM->>CSM: Configure ConstraintEnforcer
+        DOM->>TM: create_table(schema, name, table_schema, organization, scope)
+        TM-->>DOM: Table with TableDescriptor
+        loop Each ColumnDescriptor
+            DOM->>CM: add_column(table_name, Column)
         end
-
-        CSM-->>TM: Constraints configured
+        DOM->>MM: register("table", name, descriptor, [schema dependency])
+        MM->>SC: add("table:name", descriptor)
+        MM->>DM: register_dependency(table, schema)
+        DOM->>STM: update_statistics(table, "row_count", 0)
+        DOM-->>Client: Table
     end
 
-    %% =========================================================
-    %% Relationship Management
-    %% =========================================================
-
-    opt Table contains relationships
-        TM->>RM: defineRelationships(relationshipDefinitions)
-
-        loop For each relationship
-            RM->>RM: Build RelationshipDescriptor
-            RM->>RM: Apply ReferentialActionPolicy
+    rect rgb(255, 248, 235)
+        Note over Client,DM: Advanced objects
+        opt Create view
+            Client->>DOM: provision_view(schema, name, query, dependencies)
+            DOM->>VM: create_view(schema, name, query, dependencies)
+            DOM->>MM: register("view", name, descriptor, dependencies)
+            MM->>SC: add(object_id, descriptor)
+            MM->>DM: register_dependency(view, each target)
+            DOM-->>Client: View
         end
-
-        RM->>CSM: Create referential constraints
-        CSM->>CSM: Configure ConstraintEnforcer
-
-        CSM-->>RM: Referential constraints configured
-        RM-->>TM: Relationships configured
-    end
-
-    %% =========================================================
-    %% Index Management
-    %% =========================================================
-
-    opt Table requires indexes
-        TM->>IM: createIndexes(indexDefinitions)
-
-        loop For each index
-            IM->>IM: Build IndexDescriptor
-            IM->>IM: Select IndexAccessMethod
-            IM->>IM: Configure IndexOrganization
-            IM->>IM: Initialize IndexMaintainer
+        opt Create procedure
+            Client->>DOM: provision_procedure(schema, name, parameters, body, dependencies)
+            DOM->>SPM: create_procedure(schema, name, parameters, body)
+            DOM->>MM: register("procedure", name, descriptor, dependencies)
+            MM->>SC: add(object_id, descriptor)
+            DOM-->>Client: StoredProcedure
         end
-
-        IM-->>TM: Indexes created
+        opt Create trigger
+            Client->>DOM: provision_trigger(table, name, event, timing, action, dependencies)
+            DOM->>TRM: create_trigger(table, name, event, timing, action)
+            DOM->>MM: register("trigger", name, descriptor, dependencies)
+            MM->>SC: add(object_id, descriptor)
+            DOM-->>Client: Trigger
+        end
     end
 
-    %% =========================================================
-    %% Table Registration
-    %% =========================================================
-
-    TM->>MM: registerTable(TableDescriptor)
-
-    MM->>MM: Update SystemCatalog
-    MM->>MM: Register dependencies in DependencyManager
-    MM->>MM: Initialize table statistics in StatisticsManager
-
-    TM-->>Client: Table created
-
-    %% =========================================================
-    %% View Management
-    %% =========================================================
-
-    opt Create database view
-        Client->>VM: createView(viewDefinition)
-
-        VM->>VM: Build ViewDescriptor
-        VM->>VM: Analyze ViewDependencyGraph
-
-        VM->>MM: registerView(ViewDescriptor)
-        MM->>MM: Update SystemCatalog
-        MM->>MM: Register view dependencies in DependencyManager
-
-        VM-->>Client: View created
+    rect rgb(255, 240, 245)
+        Note over Client,STM: INSERT / UPDATE / DELETE pipeline
+        Client->>DOM: insert_row / update_row / delete_row
+        DOM->>TRM: publish_table_event(table, operation, BEFORE, context)
+        DOM->>DTM: convert_value() and validate_value()
+        DOM->>CSM: validate_row(table, row, existing_rows)
+        DOM->>RM: validate_row(table, row, table_manager)
+        DOM->>IM: maintain_table_indexes(table, row, row_id, operation)
+        DOM->>TM: Apply copy-on-write row mutation
+        DOM->>TRM: publish_table_event(table, operation, AFTER, context)
+        alt Any step fails
+            DOM->>TM: Restore previous row state
+            DOM->>IM: Restore previous index state
+            DOM-->>Client: Raise error
+        else Success
+            DOM->>STM: update_statistics(table, "row_count", count)
+            DOM->>MM: record_table_change(table, operation)
+            DOM-->>Client: row_id / row
+        end
     end
 
-    %% =========================================================
-    %% Stored Procedure Management
-    %% =========================================================
-
-    opt Create stored procedure
-        Client->>SPM: createProcedure(procedureDefinition)
-
-        SPM->>SPM: Build ProcedureDescriptor
-        SPM->>SPM: Compile and bind ProcedureExecutor
-
-        SPM->>MM: registerProcedure(ProcedureDescriptor)
-        MM->>MM: Update SystemCatalog
-        MM->>MM: Register procedure dependencies
-
-        SPM-->>Client: Stored procedure created
+    rect rgb(245, 245, 245)
+        Note over Client,TM: Query in-memory rows
+        Client->>DOM: select_rows(table_ref, predicate)
+        DOM->>TM: find_table(table_ref)
+        DOM->>TM: select_rows(table, predicate)
+        TM-->>DOM: tuple of rows
+        DOM-->>Client: tuple of rows
     end
-
-    %% =========================================================
-    %% Trigger Management
-    %% =========================================================
-
-    opt Create trigger
-        Client->>TRM: createTrigger(triggerDefinition)
-
-        TRM->>TRM: Build TriggerDescriptor
-        TRM->>TRM: Configure TriggerEventBinding
-        TRM->>TRM: Bind TriggerExecutor
-
-        TRM->>MM: registerTrigger(TriggerDescriptor)
-        MM->>MM: Update SystemCatalog
-        MM->>MM: Register trigger dependencies
-
-        TRM-->>Client: Trigger created
-    end
-
-    %% =========================================================
-    %% Runtime execution
-    %% =========================================================
-
-    opt Execute stored procedure
-        Client->>SPM: executeProcedure(arguments)
-        SPM->>SPM: Execute using ProcedureExecutor
-        SPM-->>Client: Procedure result
-    end
-
-    opt Trigger event occurs
-        TM->>TRM: publishTableEvent(event)
-
-        TRM->>TRM: Match TriggerEventBinding
-        TRM->>TRM: Execute using TriggerExecutor
-        TRM->>CSM: Validate affected constraints
-        CSM->>CSM: Enforce using ConstraintEnforcer
-
-        TRM->>IM: Notify index changes
-        IM->>IM: Update indexes using IndexMaintainer
-
-        TRM->>MM: Notify metadata/statistics changes
-        MM->>MM: Refresh StatisticsManager
-    end
-
-    MM-->>Client: Database metadata synchronized

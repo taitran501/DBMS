@@ -11,12 +11,12 @@ class RecordingMaintainer(IndexMaintainer):
     def __init__(self):
         self.calls = []
 
-    def maintain(self, index, key, row_id, op):
+    def maintain_index_entry(self, index, key, row_id, op):
         self.calls.append((index.name, key, row_id, op))
 
 
 class RejectingEnforcer(ConstraintEnforcer):
-    def validate(self, descriptor, value_dict):
+    def validate_constraint(self, descriptor, value_dict):
         return value_dict.get("id", 0) > 0
 
 
@@ -29,15 +29,19 @@ def manager():
 
 
 def test_database_schema_and_table_sequence_synchronizes_metadata(manager):
+    """
+    Verify that provisioning databases, schemas, and tables correctly
+    synchronizes metadata and establishes the proper dependency tree.
+    """
     manager.provision_database("shop")
     manager.provision_schema("shop", "public")
     table = manager.provision_table(
         "public", "users", TableSchema("users", [ColumnSchema("id", "INT"), ColumnSchema("name", "TEXT")])
     )
 
-    assert manager.metadata_manager.get("database", "shop").name == "shop"
-    assert manager.metadata_manager.get("schema", "public").name == "public"
-    assert manager.metadata_manager.get("table", "users") is table.descriptor
+    assert manager.metadata_manager.get_metadata("database", "shop").name == "shop"
+    assert manager.metadata_manager.get_metadata("schema", "public").name == "public"
+    assert manager.metadata_manager.get_metadata("table", "users") is table.descriptor
     assert manager.metadata_manager.dependency_manager.dependencies["database:shop"] == ["schema:public"]
     assert manager.metadata_manager.dependency_manager.dependencies["schema:public"] == ["table:users"]
     assert [column.name for column in manager.column_manager.columns["users"]] == ["id", "name"]
@@ -45,6 +49,10 @@ def test_database_schema_and_table_sequence_synchronizes_metadata(manager):
 
 
 def test_table_sequence_rejects_unknown_type_before_side_effect(manager):
+    """
+    Ensure that attempting to provision a table with an unregistered data type
+    raises a ValueError and halts before making any state changes.
+    """
     schema = TableSchema("bad", [ColumnSchema("payload", "JSONB")])
     with pytest.raises(ValueError, match="not registered"):
         manager.provision_table("public", "bad", schema)
@@ -53,6 +61,10 @@ def test_table_sequence_rejects_unknown_type_before_side_effect(manager):
 
 
 def test_advanced_object_sequence_registers_dependencies(manager):
+    """
+    Check that provisioning views, procedures, and triggers correctly
+    registers their dependencies against their target tables.
+    """
     manager.provision_view("public", "active_users", "SELECT * FROM users", ["table:users"])
     manager.provision_procedure("public", "archive", [], "DELETE FROM users", ["table:users"])
     manager.provision_trigger("users", "audit", "INSERT", "AFTER", "audit()")
@@ -62,11 +74,15 @@ def test_advanced_object_sequence_registers_dependencies(manager):
 
 
 def test_runtime_sequence_runs_before_constraint_index_after_and_statistics(manager):
+    """
+    Verify the strict execution order during a data modification event:
+    BEFORE triggers -> Constraints -> Indexes -> AFTER triggers -> Statistics.
+    """
     events = []
     before = manager.provision_trigger("users", "before", "INSERT", "BEFORE", "check()")
     after = manager.provision_trigger("users", "after", "INSERT", "AFTER", "audit()")
-    before.executor.execute = lambda descriptor: events.append(descriptor.name)
-    after.executor.execute = lambda descriptor: events.append(descriptor.name)
+    before.executor.execute_trigger_action = lambda descriptor: events.append(descriptor.name)
+    after.executor.execute_trigger_action = lambda descriptor: events.append(descriptor.name)
 
     maintainer = RecordingMaintainer()
     manager.index_manager.create_index("users", Index("idx_users_id", "B_TREE", ["id"], maintainer=maintainer))
@@ -83,6 +99,10 @@ def test_runtime_sequence_runs_before_constraint_index_after_and_statistics(mana
 
 
 def test_runtime_sequence_stops_after_rejected_constraint(manager):
+    """
+    Ensure that a failed constraint validation aborts the execution sequence,
+    preventing index maintenance and statistics updates from running.
+    """
     maintainer = RecordingMaintainer()
     manager.index_manager.create_index("users", Index("idx", "B_TREE", ["id"], maintainer=maintainer))
     manager.constraint_manager.create_constraint(
@@ -94,4 +114,3 @@ def test_runtime_sequence_stops_after_rejected_constraint(manager):
 
     assert maintainer.calls == []
     assert manager.metadata_manager.statistics_manager.get_statistics("users", "UPDATE") == 0
-

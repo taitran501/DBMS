@@ -13,9 +13,10 @@ from dbms.database_object.stored_procedure import ProcedureDescriptor, StoredPro
 from dbms.database_object.table_management import Table
 from dbms.database_object.trigger_management import Trigger, TriggerDescriptor, TriggerManager
 from dbms.database_object.view_management import View, ViewDependencyGraph, ViewManager
+from dbms.errors import TriggerNotExecutableError
 
 
-def test_value_object_alternative_constructors():
+def test_construct_value_objects_accepts_descriptors_and_defaults():
     assert Column(ColumnDescriptor("id", "INT")).name == "id"
     assert Constraint(ConstraintDescriptor("pk", "PRIMARY_KEY", ["id"])).name == "pk"
     assert DataType(DataTypeDescriptor("CUSTOM")).name == "CUSTOM"
@@ -28,7 +29,7 @@ def test_value_object_alternative_constructors():
     assert DatabaseDescriptor("db").config.page_size == 4096
 
 
-def test_duplicate_and_search_branches():
+def test_manager_create_rejects_duplicates_and_lookup_returns_registered_objects():
     columns = ColumnManager()
     columns.columns["empty"] = []
     with pytest.raises(ValueError):
@@ -60,17 +61,17 @@ def test_duplicate_and_search_branches():
     indexes.maintain_table_indexes("missing", {}, 1, "insert")
 
 
-def test_registry_metadata_and_dependency_idempotence():
+def test_repeated_registry_and_dependency_operations_remain_idempotent():
     registry = DatabaseRegistry()
     descriptor = DatabaseDescriptor("db")
-    registry.register(descriptor)
-    assert registry.find_by_name("db") is descriptor
-    registry.remove("db")
-    registry.remove("db")
+    registry.register_database(descriptor)
+    assert registry.find_database_by_name("db") is descriptor
+    registry.remove_database("db")
+    registry.remove_database("db")
 
     dependencies = DependencyManager()
-    dependencies.register_dependency("view:v", "table:t")
-    dependencies.register_dependency("view:v", "table:t")
+    dependencies.add_metadata_dependency("view:v", "table:t")
+    dependencies.add_metadata_dependency("view:v", "table:t")
     assert dependencies.dependencies["table:t"] == ["view:v"]
 
     stats = StatisticsManager()
@@ -79,16 +80,16 @@ def test_registry_metadata_and_dependency_idempotence():
     assert stats.get_statistics("t", "rows") == 2
 
     metadata = MetadataManager(dependency_manager=dependencies, statistics_manager=stats)
-    metadata.register("table", "t", descriptor)
+    metadata.register_metadata("table", "t", descriptor)
     with pytest.raises(ValueError, match="already exists"):
-        metadata.register("table", "t", descriptor)
-    metadata.remove("table", "t")
-    metadata.remove("table", "t")
+        metadata.register_metadata("table", "t", descriptor)
+    metadata.remove_metadata("table", "t")
+    metadata.remove_metadata("table", "t")
     with pytest.raises(ValueError, match="not found"):
-        metadata.get("table", "t")
+        metadata.get_metadata("table", "t")
 
 
-def test_manager_noop_and_policy_failure_branches():
+def test_manager_noop_operations_preserve_state_and_policy_failures_raise_errors():
     db = DatabaseManager()
     db.create_database("db")
     with pytest.raises(ValueError, match="already exists"):
@@ -99,10 +100,10 @@ def test_manager_noop_and_policy_failure_branches():
             self.create = create
             self.drop = drop
 
-        def can_create(self, actor_id, database_id):
+        def can_create_schema(self, actor_id, database_id):
             return self.create
 
-        def can_drop(self, actor_id, schema_name):
+        def can_drop_schema(self, actor_id, schema_name):
             return self.drop
 
     with pytest.raises(PermissionError, match="creation"):
@@ -127,12 +128,13 @@ def test_manager_noop_and_policy_failure_branches():
     with pytest.raises(ValueError, match="already exists"):
         triggers.create_trigger("t", "tr", "INSERT", "AFTER", "pass")
     triggers.drop_trigger("missing", "tr")
-    assert triggers.publish_table_event("t", "insert")
+    with pytest.raises(TriggerNotExecutableError):
+        triggers.publish_table_event("t", "insert")
     assert triggers.publish_table_event("t", "update") == []
 
     graph = ViewDependencyGraph()
-    graph.add_dependency("v", "t1")
-    graph.add_dependency("v", "t2")
+    graph.add_view_dependency("v", "t1")
+    graph.add_view_dependency("v", "t2")
     views = ViewManager(graph)
     views.create_view("s", "v", "SELECT 1")
     with pytest.raises(ValueError, match="already exists"):
@@ -140,11 +142,11 @@ def test_manager_noop_and_policy_failure_branches():
     views.drop_view("missing", "v")
 
 
-def test_converter_non_string_int_path():
-    assert TypeConverter().convert("INT", 1) == 1
+def test_convert_int_preserves_existing_integer_value():
+    assert TypeConverter().convert_type_value("INT", 1) == 1
 
 
-def test_remaining_lookup_noop_and_facade_delegation_branches():
+def test_lookup_drop_and_facade_delegation_follow_manager_contracts():
     columns = ColumnManager()
     columns.add_column("t", Column("a", "INT"))
     with pytest.raises(ValueError):
@@ -161,19 +163,20 @@ def test_remaining_lookup_noop_and_facade_delegation_branches():
         indexes.get_index("t", "missing")
 
     catalog = SchemaCatalog()
-    catalog.remove("missing")
-    assert SchemaOwnershipPolicy().can_change_owner("a", "s", "b") is True
+    catalog.remove_schema("missing")
+    assert SchemaOwnershipPolicy().can_change_schema_owner("a", "s", "b") is True
 
     procedures = StoredProcedureManager()
     direct = StoredProcedure("direct", [], "pass")
-    direct.executor.execute(direct.descriptor, [])
+    direct.executor.execute_procedure_body(direct.descriptor, [])
     procedures.create_procedure("s", "a", [], "pass")
     procedures.create_procedure("s", "b", [], "pass")
     assert procedures.get_procedure("s", "b").name == "b"
 
     triggers = TriggerManager()
     direct_trigger = Trigger("direct", "INSERT", "AFTER", "pass")
-    direct_trigger.executor.execute(direct_trigger.descriptor)
+    with pytest.raises(TriggerNotExecutableError):
+        direct_trigger.executor.execute_trigger_action(direct_trigger.descriptor)
     triggers.create_trigger("t", "a", "INSERT", "AFTER", "pass")
     triggers.create_trigger("t", "b", "UPDATE", "AFTER", "pass")
     assert triggers.get_trigger("t", "b").name == "b"
