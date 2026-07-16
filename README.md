@@ -26,7 +26,19 @@ The architectural components and how they interact conceptually:
 classDiagram
 direction TB
 
-    class DBMS
+    class DBMS {
+        +database_object_manager: DatabaseObjectManager
+        +transaction_manager: TransactionManager
+        +storage_engine: StorageEngine
+        +durability_manager: DurabilityManager
+        +query_processor: QueryProcessor
+        +security_access_controller: SecurityAccessController
+        +performance_manager: PerformanceManager
+        +administration_operations_manager: AdministrationOperationsManager
+        +start() bool
+        +shutdown() bool
+        +execute(sql: str, session: object) object
+    }
     class DatabaseObjectManager
     class TransactionManager
     class StorageEngine
