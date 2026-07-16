@@ -1,12 +1,6 @@
-# Mini DBMS - Slotted-Page Database Management System
+# DBMS
 
-A Python-based lightweight Database Management System (DBMS) architecture featuring slotted-page storage engine, ACID transaction management with multiple isolation levels, cost-based query optimization, security access control, and recovery subsystems.
-
-## 🚀 Current Status & Progress
-
-The project is currently focused on **Database Management** (Schema, Table, Column, Index, Constraint definition and cataloging). 
-* **Database Objects**: Fully integrated schema creation, index definition, and basic catalog updates.
-* **Other Subsystems**: (Storage Engine, Transactions, Security, Query Processing, Durability) are initialized with core components or mock structures to facilitate end-to-end flow and unit/integration testing.
+Python DBMS architecture project. The repository is currently at the class-skeleton stage: 53 public classes are defined across 8 domain packages, with one basic unit test per class. Properties, methods, and business logic have not been implemented yet.
 
 ---
 
@@ -30,63 +24,153 @@ The architectural components and how they interact conceptually:
 
 ```mermaid
 classDiagram
-direction LR
+direction TB
 
-    class DBMS {
-    }
-    class DatabaseObject
-    class Transaction
+    class DBMS
+    class DatabaseObjectManager
+    class TransactionManager
     class StorageEngine
-    class QueryProcessing
-    class Durability
-    class SecurityAccessControl
-    class Performance
-    class AdministrationOperations
+    class DurabilityManager
+    class QueryProcessor
+    class SecurityAccessController
+    class AdministrationOperationsManager
+    class DataFileManager
+    class PageManager
+    class BufferPool
+    class RecordManager
+    class StorageAllocator
+    class LogFileManager
+    class BackupManager
+    class RestoreManager
+    class TransactionLogManager
+    class CheckpointManager
+    class RecoveryManager
+    class ReplicationManager
+    class SqlParser
+    class QueryValidator
+    class QueryOptimizer
+    class ExecutionPlanner
+    class QueryExecutor
+    class UserManager
+    class AuthenticationService
+    class AuthorizationService
+    class EncryptionService
+    class AuditLogger
+    class RoleManager
+    class PerformanceManager
+    class MonitoringManager
+    class ImportExportManager
+    class ConfigurationManager
+    class OperationalLogger
 
-    DBMS *-- DatabaseObject
-    DBMS *-- Transaction
+    class DatabaseManager
+    class SchemaManager
+    class TableManager
+    class ViewManager
+    class RelationshipManager
+    class ColumnManager
+    class ConstraintManager
+    class DataTypeManager
+    class IndexManager
+    class StoredProcedureManager
+    class TriggerManager
+    class MetadataManager
+
+    class ConcurrencyManager
+    class LockManager
+    class IsolationManager
+    class DeadlockManager
+    class AcidManager
+
+    DBMS *-- DatabaseObjectManager
+    DBMS *-- TransactionManager
     DBMS *-- StorageEngine
-    DBMS *-- QueryProcessing
-    DBMS *-- Durability
-    DBMS *-- SecurityAccessControl
-    DBMS *-- Performance
-    DBMS *-- AdministrationOperations
+    DBMS *-- DurabilityManager
+    DBMS *-- QueryProcessor
+    DBMS *-- SecurityAccessController
+    DBMS *-- PerformanceManager
+    DBMS *-- AdministrationOperationsManager
 
-    QueryProcessing --> DatabaseObject : reads schema / metadata
-    QueryProcessing --> SecurityAccessControl : checks permissions
-    QueryProcessing --> Transaction : executes within
-    QueryProcessing --> StorageEngine : requests data access
+    DatabaseObjectManager *-- DatabaseManager
+    DatabaseObjectManager *-- SchemaManager
+    DatabaseObjectManager *-- TableManager
+    DatabaseObjectManager *-- ViewManager
+    DatabaseObjectManager *-- RelationshipManager
+    DatabaseObjectManager *-- ColumnManager
+    DatabaseObjectManager *-- ConstraintManager
+    DatabaseObjectManager *-- DataTypeManager
+    DatabaseObjectManager *-- IndexManager
+    DatabaseObjectManager *-- StoredProcedureManager
+    DatabaseObjectManager *-- TriggerManager
+    DatabaseObjectManager *-- MetadataManager
 
-    Transaction --> StorageEngine : controls read / write
-    Transaction --> Durability : commit / rollback safety
-    Transaction --> SecurityAccessControl : validates session context
+    TransactionManager *-- ConcurrencyManager
+    TransactionManager *-- LockManager
+    TransactionManager *-- IsolationManager
+    TransactionManager *-- DeadlockManager
+    TransactionManager *-- AcidManager
 
-    StorageEngine --> DatabaseObject : stores tables / indexes
-    StorageEngine --> Durability : writes logs / checkpoints
-    StorageEngine --> Performance : exposes storage metrics
+    StorageEngine *-- DataFileManager
+    StorageEngine *-- PageManager
+    StorageEngine *-- BufferPool
+    StorageEngine *-- RecordManager
+    StorageEngine *-- StorageAllocator
+    StorageEngine *-- LogFileManager
+    DataFileManager --> PageManager
+    PageManager --> BufferPool
+    PageManager --> RecordManager
+    DataFileManager --> StorageAllocator
+    DataFileManager --> LogFileManager
 
-    Durability --> StorageEngine : restores data pages
-    Durability --> Transaction : recovers transactions
+    DurabilityManager *-- BackupManager
+    DurabilityManager *-- RestoreManager
+    DurabilityManager *-- TransactionLogManager
+    DurabilityManager *-- CheckpointManager
+    DurabilityManager *-- RecoveryManager
+    DurabilityManager *-- ReplicationManager
+    BackupManager --> RestoreManager
+    BackupManager --> TransactionLogManager
+    TransactionLogManager --> CheckpointManager
+    TransactionLogManager --> RecoveryManager
+    TransactionLogManager --> ReplicationManager
 
-    SecurityAccessControl --> DatabaseObject : grants object permissions
-    SecurityAccessControl --> AdministrationOperations : audit / policy logs
+    QueryProcessor *-- SqlParser
+    QueryProcessor *-- QueryValidator
+    QueryProcessor *-- QueryOptimizer
+    QueryProcessor *-- ExecutionPlanner
+    QueryProcessor *-- QueryExecutor
+    SqlParser --> QueryValidator
+    QueryValidator --> QueryOptimizer
+    QueryOptimizer --> ExecutionPlanner
+    ExecutionPlanner --> QueryExecutor
 
-    Performance --> QueryProcessing : query tuning feedback
-    Performance --> StorageEngine : memory / IO tuning
-    Performance --> DatabaseObject : index strategy
+    SecurityAccessController *-- UserManager
+    SecurityAccessController *-- AuthenticationService
+    SecurityAccessController *-- AuthorizationService
+    SecurityAccessController *-- EncryptionService
+    SecurityAccessController *-- AuditLogger
+    SecurityAccessController *-- RoleManager
+    UserManager --> AuthenticationService
+    UserManager --> AuthorizationService
+    UserManager --> EncryptionService
+    UserManager --> AuditLogger
+    UserManager --> RoleManager
 
-    AdministrationOperations --> SecurityAccessControl : user / role operations
-    AdministrationOperations --> Durability : backup / restore jobs
-    AdministrationOperations --> Performance : monitoring / alerts
-    AdministrationOperations --> StorageEngine : configuration management
+    AdministrationOperationsManager *-- MonitoringManager
+    AdministrationOperationsManager *-- ImportExportManager
+    AdministrationOperationsManager *-- ConfigurationManager
+    AdministrationOperationsManager *-- OperationalLogger
+    MonitoringManager --> ImportExportManager
+    MonitoringManager --> ConfigurationManager
+    MonitoringManager --> OperationalLogger
 ```
 
 ---
 
-### 3. General Sequence Diagram (Execution Flow)
+### 3. Planned General Sequence Diagram
 
 
-The end-to-end request processing flow, from query parsing, authentication, transaction boundaries, execution to persistence:
+Planned end-to-end flow. This sequence is a design reference, not implemented behavior.
 
 
 ```mermaid
@@ -149,9 +233,9 @@ sequenceDiagram
 
 ---
 
-### 4. Database Object Sequence Diagrams
+### 4. Planned Database Object Sequence Diagrams
 
-The complex database object management workflows have been decomposed into 4 focused sequence diagrams, located in `diagrams/db_object_sequences/`:
+Planned Database Object workflows are documented in `diagrams/db_object_sequences/`. They are design references and are not implemented yet.
 
 For detailed workflow diagrams, please refer to the **[Database Object Sequences Directory](diagrams/db_object_sequences/)**:
 
@@ -161,9 +245,9 @@ For detailed workflow diagrams, please refer to the **[Database Object Sequences
 4. **[Runtime Execution](diagrams/db_object_sequences/seq_runtime.mmd)**: Shows how data manipulation events interact with Triggers, Constraints, and Indexes.
 ---
 
-### 5. Database Object Modules (Decomposed)
+### 5. Planned Detailed Database Object Classes
 
-The **Database Object** domain has been fully decomposed into the following single-responsibility management modules, reflecting the design in the Level 5 Mindmap:
+The following supporting classes belong to later Database Object design phases. Only the manager classes shown in the Class Diagram Overview currently have skeleton files.
 
 - **Database Management**: `DatabaseManager`, `DatabaseDescriptor`, `DatabaseConfiguration`, `DatabaseRegistry`
 - **Schema Management**: `SchemaManager`, `SchemaDescriptor`, `SchemaCatalog`, `SchemaOwnershipPolicy`, `SchemaMigrationLedger`
@@ -185,13 +269,13 @@ The **Database Object** domain has been fully decomposed into the following sing
 Ensure you have Python 3.10+ installed.
 
 ### 1. Install Dependencies
-This project uses `pytest` for tests.
+
 ```bash
-pip install pytest
+python -m pip install -r requirements-dev.txt
 ```
 
 ### 2. Run Tests
-Execute the unit and integration tests to verify the DBMS subsystems:
+Run the current class-instantiation unit tests:
 ```bash
-pytest
+python -m pytest -q
 ```
