@@ -13,7 +13,8 @@ from dbms.transaction.transaction_manager import TransactionManager
 
 
 class DBMS:
-"""Quản lý tám module chính của hệ quản trị cơ sở dữ liệu."""
+    """Quản lý 8 module chính của hệ quản trị cơ sở dữ liệu."""
+
     def __init__(
         self,
         database_object_manager: DatabaseObjectManager,
