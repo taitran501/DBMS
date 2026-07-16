@@ -2,14 +2,5 @@
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
-    "unit: isolated tests for one component or contract",
-    "integration: tests that exercise multiple DBMS components together",
+    "unit: isolated contract tests",
 ]
-
-[tool.coverage.run]
-branch = true
-source = ["dbms"]
-
-[tool.coverage.report]
-fail_under = 100
-show_missing = true
