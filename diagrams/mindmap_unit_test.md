@@ -1,0 +1,561 @@
+- Database Object
+    - Database Management
+        - Database Definition
+            - Create Database
+                - CreateDatabase()
+            - Rename Database
+                - RenameDatabase()
+            - Drop Database
+                - DropDatabase()
+        - Database Configuration
+            - Storage Location
+            - Character Encoding
+            - Default Schema
+        - Database Registry
+            - Register Database
+                - OpenDatabase()
+                - CloseDatabase()
+                - RejectDuplicateDatabase()
+            - Lookup Database
+                - LoadDatabaseMetadata()
+                - RejectUnknownDatabase()
+                - test_database_manager_can_be_created()
+    - Schema Management
+        - Schema Definition
+            - Create Schema
+                - CreateSchema()
+                - RejectDuplicateSchema()
+            - Rename Schema
+                - RenameSchema()
+            - Drop Schema
+                - DropSchema()
+                - RejectDroppingNonemptySchema()
+        - Schema Ownership
+            - Assign Owner
+                - AssignOwner()
+            - Change Owner
+                - ChangeOwner()
+                - RejectUnknownSchema()
+        - Schema Versioning
+            - Record Migration
+            - View History
+            - test_schema_manager_can_be_created()
+    - Table Management
+        - Table Definition
+            - Create Table
+                - CreateTable()
+                - RejectDuplicateTable()
+                - RequireAtLeastOneColumn()
+                - test_table_descriptor_stores_table_identity()
+            - Rename Table
+                - RenameTable()
+            - Drop Table
+                - DropTable()
+                - RejectDroppingReferencedTable()
+                - test_table_manager_can_be_created()
+        - Table Organization
+            - Heap Organization
+            - Index-Organized
+            - LoadTableMetadata()
+        - Table Scope
+            - Persistent Scope
+            - Temporary Scope
+    - View Management
+        - View Definition
+            - Create View
+                - CreateView()
+                - RejectDuplicateView()
+                - test_view_manager_can_be_created()
+            - Drop View
+                - DropView()
+                - RejectDroppingReferencedView()
+        - View Dependencies
+            - Track Dependencies
+                - ResolveViewDefinition()
+                - TrackViewDependency()
+                - RejectUnknownDependency()
+    - Relationship Management
+        - Relationship Definition
+            - Create Relationship
+                - CreateRelationship()
+                - RejectDuplicateRelationship()
+                - ValidateParentTable()
+                - ValidateChildTable()
+                - test_relationship_manager_can_be_created()
+            - Drop Relationship
+                - DropRelationship()
+        - Referential Actions
+            - On Delete Action
+                - ApplyDeleteAction()
+            - On Update Action
+                - ApplyUpdateAction()
+    - Column Management
+        - Column Definition
+            - Add Column
+                - AddColumn()
+                - RejectDuplicateColumn()
+                - test_column_descriptor_stores_column_definition()
+            - Drop Column
+                - DropColumn()
+                - RejectDroppingReferencedColumn()
+            - Rename Column
+                - RenameColumn()
+                - test_column_manager_can_be_created()
+        - Column Rules
+            - Nullable Rule
+                - SetNullable()
+            - Default Value Rule
+                - SetDefaultValue()
+    - Constraint Management
+        - Constraint Definition
+            - Create Constraint
+                - CreateConstraint()
+                - RejectInvalidConstraint()
+                - test_constraint_manager_can_be_created()
+            - Drop Constraint
+                - DropConstraint()
+        - Constraint Enforcement
+            - Validate Constraints
+                - ValidateNotNull()
+                - ValidateUnique()
+                - ValidatePrimaryKey()
+                - ValidateForeignKey()
+    - Data Type Management
+        - Type Validation
+            - Validate Value
+                - ValidateValue()
+                - RejectInvalidValue()
+            - Register DataType
+                - RegisterDataType()
+                - ResolveDataType()
+                - test_data_type_manager_can_be_created()
+        - Type Conversion
+            - Convert Value
+                - ConvertValue()
+                - RejectInvalidConversion()
+    - Index Management
+        - Index Definition
+            - Create Index
+                - CreateIndex()
+                - RejectDuplicateIndex()
+                - test_index_manager_can_be_created()
+            - Drop Index
+                - DropIndex()
+        - Index Access Structure
+            - B-Tree Access
+            - Hash Access
+        - Index Organization
+            - Clustered Organization
+            - Non-clustered Organization
+        - Index Maintenance
+            - Rebuild Index
+                - RebuildIndex()
+            - Update Entries
+                - InsertIndexEntry()
+                - UpdateIndexEntry()
+                - DeleteIndexEntry()
+                - FindIndex()
+    - Stored Procedure
+        - Procedure Definition
+            - Create Procedure
+                - CreateProcedure()
+                - RejectDuplicateProcedure()
+            - Drop Procedure
+                - DropProcedure()
+        - Procedure Execution
+            - Execute Procedure
+                - ExecuteProcedure()
+                - ValidateParameters()
+                - ReturnProcedureResult()
+                - RejectUnknownProcedure()
+                - test_stored_procedure_manager_can_be_created()
+    - Trigger Management
+        - Trigger Definition
+            - Create Trigger
+                - CreateTrigger()
+                - RejectDuplicateTrigger()
+            - Drop Trigger
+                - DropTrigger()
+        - Trigger Event Binding
+            - Bind Event
+                - BindEvent()
+                - SkipUnmatchedEvent()
+        - Trigger Execution
+            - Execute Action
+                - ExecuteTrigger()
+                - AbortOnTriggerFailure()
+                - test_trigger_manager_can_be_created()
+    - Metadata Management
+        - System Catalog
+            - Query Catalog
+                - LookupMetadata()
+                - test_system_catalog_returns_placeholder_results()
+            - Update Catalog
+                - RegisterMetadata()
+                - UpdateMetadata()
+                - RemoveMetadata()
+                - RejectDuplicateMetadata()
+                - PreserveMetadataOnFailure()
+                - test_metadata_manager_stores_catalog_and_returns_placeholders()
+                - test_database_object_manager_stores_metadata_manager_and_returns_placeholders()
+        - Dependency Management
+            - Track Dependencies
+                - TrackDependency()
+            - Resolve Dependencies
+        - Statistics Management
+            - Collect Statistics
+                - CollectStatistics()
+            - View Statistics
+
+- Transaction
+    - TransactionManagerTests
+        - BeginTransaction()
+        - Commit()
+        - Rollback()
+        - RollbackToSavepoint()
+        - NestedTransaction()
+        - DistributedTransaction()
+        - Timeout()
+        - Cancel()
+        - Retry()
+        - RecoverTransaction()
+    - TransactionTests
+        - CommitChanges()
+        - RollbackChanges()
+        - CreateSavepoint()
+        - ReleaseSavepoint()
+        - SetIsolationLevel()
+        - ChangeState()
+        - AcquireLock()
+        - ReleaseLock()
+    - LockManagerTests
+        - AcquireSharedLock()
+        - AcquireExclusiveLock()
+        - UpgradeLock()
+        - DowngradeLock()
+        - ReleaseLock()
+        - DetectDeadlock()
+        - TimeoutWaiting()
+        - ReleaseAllLocks()
+    - MVCCManagerTests
+        - CreateSnapshot()
+        - ReadVisibleVersion()
+        - SkipInvisibleVersion()
+        - CreateVersion()
+        - DeleteVersion()
+        - GarbageCollect()
+        - Vacuum()
+        - MergeVersionChain()
+    - IsolationManagerTests
+        - ReadCommitted()
+        - RepeatableRead()
+        - Serializable()
+        - SnapshotIsolation()
+        - PreventDirtyRead()
+        - PreventNonrepeatableRead()
+        - PreventPhantomRead()
+    - DeadlockManagerTests
+        - BuildWaitGraph()
+        - DetectCycle()
+        - SelectVictim()
+        - AbortVictim()
+        - ReleaseVictimLocks()
+        - RetryTransaction()
+    - ACIDTests
+        - PreserveAtomicity()
+        - PreserveConsistency()
+        - PreserveIsolation()
+        - PreserveDurability()
+
+- Storage Engine
+    - StorageEngine
+        - test_storage_engine_stores_buffer_pool_and_returns_placeholders()
+    - Data File Management
+        - FileManager
+            - OpenFile()
+            - CloseFile()
+            - test_data_file_manager_can_be_created()
+        - File Definition
+            - FileDescriptor
+                - CreateFile()
+        - File Space Control
+            - FreeSpaceMap
+                - ExtendFile()
+                - TruncateFile()
+        - File I/O
+            - DiskIO
+                - ReadPage()
+                - WritePage()
+                - RejectInvalidOffset()
+    - Page Management
+        - PageManager
+            - AllocatePage()
+            - GetPage()
+            - ReleasePage()
+            - ReusePage()
+            - test_page_manager_can_be_created()
+        - Page Definition
+            - Page
+                - InitializePage()
+                - test_page_stores_attributes_and_returns_placeholders()
+            - PageHeader
+            - PageDescriptor
+        - Free Space Tracking
+            - FreeSpaceTracker
+                - TrackFreeSpace()
+                - RejectFullPage()
+    - Buffer Pool + Cache
+        - BufferPoolManager
+            - CachePage()
+            - GetCachedPage()
+            - LoadMissingPage()
+            - EnforceCapacity()
+            - test_buffer_pool_stores_capacity_and_returns_placeholders()
+        - Page Cache
+            - BufferFrame
+                - EvictPage()
+                - PreservePinnedPage()
+        - Dirty Page Tracking
+            - DirtyPageRegistry
+                - MarkDirty()
+        - Cache Replacement Policy
+            - EvictionPolicy
+                - FlushPage()
+                - FlushAllPages()
+            - LRUEvictionPolicy
+    - Record Management
+        - RecordManager
+            - test_record_manager_can_be_created()
+        - Record Format
+            - RecordDescriptor
+            - RecordSerializer
+                - SerializeRecord()
+                - DeserializeRecord()
+                - test_record_stores_identifier_and_values()
+    - Record Access
+      - RecordReader
+            - ReadRecord()
+            - MoveRecord()
+    - Record Modification
+      - RecordWriter
+            - InsertRecord()
+            - UpdateRecord()
+            - DeleteRecord()
+            - RejectOversizedRecord()
+    - Storage Allocation
+        - StorageAllocator
+            - test_storage_allocator_can_be_created()
+        - Allocation Units
+            - AllocationUnit
+                - AllocateSpace()
+                - ReleaseSpace()
+                - ReallocateSpace()
+        - Space Mapping
+            - SpaceMap
+                - TrackFreeSpace()
+                - RejectExhaustedStorage()
+                - RejectDoubleRelease()
+    - Log File
+        - WriteAheadLog
+            - test_log_file_manager_can_be_created()
+        - Log Entry Format
+            - LogEntry
+                - AppendLogEntry()
+                - ReadLogEntry()
+                - ReadLogRange()
+                - DetectCorruptedEntry()
+            - LogEntryType
+        - Log Writer
+            - LogWriter
+                - FlushLog()
+        - Log Reader
+            - LogReader
+                - TruncateLog()
+        - Log Sequence Management
+            - LogSequenceNumber
+                - AssignSequenceNumber()
+
+- Durability
+    - BackupManagerTests
+        - CreateFullBackup()
+        - CreateIncrementalBackup()
+        - ScheduleBackup()
+        - CancelBackup()
+        - VerifyBackup()
+        - RejectCorruptedBackup()
+        - RemoveIncompleteBackup()
+    - RestoreManagerTests
+        - RestoreFullBackup()
+        - RestoreIncrementalBackup()
+        - RestorePointInTime()
+        - ValidateRestoreSource()
+        - PreserveDatabaseOnFailure()
+        - VerifyRestoredDatabase()
+    - TransactionLogManagerTests
+        - AppendLogRecord()
+        - ReadTransactionRecords()
+        - FlushCommitRecord()
+        - ReplayLog()
+        - TruncateLog()
+        - BackupLog()
+        - PreserveSequenceOrder()
+    - CheckpointManagerTests
+        - CreateCheckpoint()
+        - FlushDirtyPages()
+        - RecordActiveTransactions()
+        - StoreRecoveryBoundary()
+        - LoadLatestCheckpoint()
+        - PreservePreviousCheckpointOnFailure()
+    - RecoveryManagerTests
+        - RecoverAfterCrash()
+        - RedoCommittedTransaction()
+        - UndoUncommittedTransaction()
+        - StartFromCheckpoint()
+        - SkipAppliedRecord()
+        - StopOnCorruptedLog()
+        - RecoverIdempotently()
+        - ValidateRecoveredState()
+    - ReplicationManagerTests
+        - ShipLogRecord()
+        - ApplyReplicaLog()
+        - WaitForSynchronousReplica()
+        - CommitAsynchronously()
+        - DetectReplicaDivergence()
+        - PromoteReplica()
+        - RejectLaggingReplicaPromotion()
+
+- Query Processing
+    - LexerTests
+        - TokenizeKeyword()
+        - TokenizeIdentifier()
+        - TokenizeLiteral()
+        - TokenizeOperator()
+        - TrackTokenPosition()
+        - IgnoreWhitespace()
+        - RejectUnknownCharacter()
+    - SQLParserTests
+        - ParseSelect()
+        - ParseInsert()
+        - ParseUpdate()
+        - ParseDelete()
+        - ParseExpression()
+        - ParseWhereClause()
+        - RejectIncompleteStatement()
+        - RejectUnexpectedToken()
+    - QueryValidatorTests
+        - ValidateTable()
+        - ValidateColumn()
+        - ValidateDataType()
+        - ValidatePermission()
+        - RejectUnknownTable()
+        - RejectUnknownColumn()
+        - RejectTypeMismatch()
+        - RejectUnauthorizedQuery()
+    - QueryOptimizerTests
+        - EstimateCost()
+        - SelectLowestCostPlan()
+        - ReorderJoin()
+        - SelectIndex()
+        - PushPredicate()
+        - UseSafeEstimateWithoutStatistics()
+        - PreserveQueryResult()
+    - ExecutionPlannerTests
+        - CreateLogicalPlan()
+        - CreatePhysicalPlan()
+        - PlanTableScan()
+        - PlanIndexScan()
+        - PlanJoin()
+        - PlanAggregation()
+        - RejectInvalidPlan()
+    - QueryExecutorTests
+        - ExecuteSelect()
+        - ExecuteInsert()
+        - ExecuteUpdate()
+        - ExecuteDelete()
+        - ExecuteFilter()
+        - ExecuteJoin()
+        - ExecuteAggregation()
+        - ReturnEmptyResult()
+        - RollbackOnFailure()
+
+- Security & Access Control
+    - UserManagerTests
+        - CreateUser()
+        - DisableUser()
+        - EnableUser()
+        - DeleteUser()
+        - FindUser()
+        - RejectDuplicateUser()
+        - RevokeActiveSessions()
+    - AuthenticationServiceTests
+        - AuthenticatePassword()
+        - AuthenticateToken()
+        - RejectInvalidPassword()
+        - RejectExpiredCredential()
+        - CreateSession()
+        - ValidateSession()
+        - Logout()
+    - AuthorizationServiceTests
+        - GrantPermission()
+        - RevokePermission()
+        - CheckUserPermission()
+        - CheckRolePermission()
+        - InheritPermission()
+        - DenyMissingPermission()
+        - IsolateObjectPermission()
+    - EncryptionServiceTests
+        - EncryptValue()
+        - DecryptValue()
+        - RotateKey()
+        - RejectInvalidKey()
+        - PreserveExistingCiphertext()
+        - HidePlaintext()
+    - AuditLoggerTests
+        - RecordSuccessfulAccess()
+        - RecordDeniedAccess()
+        - RecordUserIdentity()
+        - RecordOperation()
+        - PreserveEventOrder()
+        - FilterByAuditPolicy()
+    - RoleManagerTests
+        - CreateRole()
+        - DeleteRole()
+        - AssignRole()
+        - RevokeRole()
+        - ActivateDefaultRole()
+        - InheritParentRole()
+        - RejectCyclicHierarchy()
+
+- Administration & Operations
+    - MonitoringManagerTests
+        - GetSystemHealth()
+        - GetMetrics()
+        - DetectFailedService()
+        - CountQueries()
+        - CountTransactions()
+        - DetectThresholdBreach()
+        - RaiseAlert()
+    - ImportExportManagerTests
+        - ImportCSV()
+        - ImportJSON()
+        - ImportSQLDump()
+        - ExportCSV()
+        - ExportJSON()
+        - BulkLoad()
+        - RollbackFailedImport()
+    - ConfigurationManagerTests
+        - LoadServerConfiguration()
+        - LoadDatabaseConfiguration()
+        - ValidateConfiguration()
+        - UpdateRuntimeParameter()
+        - RejectInvalidParameter()
+        - RequireRestart()
+        - EnforceResourceLimit()
+    - OperationalLoggerTests
+        - LogStartup()
+        - LogShutdown()
+        - LogMaintenanceStart()
+        - LogMaintenanceCompletion()
+        - LogBackupCompletion()
+        - LogFailure()
+        - PreserveTimestampOrder()
