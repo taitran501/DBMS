@@ -1,0 +1,10 @@
+class Page:
+    def __init__(self, page_id: int, data: bytes = b"") -> None:
+        self.page_id = page_id
+        self.data = data
+
+    def read(self) -> bytes:
+        return b""
+
+    def write(self, data: bytes) -> bool:
+        return True

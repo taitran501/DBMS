@@ -1,2 +1,6 @@
+from dbms.query_processing.statement import Statement
+
+
 class QueryValidator:
-    pass
+    def validate(self, statement: Statement) -> bool:
+        return True

@@ -1,6 +1,6 @@
 # DBMS
 
-Python DBMS architecture project. The repository is currently at the class-skeleton stage: 53 public classes are defined across 8 domain packages, with one basic unit test per class. Properties, methods, and business logic have not been implemented yet.
+Python DBMS architecture project. The repository is currently at the class-design stage: selected core classes define their initial attributes and method stubs, while business logic has not been implemented yet.
 
 ---
 
@@ -39,26 +39,74 @@ direction TB
         +shutdown() bool
         +execute(sql: str, session: object) object
     }
-    class DatabaseObjectManager
-    class TransactionManager
-    class StorageEngine
-    class DurabilityManager
-    class QueryProcessor
+    class DatabaseObjectManager {
+        +metadata_manager: MetadataManager
+        +get_object(name: str) object
+        +object_exists(name: str) bool
+    }
+    class TransactionManager {
+        +begin() Transaction
+        +commit(transaction: Transaction) bool
+        +rollback(transaction: Transaction) bool
+    }
+    class Transaction
+    class TransactionStatus
+    class StorageEngine {
+        +buffer_pool: BufferPool
+        +read(page_id: int) object
+        +write(value: object) bool
+        +delete(record_id: int) bool
+        +revert(transaction_id: int) bool
+    }
+    class DurabilityManager {
+        +transaction_log_manager: TransactionLogManager
+        +recovery_manager: RecoveryManager
+        +persist(transaction_id: int) bool
+        +recover() bool
+    }
+    class QueryProcessor {
+        +sql_parser: SqlParser
+        +query_validator: QueryValidator
+        +query_executor: QueryExecutor
+        +process(sql: str, session: object) object
+    }
     class SecurityAccessController
     class AdministrationOperationsManager
     class DataFileManager
     class PageManager
-    class BufferPool
+    class BufferPool {
+        +capacity: int
+        +get_page(page_id: int) Page
+        +put_page(page: Page) bool
+        +flush() bool
+    }
+    class Page
+    class Record
     class RecordManager
     class StorageAllocator
     class LogFileManager
     class BackupManager
     class RestoreManager
-    class TransactionLogManager
+    class TransactionLogManager {
+        +append(record: LogRecord) bool
+        +read_entries(transaction_id: int) list
+    }
     class CheckpointManager
-    class RecoveryManager
+    class RecoveryManager {
+        +transaction_log_manager: TransactionLogManager
+        +recover() bool
+        +rollback(transaction_id: int) bool
+    }
+    class LogRecord
     class ReplicationManager
-    class SqlParser
+    class SqlParser {
+        +parse(tokens: list) Statement
+    }
+    class Lexer
+    class Token
+    class TokenType
+    class Statement
+    class SelectStatement
     class QueryValidator
     class QueryOptimizer
     class ExecutionPlanner
@@ -86,7 +134,15 @@ direction TB
     class IndexManager
     class StoredProcedureManager
     class TriggerManager
-    class MetadataManager
+    class MetadataManager {
+        +system_catalog: SystemCatalog
+        +register(name: str, descriptor: object) bool
+        +get(name: str) object
+        +remove(name: str) bool
+    }
+    class SystemCatalog
+    class TableDescriptor
+    class ColumnDescriptor
 
     class ConcurrencyManager
     class LockManager
@@ -115,12 +171,17 @@ direction TB
     DatabaseObjectManager *-- StoredProcedureManager
     DatabaseObjectManager *-- TriggerManager
     DatabaseObjectManager *-- MetadataManager
+    MetadataManager *-- SystemCatalog
+    SystemCatalog o-- TableDescriptor
+    TableDescriptor o-- ColumnDescriptor
 
     TransactionManager *-- ConcurrencyManager
     TransactionManager *-- LockManager
     TransactionManager *-- IsolationManager
     TransactionManager *-- DeadlockManager
     TransactionManager *-- AcidManager
+    TransactionManager --> Transaction
+    Transaction --> TransactionStatus
 
     StorageEngine *-- DataFileManager
     StorageEngine *-- PageManager
@@ -133,6 +194,8 @@ direction TB
     PageManager --> RecordManager
     DataFileManager --> StorageAllocator
     DataFileManager --> LogFileManager
+    BufferPool o-- Page
+    Page o-- Record
 
     DurabilityManager *-- BackupManager
     DurabilityManager *-- RestoreManager
@@ -145,6 +208,8 @@ direction TB
     TransactionLogManager --> CheckpointManager
     TransactionLogManager --> RecoveryManager
     TransactionLogManager --> ReplicationManager
+    TransactionLogManager o-- LogRecord
+    RecoveryManager --> TransactionLogManager
 
     QueryProcessor *-- SqlParser
     QueryProcessor *-- QueryValidator
@@ -155,6 +220,11 @@ direction TB
     QueryValidator --> QueryOptimizer
     QueryOptimizer --> ExecutionPlanner
     ExecutionPlanner --> QueryExecutor
+    Lexer --> Token
+    Token --> TokenType
+    SqlParser --> Token
+    SqlParser --> Statement
+    SelectStatement --|> Statement
 
     SecurityAccessController *-- UserManager
     SecurityAccessController *-- AuthenticationService
