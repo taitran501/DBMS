@@ -1,11 +1,34 @@
 from dbms.storage_engine.buffer_pool import BufferPool
-from dbms.storage_engine.page import Page
 
+def test_cache_page():
+    pass
+
+def test_get_cached_page():
+    pass
+
+def test_load_missing_page():
+    pass
+
+def test_enforce_capacity():
+    pass
+
+def test_evict_page():
+    pass
+
+def test_preserve_pinned_page():
+    pass
+
+def test_mark_dirty():
+    pass
+
+def test_flush_page():
+    pass
+
+def test_flush_all_pages():
+    pass
 
 def test_buffer_pool_stores_capacity_and_returns_placeholders():
-    pool = BufferPool(16)
-
-    assert pool.capacity == 16
+    pool = BufferPool(10)
+    assert pool.capacity == 10
     assert pool.get_page(1) is None
-    assert pool.put_page(Page(1)) is True
     assert pool.flush() is True

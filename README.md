@@ -32,6 +32,9 @@ direction TB
         +storage_engine: StorageEngine
         +durability_manager: DurabilityManager
         +query_processor: QueryProcessor
+        +security_access_controller: SecurityAccessController
+        +performance_manager: PerformanceManager
+        +administration_operations_manager: AdministrationOperationsManager
         +start() bool
         +shutdown() bool
         +execute(sql: str, session: object) object
@@ -46,16 +49,8 @@ direction TB
         +commit(transaction: Transaction) bool
         +rollback(transaction: Transaction) bool
     }
-    class Transaction {
-        +transaction_id: int
-        +status: TransactionStatus
-    }
-    class TransactionStatus {
-        <<enumeration>>
-        ACTIVE
-        COMMITTED
-        ROLLED_BACK
-    }
+    class Transaction
+    class TransactionStatus
     class StorageEngine {
         +buffer_pool: BufferPool
         +read(page_id: int) object
@@ -75,123 +70,181 @@ direction TB
         +query_executor: QueryExecutor
         +process(sql: str, session: object) object
     }
+    class SecurityAccessController
+    class AdministrationOperationsManager
+    class DataFileManager
+    class PageManager
     class BufferPool {
         +capacity: int
         +get_page(page_id: int) Page
         +put_page(page: Page) bool
         +flush() bool
     }
-    class Page {
-        +page_id: int
-        +data: bytes
-        +read() bytes
-        +write(data: bytes) bool
-    }
-    class Record {
-        +record_id: int
-        +values: dict
-    }
+    class Page
+    class Record
+    class RecordManager
+    class StorageAllocator
+    class LogFileManager
+    class BackupManager
+    class RestoreManager
     class TransactionLogManager {
         +append(record: LogRecord) bool
         +read_entries(transaction_id: int) list
     }
+    class CheckpointManager
     class RecoveryManager {
         +transaction_log_manager: TransactionLogManager
         +recover() bool
         +rollback(transaction_id: int) bool
     }
-    class LogRecord {
-        +transaction_id: int
-        +operation: str
-        +before_value: object
-        +after_value: object
-    }
+    class LogRecord
+    class ReplicationManager
     class SqlParser {
         +parse(tokens: list) Statement
     }
-    class Lexer {
-        +tokenize(sql: str) list~Token~
-    }
-    class Token {
-        +token_type: TokenType
-        +value: str
-        +position: int
-    }
-    class TokenType {
-        <<enumeration>>
-        KEYWORD
-        IDENTIFIER
-        LITERAL
-        OPERATOR
-        PUNCTUATION
-        END_OF_INPUT
-    }
-    class Statement {
-        +statement_type: str
-    }
-    class SelectStatement {
-        +table_name: str
-        +columns: list~str~
-        +where: object
-    }
-    class QueryValidator {
-        +validate(statement: Statement) bool
-    }
-    class QueryExecutor {
-        +execute(statement: Statement, transaction: object) object
-    }
+    class Lexer
+    class Token
+    class TokenType
+    class Statement
+    class SelectStatement
+    class QueryValidator
+    class QueryOptimizer
+    class ExecutionPlanner
+    class QueryExecutor
+    class UserManager
+    class AuthenticationService
+    class AuthorizationService
+    class EncryptionService
+    class AuditLogger
+    class RoleManager
+    class PerformanceManager
+    class MonitoringManager
+    class ImportExportManager
+    class ConfigurationManager
+    class OperationalLogger
+
+    class DatabaseManager
+    class SchemaManager
+    class TableManager
+    class ViewManager
+    class RelationshipManager
+    class ColumnManager
+    class ConstraintManager
+    class DataTypeManager
+    class IndexManager
+    class StoredProcedureManager
+    class TriggerManager
     class MetadataManager {
         +system_catalog: SystemCatalog
         +register(name: str, descriptor: object) bool
         +get(name: str) object
         +remove(name: str) bool
     }
-    class SystemCatalog {
-        +register(name: str, descriptor: object) bool
-        +find(name: str) object
-        +remove(name: str) bool
-    }
-    class TableDescriptor {
-        +name: str
-        +schema_name: str
-    }
-    class ColumnDescriptor {
-        +name: str
-        +data_type: str
-        +nullable: bool
-    }
+    class SystemCatalog
+    class TableDescriptor
+    class ColumnDescriptor
+
+    class ConcurrencyManager
+    class LockManager
+    class IsolationManager
+    class DeadlockManager
+    class AcidManager
 
     DBMS *-- DatabaseObjectManager
     DBMS *-- TransactionManager
     DBMS *-- StorageEngine
     DBMS *-- DurabilityManager
     DBMS *-- QueryProcessor
+    DBMS *-- SecurityAccessController
+    DBMS *-- PerformanceManager
+    DBMS *-- AdministrationOperationsManager
 
+    DatabaseObjectManager *-- DatabaseManager
+    DatabaseObjectManager *-- SchemaManager
+    DatabaseObjectManager *-- TableManager
+    DatabaseObjectManager *-- ViewManager
+    DatabaseObjectManager *-- RelationshipManager
+    DatabaseObjectManager *-- ColumnManager
+    DatabaseObjectManager *-- ConstraintManager
+    DatabaseObjectManager *-- DataTypeManager
+    DatabaseObjectManager *-- IndexManager
+    DatabaseObjectManager *-- StoredProcedureManager
+    DatabaseObjectManager *-- TriggerManager
     DatabaseObjectManager *-- MetadataManager
     MetadataManager *-- SystemCatalog
+    SystemCatalog o-- TableDescriptor
+    TableDescriptor o-- ColumnDescriptor
 
+    TransactionManager *-- ConcurrencyManager
+    TransactionManager *-- LockManager
+    TransactionManager *-- IsolationManager
+    TransactionManager *-- DeadlockManager
+    TransactionManager *-- AcidManager
     TransactionManager --> Transaction
     Transaction --> TransactionStatus
 
+    StorageEngine *-- DataFileManager
+    StorageEngine *-- PageManager
     StorageEngine *-- BufferPool
+    StorageEngine *-- RecordManager
+    StorageEngine *-- StorageAllocator
+    StorageEngine *-- LogFileManager
+    DataFileManager --> PageManager
+    PageManager --> BufferPool
+    PageManager --> RecordManager
+    DataFileManager --> StorageAllocator
+    DataFileManager --> LogFileManager
     BufferPool o-- Page
+    Page o-- Record
 
+    DurabilityManager *-- BackupManager
+    DurabilityManager *-- RestoreManager
     DurabilityManager *-- TransactionLogManager
+    DurabilityManager *-- CheckpointManager
     DurabilityManager *-- RecoveryManager
+    DurabilityManager *-- ReplicationManager
+    BackupManager --> RestoreManager
+    BackupManager --> TransactionLogManager
+    TransactionLogManager --> CheckpointManager
+    TransactionLogManager --> RecoveryManager
+    TransactionLogManager --> ReplicationManager
     TransactionLogManager o-- LogRecord
     RecoveryManager --> TransactionLogManager
 
     QueryProcessor *-- SqlParser
     QueryProcessor *-- QueryValidator
+    QueryProcessor *-- QueryOptimizer
+    QueryProcessor *-- ExecutionPlanner
     QueryProcessor *-- QueryExecutor
+    SqlParser --> QueryValidator
+    QueryValidator --> QueryOptimizer
+    QueryOptimizer --> ExecutionPlanner
+    ExecutionPlanner --> QueryExecutor
     Lexer --> Token
     Token --> TokenType
     SqlParser --> Token
     SqlParser --> Statement
-    QueryValidator --> Statement
-    QueryExecutor --> Statement
     SelectStatement --|> Statement
 
+    SecurityAccessController *-- UserManager
+    SecurityAccessController *-- AuthenticationService
+    SecurityAccessController *-- AuthorizationService
+    SecurityAccessController *-- EncryptionService
+    SecurityAccessController *-- AuditLogger
+    SecurityAccessController *-- RoleManager
+    UserManager --> AuthenticationService
+    UserManager --> AuthorizationService
+    UserManager --> EncryptionService
+    UserManager --> AuditLogger
+    UserManager --> RoleManager
+
+    AdministrationOperationsManager *-- MonitoringManager
+    AdministrationOperationsManager *-- ImportExportManager
+    AdministrationOperationsManager *-- ConfigurationManager
+    AdministrationOperationsManager *-- OperationalLogger
+    MonitoringManager --> ImportExportManager
+    MonitoringManager --> ConfigurationManager
+    MonitoringManager --> OperationalLogger
 ```
 
 ---

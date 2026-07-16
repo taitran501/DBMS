@@ -2,40 +2,40 @@
     - Database Management
         - Database Definition
             - Create Database
-                - CreateDatabase()
+                - test_create_database()
             - Rename Database
-                - RenameDatabase()
+                - test_rename_database()
             - Drop Database
-                - DropDatabase()
+                - test_drop_database()
         - Database Configuration
             - Storage Location
             - Character Encoding
             - Default Schema
         - Database Registry
             - Register Database
-                - OpenDatabase()
-                - CloseDatabase()
-                - RejectDuplicateDatabase()
+                - test_open_database()
+                - test_close_database()
+                - test_reject_duplicate_database()
             - Lookup Database
-                - LoadDatabaseMetadata()
-                - RejectUnknownDatabase()
+                - test_load_database_metadata()
+                - test_reject_unknown_database()
                 - test_database_manager_can_be_created()
     - Schema Management
         - Schema Definition
             - Create Schema
-                - CreateSchema()
-                - RejectDuplicateSchema()
+                - test_create_schema()
+                - test_reject_duplicate_schema()
             - Rename Schema
-                - RenameSchema()
+                - test_rename_schema()
             - Drop Schema
-                - DropSchema()
-                - RejectDroppingNonemptySchema()
+                - test_drop_schema()
+                - test_reject_dropping_nonempty_schema()
         - Schema Ownership
             - Assign Owner
-                - AssignOwner()
+                - test_assign_owner()
             - Change Owner
-                - ChangeOwner()
-                - RejectUnknownSchema()
+                - test_change_owner()
+                - test_reject_unknown_schema()
         - Schema Versioning
             - Record Migration
             - View History
@@ -43,104 +43,104 @@
     - Table Management
         - Table Definition
             - Create Table
-                - CreateTable()
-                - RejectDuplicateTable()
-                - RequireAtLeastOneColumn()
+                - test_create_table()
+                - test_reject_duplicate_table()
+                - test_require_at_least_one_column()
                 - test_table_descriptor_stores_table_identity()
             - Rename Table
-                - RenameTable()
+                - test_rename_table()
             - Drop Table
-                - DropTable()
-                - RejectDroppingReferencedTable()
+                - test_drop_table()
+                - test_reject_dropping_referenced_table()
                 - test_table_manager_can_be_created()
         - Table Organization
             - Heap Organization
             - Index-Organized
-            - LoadTableMetadata()
+            - test_load_table_metadata()
         - Table Scope
             - Persistent Scope
             - Temporary Scope
     - View Management
         - View Definition
             - Create View
-                - CreateView()
-                - RejectDuplicateView()
+                - test_create_view()
+                - test_reject_duplicate_view()
                 - test_view_manager_can_be_created()
             - Drop View
-                - DropView()
-                - RejectDroppingReferencedView()
+                - test_drop_view()
+                - test_reject_dropping_referenced_view()
         - View Dependencies
             - Track Dependencies
-                - ResolveViewDefinition()
-                - TrackViewDependency()
-                - RejectUnknownDependency()
+                - test_resolve_view_definition()
+                - test_track_view_dependency()
+                - test_reject_unknown_dependency()
     - Relationship Management
         - Relationship Definition
             - Create Relationship
-                - CreateRelationship()
-                - RejectDuplicateRelationship()
-                - ValidateParentTable()
-                - ValidateChildTable()
+                - test_create_relationship()
+                - test_reject_duplicate_relationship()
+                - test_validate_parent_table()
+                - test_validate_child_table()
                 - test_relationship_manager_can_be_created()
             - Drop Relationship
-                - DropRelationship()
+                - test_drop_relationship()
         - Referential Actions
             - On Delete Action
-                - ApplyDeleteAction()
+                - test_apply_delete_action()
             - On Update Action
-                - ApplyUpdateAction()
+                - test_apply_update_action()
     - Column Management
         - Column Definition
             - Add Column
-                - AddColumn()
-                - RejectDuplicateColumn()
+                - test_add_column()
+                - test_reject_duplicate_column()
                 - test_column_descriptor_stores_column_definition()
             - Drop Column
-                - DropColumn()
-                - RejectDroppingReferencedColumn()
+                - test_drop_column()
+                - test_reject_dropping_referenced_column()
             - Rename Column
-                - RenameColumn()
+                - test_rename_column()
                 - test_column_manager_can_be_created()
         - Column Rules
             - Nullable Rule
-                - SetNullable()
+                - test_set_nullable()
             - Default Value Rule
-                - SetDefaultValue()
+                - test_set_default_value()
     - Constraint Management
         - Constraint Definition
             - Create Constraint
-                - CreateConstraint()
-                - RejectInvalidConstraint()
+                - test_create_constraint()
+                - test_reject_invalid_constraint()
                 - test_constraint_manager_can_be_created()
             - Drop Constraint
-                - DropConstraint()
+                - test_drop_constraint()
         - Constraint Enforcement
             - Validate Constraints
-                - ValidateNotNull()
-                - ValidateUnique()
-                - ValidatePrimaryKey()
-                - ValidateForeignKey()
+                - test_validate_not_null()
+                - test_validate_unique()
+                - test_validate_primary_key()
+                - test_validate_foreign_key()
     - Data Type Management
         - Type Validation
             - Validate Value
-                - ValidateValue()
-                - RejectInvalidValue()
+                - test_validate_value()
+                - test_reject_invalid_value()
             - Register DataType
-                - RegisterDataType()
-                - ResolveDataType()
+                - test_register_data_type()
+                - test_resolve_data_type()
                 - test_data_type_manager_can_be_created()
         - Type Conversion
             - Convert Value
-                - ConvertValue()
-                - RejectInvalidConversion()
+                - test_convert_value()
+                - test_reject_invalid_conversion()
     - Index Management
         - Index Definition
             - Create Index
-                - CreateIndex()
-                - RejectDuplicateIndex()
+                - test_create_index()
+                - test_reject_duplicate_index()
                 - test_index_manager_can_be_created()
             - Drop Index
-                - DropIndex()
+                - test_drop_index()
         - Index Access Structure
             - B-Tree Access
             - Hash Access
@@ -149,179 +149,179 @@
             - Non-clustered Organization
         - Index Maintenance
             - Rebuild Index
-                - RebuildIndex()
+                - test_rebuild_index()
             - Update Entries
-                - InsertIndexEntry()
-                - UpdateIndexEntry()
-                - DeleteIndexEntry()
-                - FindIndex()
+                - test_insert_index_entry()
+                - test_update_index_entry()
+                - test_delete_index_entry()
+                - test_find_index()
     - Stored Procedure
         - Procedure Definition
             - Create Procedure
-                - CreateProcedure()
-                - RejectDuplicateProcedure()
+                - test_create_procedure()
+                - test_reject_duplicate_procedure()
             - Drop Procedure
-                - DropProcedure()
+                - test_drop_procedure()
         - Procedure Execution
             - Execute Procedure
-                - ExecuteProcedure()
-                - ValidateParameters()
-                - ReturnProcedureResult()
-                - RejectUnknownProcedure()
+                - test_execute_procedure()
+                - test_validate_parameters()
+                - test_return_procedure_result()
+                - test_reject_unknown_procedure()
                 - test_stored_procedure_manager_can_be_created()
     - Trigger Management
         - Trigger Definition
             - Create Trigger
-                - CreateTrigger()
-                - RejectDuplicateTrigger()
+                - test_create_trigger()
+                - test_reject_duplicate_trigger()
             - Drop Trigger
-                - DropTrigger()
+                - test_drop_trigger()
         - Trigger Event Binding
             - Bind Event
-                - BindEvent()
-                - SkipUnmatchedEvent()
+                - test_bind_event()
+                - test_skip_unmatched_event()
         - Trigger Execution
             - Execute Action
-                - ExecuteTrigger()
-                - AbortOnTriggerFailure()
+                - test_execute_trigger()
+                - test_abort_on_trigger_failure()
                 - test_trigger_manager_can_be_created()
     - Metadata Management
         - System Catalog
             - Query Catalog
-                - LookupMetadata()
+                - test_lookup_metadata()
                 - test_system_catalog_returns_placeholder_results()
             - Update Catalog
-                - RegisterMetadata()
-                - UpdateMetadata()
-                - RemoveMetadata()
-                - RejectDuplicateMetadata()
-                - PreserveMetadataOnFailure()
+                - test_register_metadata()
+                - test_update_metadata()
+                - test_remove_metadata()
+                - test_reject_duplicate_metadata()
+                - test_preserve_metadata_on_failure()
                 - test_metadata_manager_stores_catalog_and_returns_placeholders()
                 - test_database_object_manager_stores_metadata_manager_and_returns_placeholders()
         - Dependency Management
             - Track Dependencies
-                - TrackDependency()
+                - test_track_dependency()
             - Resolve Dependencies
         - Statistics Management
             - Collect Statistics
-                - CollectStatistics()
+                - test_collect_statistics()
             - View Statistics
 
 - Transaction
     - TransactionManagerTests
-        - BeginTransaction()
-        - Commit()
-        - Rollback()
-        - RollbackToSavepoint()
-        - NestedTransaction()
-        - DistributedTransaction()
-        - Timeout()
-        - Cancel()
-        - Retry()
-        - RecoverTransaction()
+        - test_begin_transaction()
+        - test_commit()
+        - test_rollback()
+        - test_rollback_to_savepoint()
+        - test_nested_transaction()
+        - test_distributed_transaction()
+        - test_timeout()
+        - test_cancel()
+        - test_retry()
+        - test_recover_transaction()
     - TransactionTests
-        - CommitChanges()
-        - RollbackChanges()
-        - CreateSavepoint()
-        - ReleaseSavepoint()
-        - SetIsolationLevel()
-        - ChangeState()
-        - AcquireLock()
-        - ReleaseLock()
+        - test_commit_changes()
+        - test_rollback_changes()
+        - test_create_savepoint()
+        - test_release_savepoint()
+        - test_set_isolation_level()
+        - test_change_state()
+        - test_acquire_lock()
+        - test_release_lock()
     - LockManagerTests
-        - AcquireSharedLock()
-        - AcquireExclusiveLock()
-        - UpgradeLock()
-        - DowngradeLock()
-        - ReleaseLock()
-        - DetectDeadlock()
-        - TimeoutWaiting()
-        - ReleaseAllLocks()
+        - test_acquire_shared_lock()
+        - test_acquire_exclusive_lock()
+        - test_upgrade_lock()
+        - test_downgrade_lock()
+        - test_release_lock()
+        - test_detect_deadlock()
+        - test_timeout_waiting()
+        - test_release_all_locks()
     - MVCCManagerTests
-        - CreateSnapshot()
-        - ReadVisibleVersion()
-        - SkipInvisibleVersion()
-        - CreateVersion()
-        - DeleteVersion()
-        - GarbageCollect()
-        - Vacuum()
-        - MergeVersionChain()
+        - test_create_snapshot()
+        - test_read_visible_version()
+        - test_skip_invisible_version()
+        - test_create_version()
+        - test_delete_version()
+        - test_garbage_collect()
+        - test_vacuum()
+        - test_merge_version_chain()
     - IsolationManagerTests
-        - ReadCommitted()
-        - RepeatableRead()
-        - Serializable()
-        - SnapshotIsolation()
-        - PreventDirtyRead()
-        - PreventNonrepeatableRead()
-        - PreventPhantomRead()
+        - test_read_committed()
+        - test_repeatable_read()
+        - test_serializable()
+        - test_snapshot_isolation()
+        - test_prevent_dirty_read()
+        - test_prevent_nonrepeatable_read()
+        - test_prevent_phantom_read()
     - DeadlockManagerTests
-        - BuildWaitGraph()
-        - DetectCycle()
-        - SelectVictim()
-        - AbortVictim()
-        - ReleaseVictimLocks()
-        - RetryTransaction()
+        - test_build_wait_graph()
+        - test_detect_cycle()
+        - test_select_victim()
+        - test_abort_victim()
+        - test_release_victim_locks()
+        - test_retry_transaction()
     - ACIDTests
-        - PreserveAtomicity()
-        - PreserveConsistency()
-        - PreserveIsolation()
-        - PreserveDurability()
+        - test_preserve_atomicity()
+        - test_preserve_consistency()
+        - test_preserve_isolation()
+        - test_preserve_durability()
 
 - Storage Engine
     - StorageEngine
         - test_storage_engine_stores_buffer_pool_and_returns_placeholders()
     - Data File Management
         - FileManager
-            - OpenFile()
-            - CloseFile()
+            - test_open_file()
+            - test_close_file()
             - test_data_file_manager_can_be_created()
         - File Definition
             - FileDescriptor
-                - CreateFile()
+                - test_create_file()
         - File Space Control
             - FreeSpaceMap
-                - ExtendFile()
-                - TruncateFile()
+                - test_extend_file()
+                - test_truncate_file()
         - File I/O
             - DiskIO
-                - ReadPage()
-                - WritePage()
-                - RejectInvalidOffset()
+                - test_read_page()
+                - test_write_page()
+                - test_reject_invalid_offset()
     - Page Management
         - PageManager
-            - AllocatePage()
-            - GetPage()
-            - ReleasePage()
-            - ReusePage()
+            - test_allocate_page()
+            - test_get_page()
+            - test_release_page()
+            - test_reuse_page()
             - test_page_manager_can_be_created()
         - Page Definition
             - Page
-                - InitializePage()
+                - test_initialize_page()
                 - test_page_stores_attributes_and_returns_placeholders()
             - PageHeader
             - PageDescriptor
         - Free Space Tracking
             - FreeSpaceTracker
-                - TrackFreeSpace()
-                - RejectFullPage()
+                - test_track_free_space()
+                - test_reject_full_page()
     - Buffer Pool + Cache
         - BufferPoolManager
-            - CachePage()
-            - GetCachedPage()
-            - LoadMissingPage()
-            - EnforceCapacity()
+            - test_cache_page()
+            - test_get_cached_page()
+            - test_load_missing_page()
+            - test_enforce_capacity()
             - test_buffer_pool_stores_capacity_and_returns_placeholders()
         - Page Cache
             - BufferFrame
-                - EvictPage()
-                - PreservePinnedPage()
+                - test_evict_page()
+                - test_preserve_pinned_page()
         - Dirty Page Tracking
             - DirtyPageRegistry
-                - MarkDirty()
+                - test_mark_dirty()
         - Cache Replacement Policy
             - EvictionPolicy
-                - FlushPage()
-                - FlushAllPages()
+                - test_flush_page()
+                - test_flush_all_pages()
             - LRUEvictionPolicy
     - Record Management
         - RecordManager
@@ -329,233 +329,233 @@
         - Record Format
             - RecordDescriptor
             - RecordSerializer
-                - SerializeRecord()
-                - DeserializeRecord()
+                - test_serialize_record()
+                - test_deserialize_record()
                 - test_record_stores_identifier_and_values()
     - Record Access
       - RecordReader
-            - ReadRecord()
-            - MoveRecord()
+            - test_read_record()
+            - test_move_record()
     - Record Modification
       - RecordWriter
-            - InsertRecord()
-            - UpdateRecord()
-            - DeleteRecord()
-            - RejectOversizedRecord()
+            - test_insert_record()
+            - test_update_record()
+            - test_delete_record()
+            - test_reject_oversized_record()
     - Storage Allocation
         - StorageAllocator
             - test_storage_allocator_can_be_created()
         - Allocation Units
             - AllocationUnit
-                - AllocateSpace()
-                - ReleaseSpace()
-                - ReallocateSpace()
+                - test_allocate_space()
+                - test_release_space()
+                - test_reallocate_space()
         - Space Mapping
             - SpaceMap
-                - TrackFreeSpace()
-                - RejectExhaustedStorage()
-                - RejectDoubleRelease()
+                - test_track_free_space()
+                - test_reject_exhausted_storage()
+                - test_reject_double_release()
     - Log File
         - WriteAheadLog
             - test_log_file_manager_can_be_created()
         - Log Entry Format
             - LogEntry
-                - AppendLogEntry()
-                - ReadLogEntry()
-                - ReadLogRange()
-                - DetectCorruptedEntry()
+                - test_append_log_entry()
+                - test_read_log_entry()
+                - test_read_log_range()
+                - test_detect_corrupted_entry()
             - LogEntryType
         - Log Writer
             - LogWriter
-                - FlushLog()
+                - test_flush_log()
         - Log Reader
             - LogReader
-                - TruncateLog()
+                - test_truncate_log()
         - Log Sequence Management
             - LogSequenceNumber
-                - AssignSequenceNumber()
+                - test_assign_sequence_number()
 
 - Durability
     - BackupManagerTests
-        - CreateFullBackup()
-        - CreateIncrementalBackup()
-        - ScheduleBackup()
-        - CancelBackup()
-        - VerifyBackup()
-        - RejectCorruptedBackup()
-        - RemoveIncompleteBackup()
+        - test_create_full_backup()
+        - test_create_incremental_backup()
+        - test_schedule_backup()
+        - test_cancel_backup()
+        - test_verify_backup()
+        - test_reject_corrupted_backup()
+        - test_remove_incomplete_backup()
     - RestoreManagerTests
-        - RestoreFullBackup()
-        - RestoreIncrementalBackup()
-        - RestorePointInTime()
-        - ValidateRestoreSource()
-        - PreserveDatabaseOnFailure()
-        - VerifyRestoredDatabase()
+        - test_restore_full_backup()
+        - test_restore_incremental_backup()
+        - test_restore_point_in_time()
+        - test_validate_restore_source()
+        - test_preserve_database_on_failure()
+        - test_verify_restored_database()
     - TransactionLogManagerTests
-        - AppendLogRecord()
-        - ReadTransactionRecords()
-        - FlushCommitRecord()
-        - ReplayLog()
-        - TruncateLog()
-        - BackupLog()
-        - PreserveSequenceOrder()
+        - test_append_log_record()
+        - test_read_transaction_records()
+        - test_flush_commit_record()
+        - test_replay_log()
+        - test_truncate_log()
+        - test_backup_log()
+        - test_preserve_sequence_order()
     - CheckpointManagerTests
-        - CreateCheckpoint()
-        - FlushDirtyPages()
-        - RecordActiveTransactions()
-        - StoreRecoveryBoundary()
-        - LoadLatestCheckpoint()
-        - PreservePreviousCheckpointOnFailure()
+        - test_create_checkpoint()
+        - test_flush_dirty_pages()
+        - test_record_active_transactions()
+        - test_store_recovery_boundary()
+        - test_load_latest_checkpoint()
+        - test_preserve_previous_checkpoint_on_failure()
     - RecoveryManagerTests
-        - RecoverAfterCrash()
-        - RedoCommittedTransaction()
-        - UndoUncommittedTransaction()
-        - StartFromCheckpoint()
-        - SkipAppliedRecord()
-        - StopOnCorruptedLog()
-        - RecoverIdempotently()
-        - ValidateRecoveredState()
+        - test_recover_after_crash()
+        - test_redo_committed_transaction()
+        - test_undo_uncommitted_transaction()
+        - test_start_from_checkpoint()
+        - test_skip_applied_record()
+        - test_stop_on_corrupted_log()
+        - test_recover_idempotently()
+        - test_validate_recovered_state()
     - ReplicationManagerTests
-        - ShipLogRecord()
-        - ApplyReplicaLog()
-        - WaitForSynchronousReplica()
-        - CommitAsynchronously()
-        - DetectReplicaDivergence()
-        - PromoteReplica()
-        - RejectLaggingReplicaPromotion()
+        - test_ship_log_record()
+        - test_apply_replica_log()
+        - test_wait_for_synchronous_replica()
+        - test_commit_asynchronously()
+        - test_detect_replica_divergence()
+        - test_promote_replica()
+        - test_reject_lagging_replica_promotion()
 
 - Query Processing
     - LexerTests
-        - TokenizeKeyword()
-        - TokenizeIdentifier()
-        - TokenizeLiteral()
-        - TokenizeOperator()
-        - TrackTokenPosition()
-        - IgnoreWhitespace()
-        - RejectUnknownCharacter()
+        - test_tokenize_keyword()
+        - test_tokenize_identifier()
+        - test_tokenize_literal()
+        - test_tokenize_operator()
+        - test_track_token_position()
+        - test_ignore_whitespace()
+        - test_reject_unknown_character()
     - SQLParserTests
-        - ParseSelect()
-        - ParseInsert()
-        - ParseUpdate()
-        - ParseDelete()
-        - ParseExpression()
-        - ParseWhereClause()
-        - RejectIncompleteStatement()
-        - RejectUnexpectedToken()
+        - test_parse_select()
+        - test_parse_insert()
+        - test_parse_update()
+        - test_parse_delete()
+        - test_parse_expression()
+        - test_parse_where_clause()
+        - test_reject_incomplete_statement()
+        - test_reject_unexpected_token()
     - QueryValidatorTests
-        - ValidateTable()
-        - ValidateColumn()
-        - ValidateDataType()
-        - ValidatePermission()
-        - RejectUnknownTable()
-        - RejectUnknownColumn()
-        - RejectTypeMismatch()
-        - RejectUnauthorizedQuery()
+        - test_validate_table()
+        - test_validate_column()
+        - test_validate_data_type()
+        - test_validate_permission()
+        - test_reject_unknown_table()
+        - test_reject_unknown_column()
+        - test_reject_type_mismatch()
+        - test_reject_unauthorized_query()
     - QueryOptimizerTests
-        - EstimateCost()
-        - SelectLowestCostPlan()
-        - ReorderJoin()
-        - SelectIndex()
-        - PushPredicate()
-        - UseSafeEstimateWithoutStatistics()
-        - PreserveQueryResult()
+        - test_estimate_cost()
+        - test_select_lowest_cost_plan()
+        - test_reorder_join()
+        - test_select_index()
+        - test_push_predicate()
+        - test_use_safe_estimate_without_statistics()
+        - test_preserve_query_result()
     - ExecutionPlannerTests
-        - CreateLogicalPlan()
-        - CreatePhysicalPlan()
-        - PlanTableScan()
-        - PlanIndexScan()
-        - PlanJoin()
-        - PlanAggregation()
-        - RejectInvalidPlan()
+        - test_create_logical_plan()
+        - test_create_physical_plan()
+        - test_plan_table_scan()
+        - test_plan_index_scan()
+        - test_plan_join()
+        - test_plan_aggregation()
+        - test_reject_invalid_plan()
     - QueryExecutorTests
-        - ExecuteSelect()
-        - ExecuteInsert()
-        - ExecuteUpdate()
-        - ExecuteDelete()
-        - ExecuteFilter()
-        - ExecuteJoin()
-        - ExecuteAggregation()
-        - ReturnEmptyResult()
-        - RollbackOnFailure()
+        - test_execute_select()
+        - test_execute_insert()
+        - test_execute_update()
+        - test_execute_delete()
+        - test_execute_filter()
+        - test_execute_join()
+        - test_execute_aggregation()
+        - test_return_empty_result()
+        - test_rollback_on_failure()
 
 - Security & Access Control
     - UserManagerTests
-        - CreateUser()
-        - DisableUser()
-        - EnableUser()
-        - DeleteUser()
-        - FindUser()
-        - RejectDuplicateUser()
-        - RevokeActiveSessions()
+        - test_create_user()
+        - test_disable_user()
+        - test_enable_user()
+        - test_delete_user()
+        - test_find_user()
+        - test_reject_duplicate_user()
+        - test_revoke_active_sessions()
     - AuthenticationServiceTests
-        - AuthenticatePassword()
-        - AuthenticateToken()
-        - RejectInvalidPassword()
-        - RejectExpiredCredential()
-        - CreateSession()
-        - ValidateSession()
-        - Logout()
+        - test_authenticate_password()
+        - test_authenticate_token()
+        - test_reject_invalid_password()
+        - test_reject_expired_credential()
+        - test_create_session()
+        - test_validate_session()
+        - test_logout()
     - AuthorizationServiceTests
-        - GrantPermission()
-        - RevokePermission()
-        - CheckUserPermission()
-        - CheckRolePermission()
-        - InheritPermission()
-        - DenyMissingPermission()
-        - IsolateObjectPermission()
+        - test_grant_permission()
+        - test_revoke_permission()
+        - test_check_user_permission()
+        - test_check_role_permission()
+        - test_inherit_permission()
+        - test_deny_missing_permission()
+        - test_isolate_object_permission()
     - EncryptionServiceTests
-        - EncryptValue()
-        - DecryptValue()
-        - RotateKey()
-        - RejectInvalidKey()
-        - PreserveExistingCiphertext()
-        - HidePlaintext()
+        - test_encrypt_value()
+        - test_decrypt_value()
+        - test_rotate_key()
+        - test_reject_invalid_key()
+        - test_preserve_existing_ciphertext()
+        - test_hide_plaintext()
     - AuditLoggerTests
-        - RecordSuccessfulAccess()
-        - RecordDeniedAccess()
-        - RecordUserIdentity()
-        - RecordOperation()
-        - PreserveEventOrder()
-        - FilterByAuditPolicy()
+        - test_record_successful_access()
+        - test_record_denied_access()
+        - test_record_user_identity()
+        - test_record_operation()
+        - test_preserve_event_order()
+        - test_filter_by_audit_policy()
     - RoleManagerTests
-        - CreateRole()
-        - DeleteRole()
-        - AssignRole()
-        - RevokeRole()
-        - ActivateDefaultRole()
-        - InheritParentRole()
-        - RejectCyclicHierarchy()
+        - test_create_role()
+        - test_delete_role()
+        - test_assign_role()
+        - test_revoke_role()
+        - test_activate_default_role()
+        - test_inherit_parent_role()
+        - test_reject_cyclic_hierarchy()
 
 - Administration & Operations
     - MonitoringManagerTests
-        - GetSystemHealth()
-        - GetMetrics()
-        - DetectFailedService()
-        - CountQueries()
-        - CountTransactions()
-        - DetectThresholdBreach()
-        - RaiseAlert()
+        - test_get_system_health()
+        - test_get_metrics()
+        - test_detect_failed_service()
+        - test_count_queries()
+        - test_count_transactions()
+        - test_detect_threshold_breach()
+        - test_raise_alert()
     - ImportExportManagerTests
-        - ImportCSV()
-        - ImportJSON()
-        - ImportSQLDump()
-        - ExportCSV()
-        - ExportJSON()
-        - BulkLoad()
-        - RollbackFailedImport()
+        - test_import_csv()
+        - test_import_json()
+        - test_import_sql_dump()
+        - test_export_csv()
+        - test_export_json()
+        - test_bulk_load()
+        - test_rollback_failed_import()
     - ConfigurationManagerTests
-        - LoadServerConfiguration()
-        - LoadDatabaseConfiguration()
-        - ValidateConfiguration()
-        - UpdateRuntimeParameter()
-        - RejectInvalidParameter()
-        - RequireRestart()
-        - EnforceResourceLimit()
+        - test_load_server_configuration()
+        - test_load_database_configuration()
+        - test_validate_configuration()
+        - test_update_runtime_parameter()
+        - test_reject_invalid_parameter()
+        - test_require_restart()
+        - test_enforce_resource_limit()
     - OperationalLoggerTests
-        - LogStartup()
-        - LogShutdown()
-        - LogMaintenanceStart()
-        - LogMaintenanceCompletion()
-        - LogBackupCompletion()
-        - LogFailure()
-        - PreserveTimestampOrder()
+        - test_log_startup()
+        - test_log_shutdown()
+        - test_log_maintenance_start()
+        - test_log_maintenance_completion()
+        - test_log_backup_completion()
+        - test_log_failure()
+        - test_preserve_timestamp_order()
