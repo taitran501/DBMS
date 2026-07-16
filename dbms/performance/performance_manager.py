@@ -1,0 +1,2 @@
+class PerformanceManager:
+    pass

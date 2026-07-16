@@ -1,0 +1,2 @@
+class DeadlockManager:
+    pass

@@ -1,0 +1,2 @@
+class LogFileManager:
+    pass

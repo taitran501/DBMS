@@ -1,0 +1,2 @@
+class DurabilityManager:
+    pass

@@ -1,0 +1,2 @@
+class ViewManager:
+    pass

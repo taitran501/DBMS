@@ -1,0 +1,2 @@
+class SecurityAccessController:
+    pass

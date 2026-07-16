@@ -1,0 +1,2 @@
+class QueryProcessor:
+    pass

@@ -1,0 +1,2 @@
+class StorageEngine:
+    pass

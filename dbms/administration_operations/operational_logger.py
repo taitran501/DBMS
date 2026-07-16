@@ -1,0 +1,2 @@
+class OperationalLogger:
+    pass

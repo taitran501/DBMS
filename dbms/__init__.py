@@ -1,1 +1,1 @@
-"""dbms"""
+"""DBMS package."""

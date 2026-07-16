@@ -1,0 +1,2 @@
+class StorageAllocator:
+    pass
