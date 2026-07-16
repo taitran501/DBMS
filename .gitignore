@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 .coverage
 *.py[cod]
+diagrams/full_version/
+

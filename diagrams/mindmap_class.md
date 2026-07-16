@@ -1,89 +1,61 @@
 - Database Object
     - Database Management
+        - DatabaseServer
         - DatabaseManager
-        - Database Definition
-            - DatabaseDescriptor
-        - Database Configuration
-            - DatabaseConfiguration
-        - Database Registry
-            - DatabaseRegistry
+        - Database
     - Schema Management
-        - SchemaManager
-        - Schema Definition
-            - SchemaDescriptor
-            - SchemaCatalog
-        - Schema Ownership
-            - SchemaOwnershipPolicy
-        - Schema Versioning
-            - SchemaMigrationLedger
+        - CatalogManager
+        - Schema
     - Table Management
-        - TableManager
-        - Table Definition
-            - TableDescriptor
-        - Table Organization
-            - TableOrganization
-        - Table Scope
-            - TableScope
-    - View Management
-        - ViewManager
-        - View Definition
-            - ViewDescriptor
-        - View Dependencies
-            - ViewDependencyGraph
+        - Table
+        - Row
     - Relationship Management
-        - RelationshipManager
-        - Relationship Definition
-            - RelationshipDescriptor
-        - Referential Actions
-            - ReferentialActionPolicy
+        - ForeignKey
     - Column Management
-        - ColumnManager
-        - Column Definition
-            - ColumnDescriptor
-        - Column Rules
-            - ColumnRuleSet
+        - Column
     - Constraint Management
-        - ConstraintManager
-        - Constraint Definition
-            - ConstraintDescriptor
-        - Constraint Enforcement
-            - ConstraintEnforcer
-    - Data Type Management
-        - DataTypeManager
-        - DataTypeDescriptor
-        - Type Validation
-            - TypeValidator
-        - Type Conversion
-            - TypeConverter
+        - Constraint
     - Index Management
-        - IndexManager
-        - Index Definition
-            - IndexDescriptor
-        - Index Access Structure
-            - IndexAccessMethod
-        - Index Organization
-            - IndexOrganization
-        - Index Maintenance
-            - IndexMaintainer
-    - Stored Procedure
-        - StoredProcedureManager
-        - Procedure Definition
-            - ProcedureDescriptor
-        - Procedure Execution
-            - ProcedureExecutor
-    - Trigger Management
-        - TriggerManager
-        - Trigger Definition
-            - TriggerDescriptor
-        - Trigger Event Binding
-            - TriggerEventBinding
-        - Trigger Execution
-            - TriggerExecutor
-    - Metadata Management
-        - MetadataManager
-        - System Catalog
-            - SystemCatalog
-        - Dependency Management
-            - DependencyManager
-        - Statistics Management
-            - StatisticsManager
+        - Index
+        - BTreeIndex
+        - BTreeNode
+
+- Storage Engine
+    - Storage Engine Core
+        - StorageEngine
+    - Data File Management
+        - FileManager
+    - Page Management
+        - Page
+    - Buffer Pool + Cache
+        - BufferPool
+    - Record Management
+        - RecordManager
+
+- Query Processing
+    - Query Processor Core
+        - DBMS
+    - SQL Parser
+        - SQLParser
+    - Query Optimizer
+        - QueryOptimizer
+    - Query Executor
+        - QueryExecutor
+
+- Transaction
+    - Transaction Manager Core
+        - TransactionManager
+    - Transaction State
+        - Transaction
+    - Lock Management
+        - LockManager
+    - Deadlock Management
+        - DeadlockDetector
+    - MVCC
+        - MVCCManager
+
+- Durability
+    - Transaction Log Management
+        - WALManager
+    - Recovery
+        - RecoveryManager
