@@ -1,264 +1,205 @@
 - Database Object
   - Database Management
     - DatabaseServer
+      - test_database_server_can_be_created()
       - test_start_server()
       - test_stop_server()
       - test_restart_server()
-      - test_database_server_can_be_created()
-    - Database Definition
-      - Create Database
-        - test_create_database()
-      - Rename Database
-        - test_rename_database()
-      - Drop Database
-        - test_drop_database()
-    - Database Registry
-      - Register Database
-        - test_open_database()
-        - test_close_database()
-        - test_reject_duplicate_database()
-      - Lookup Database
-        - test_load_database_metadata()
-        - test_reject_unknown_database()
-        - test_database_manager_can_be_created()
+    - DatabaseManager
+      - test_database_manager_can_be_created()
+      - test_create_database()
+      - test_drop_database()
+      - test_rename_database()
+    - Database
+      - test_database_can_be_created()
+      - test_open()
+      - test_close()
+      - test_backup()
+      - test_restore()
   - Schema Management
-    - Schema Definition
-      - Create Schema
-        - test_create_schema()
-        - test_reject_duplicate_schema()
-      - Rename Schema
-        - test_rename_schema()
-      - Drop Schema
-        - test_drop_schema()
-        - test_reject_dropping_nonempty_schema()
-    - Schema Ownership
-      - Assign Owner
-        - test_assign_owner()
-      - Change Owner
-        - test_change_owner()
-        - test_reject_unknown_schema()
+    - CatalogManager
+      - test_catalog_manager_can_be_created()
+      - test_register_object()
+      - test_remove_object()
+      - test_lookup_object()
+    - Schema
+      - test_schema_can_be_created()
+      - test_create_table()
+      - test_drop_table()
   - Table Management
-    - Table Definition
-      - Create Table
-        - test_create_table()
-        - test_reject_duplicate_table()
-        - test_require_at_least_one_column()
-        - test_table_descriptor_stores_table_identity()
-      - Rename Table
-        - test_rename_table()
-      - Drop Table
-        - test_drop_table()
-        - test_reject_dropping_referenced_table()
-        - test_table_manager_can_be_created()
-    - Table Operations
-      - test_insert_row()
-      - test_update_row()
-      - test_delete_row()
-      - test_truncate_table()
-      - test_analyze_table()
-    - Row Operations
-      - test_read_row_value()
-      - test_update_row_value()
-      - test_clone_row()
+    - Table
+      - test_table_can_be_created()
+      - test_insert()
+      - test_update()
+      - test_delete()
+      - test_truncate()
+    - Row
+      - test_row_can_be_created()
+      - test_read()
+      - test_update()
+    - Partition
+      - test_partition_can_be_created()
+      - test_allocate_space()
+      - test_release_space()
+  - View Management
+    - View
+      - test_view_can_be_created()
+      - test_create_view()
+      - test_refresh()
   - Relationship Management
-    - Relationship Definition
-      - Create Relationship
-        - test_create_relationship()
-        - test_reject_duplicate_relationship()
-        - test_validate_parent_table()
-        - test_validate_child_table()
-        - test_relationship_can_be_created()
-      - Drop Relationship
-        - test_drop_relationship()
+    - ForeignKey
+      - test_foreign_key_can_be_created()
+      - test_validate_reference()
   - Column Management
-    - Column Definition
-      - Add Column
-        - test_add_column()
-        - test_reject_duplicate_column()
-        - test_column_descriptor_stores_column_definition()
-      - Drop Column
-        - test_drop_column()
-        - test_reject_dropping_referenced_column()
-      - Rename Column
-        - test_rename_column()
-        - test_column_can_be_created()
-    - Column Rules
-      - Nullable Rule
-        - test_set_nullable()
-      - Default Value Rule
-        - test_set_default_value()
-      - Validate Value
-        - test_validate_column_value()
-      - Convert Value
-        - test_convert_column_value()
-      - Compare Values
-        - test_compare_column_values()
+    - Column
+      - test_column_can_be_created()
+      - test_validate()
   - Constraint Management
-    - Constraint Definition
-      - Create Constraint
-        - test_create_constraint()
-        - test_reject_invalid_constraint()
-        - test_constraint_can_be_created()
-      - Drop Constraint
-        - test_drop_constraint()
-    - Constraint Enforcement
-      - Validate Constraints
-        - test_validate_not_null()
-        - test_validate_unique()
-        - test_validate_primary_key()
-        - test_validate_foreign_key()
+    - Constraint
+      - test_constraint_can_be_created()
+      - test_validate_row()
   - Index Management
-    - Index Definition
-      - Create Index
-        - test_create_index()
-        - test_reject_duplicate_index()
-        - test_index_can_be_created()
-      - Drop Index
-        - test_drop_index()
-    - Index Access Structure
-      - B-Tree Access
-      - Hash Access
-    - Index Organization
-      - Clustered Organization
-      - Non-clustered Organization
-      - B-Tree Node
-        - test_split_node()
-        - test_merge_node()
-        - test_btree_node_can_be_created()
-    - Index Maintenance
-      - Rebuild Index
-        - test_rebuild_index()
-      - Update Entries
-        - test_insert_index_entry()
-        - test_update_index_entry()
-        - test_delete_index_entry()
-        - test_find_index()
-
-- Transaction
-  - TransactionManagerTests
-    - test_begin_transaction()
-    - test_commit()
-    - test_rollback()
-    - test_rollback_to_savepoint()
-    - test_nested_transaction()
-    - test_distributed_transaction()
-    - test_timeout()
-    - test_cancel()
-    - test_retry()
-    - test_recover_transaction()
-  - TransactionTests
-    - test_commit_changes()
-    - test_rollback_changes()
-    - test_create_savepoint()
-    - test_release_savepoint()
-    - test_set_isolation_level()
-    - test_change_state()
-    - test_acquire_lock()
-    - test_release_lock()
-  - LockManagerTests
-    - test_acquire_shared_lock()
-    - test_acquire_exclusive_lock()
-    - test_upgrade_lock()
-    - test_downgrade_lock()
-    - test_release_lock()
-    - test_detect_deadlock()
-    - test_timeout_waiting()
-    - test_release_all_locks()
-  - MVCCManagerTests
-    - test_create_snapshot()
-    - test_read_visible_version()
-    - test_skip_invisible_version()
-    - test_create_version()
-    - test_delete_version()
-    - test_garbage_collect()
-    - test_vacuum()
-    - test_merge_version_chain()
-  - DeadlockDetectorTests
-    - test_build_wait_graph()
-    - test_detect_cycle()
-    - test_select_victim()
-    - test_abort_victim()
-    - test_release_victim_locks()
-    - test_retry_transaction()
+    - Index
+      - test_index_can_be_created()
+      - test_search()
+      - test_insert_key()
+      - test_delete_key()
+  - Stored Procedure
+    - StoredProcedure
+      - test_stored_procedure_can_be_created()
+      - test_execute()
 
 - Storage Engine
-  - StorageEngine
-    - test_storage_engine_stores_buffer_pool_and_returns_placeholders()
+  - Storage Engine Core
+    - StorageEngine
+      - test_storage_engine_can_be_created()
+      - test_initialize()
+      - test_read_page()
+      - test_write_page()
   - Data File Management
     - FileManager
-      - test_open_file()
-      - test_close_file()
-      - test_data_file_manager_can_be_created()
-    - File Definition
-      - FileDescriptor
-        - test_create_file()
+      - test_file_manager_can_be_created()
+      - test_create_file()
+      - test_read()
+      - test_write()
   - Page Management
     - Page
-      - test_initialize_page()
-      - test_page_stores_attributes_and_returns_placeholders()
+      - test_page_can_be_created()
+      - test_read_tuple()
+      - test_write_tuple()
   - Buffer Pool + Cache
-    - BufferPoolManager
-      - test_cache_page()
-      - test_get_cached_page()
-      - test_load_missing_page()
-      - test_enforce_capacity()
-      - test_buffer_pool_stores_capacity_and_returns_placeholders()
-  - Record Management
-    - RecordManager
-      - test_record_manager_can_be_created()
-    - Record Format
-      - RecordSerializer
-        - test_serialize_record()
-        - test_deserialize_record()
-        - test_record_stores_identifier_and_values()
+    - BufferPool
+      - test_buffer_pool_can_be_created()
+      - test_pin_page()
+      - test_flush_page()
 
 - Query Processing
-  - SQLParserTests
-    - test_parse_select()
-    - test_parse_insert()
-    - test_parse_update()
-    - test_parse_delete()
-    - test_parse_expression()
-    - test_parse_where_clause()
-    - test_reject_incomplete_statement()
-    - test_reject_unexpected_token()
-    - test_validate_syntax()
-  - QueryOptimizerTests
-    - test_estimate_cost()
-    - test_select_lowest_cost_plan()
-    - test_reorder_join()
-    - test_select_index()
-    - test_push_predicate()
-    - test_use_safe_estimate_without_statistics()
-    - test_preserve_query_result()
-  - QueryExecutorTests
-    - test_execute_select()
-    - test_execute_insert()
-    - test_execute_update()
-    - test_execute_delete()
-    - test_execute_filter()
-    - test_execute_join()
-    - test_execute_aggregation()
-    - test_return_empty_result()
-    - test_rollback_on_failure()
-    - test_fetch_results()
-    - test_cancel_execution()
+  - SQL Parser
+    - SQLParser
+      - test_sql_parser_can_be_created()
+      - test_parse()
+  - Lexical Analysis
+    - Lexer
+      - test_lexer_can_be_created()
+      - test_tokenize()
+  - Parse Tree
+    - AST
+      - test_ast_can_be_created()
+      - test_traverse()
+  - Query Optimizer
+    - QueryOptimizer
+      - test_query_optimizer_can_be_created()
+      - test_optimize()
+      - test_estimate_cost()
+  - Execution Planning
+    - LogicalPlan
+      - test_logical_plan_can_be_created()
+      - test_build()
+    - PhysicalPlan
+      - test_physical_plan_can_be_created()
+      - test_generate()
+  - Query Executor
+    - QueryExecutor
+      - test_query_executor_can_be_created()
+      - test_execute()
+      - test_fetch()
+
+- Transaction
+  - Transaction Manager Core
+    - TransactionManager
+      - test_transaction_manager_can_be_created()
+      - test_begin_transaction()
+      - test_commit()
+      - test_rollback()
+  - Transaction State
+    - Transaction
+      - test_transaction_can_be_created()
+      - test_commit()
+      - test_rollback()
+  - Lock Management
+    - LockManager
+      - test_lock_manager_can_be_created()
+      - test_acquire_lock()
+      - test_release_lock()
+  - MVCC
+    - MVCCManager
+      - test_mvcc_manager_can_be_created()
+      - test_create_snapshot()
+      - test_read_visible_version()
 
 - Durability
-  - TransactionLogManagerTests
-    - test_append_log_record()
-    - test_read_transaction_records()
-    - test_flush_commit_record()
-    - test_replay_log()
-    - test_truncate_log()
-    - test_backup_log()
-    - test_preserve_sequence_order()
-  - RecoveryManagerTests
-    - test_recover_after_crash()
-    - test_redo_committed_transaction()
-    - test_undo_uncommitted_transaction()
-    - test_start_from_checkpoint()
-    - test_skip_applied_record()
-    - test_stop_on_corrupted_log()
-    - test_recover_idempotently()
-    - test_validate_recovered_state()
+  - Transaction Log Management
+    - WALManager
+      - test_wal_manager_can_be_created()
+      - test_append()
+      - test_flush()
+  - Recovery
+    - RecoveryManager
+      - test_recovery_manager_can_be_created()
+      - test_recover()
+      - test_redo()
+      - test_undo()
+  - Replication
+    - ReplicationManager
+      - test_replication_manager_can_be_created()
+      - test_replicate()
+      - test_synchronize()
+    - ClusterNode
+      - test_cluster_node_can_be_created()
+      - test_ping()
+  - Backup Management
+    - BackupManager
+      - test_backup_manager_can_be_created()
+      - test_full_backup()
+
+- Security & Access Control
+  - Security Access Controller Core
+    - SecurityManager
+      - test_security_manager_can_be_created()
+      - test_authenticate()
+      - test_authorize()
+  - User Management
+    - User
+      - test_user_can_be_created()
+      - test_verify_password()
+  - Role Management
+    - Role
+      - test_role_can_be_created()
+      - test_grant()
+      - test_revoke()
+  - Authorization
+    - Permission
+      - test_permission_can_be_created()
+      - test_matches()
+
+- Performance & Operations
+  - Statistics Management
+    - StatisticsManager
+      - test_statistics_manager_can_be_created()
+      - test_collect()
+      - test_update_histogram()
+      - test_estimate_cardinality()
+  - Monitoring & Logging
+    - MonitoringManager
+      - test_monitoring_manager_can_be_created()
+      - test_collect_metrics()

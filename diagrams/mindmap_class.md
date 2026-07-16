@@ -1,61 +1,86 @@
 - Database Object
-    - Database Management
-        - DatabaseServer
-        - DatabaseManager
-        - Database
-    - Schema Management
-        - CatalogManager
-        - Schema
-    - Table Management
-        - Table
-        - Row
-    - Relationship Management
-        - ForeignKey
-    - Column Management
-        - Column
-    - Constraint Management
-        - Constraint
-    - Index Management
-        - Index
-        - BTreeIndex
-        - BTreeNode
+  - Database Management
+    - DatabaseServer
+    - DatabaseManager
+    - Database
+  - Schema Management
+    - CatalogManager
+    - Schema
+  - Table Management
+    - Table
+    - Row
+    - Partition
+  - View Management
+    - View
+  - Relationship Management
+    - ForeignKey
+  - Column Management
+    - Column
+  - Constraint Management
+    - Constraint
+  - Index Management
+    - Index
+  - Stored Procedure
+    - StoredProcedure
 
 - Storage Engine
-    - Storage Engine Core
-        - StorageEngine
-    - Data File Management
-        - FileManager
-    - Page Management
-        - Page
-    - Buffer Pool + Cache
-        - BufferPool
-    - Record Management
-        - RecordManager
+  - Storage Engine Core
+    - StorageEngine
+  - Data File Management
+    - FileManager
+  - Page Management
+    - Page
+  - Buffer Pool + Cache
+    - BufferPool
 
 - Query Processing
-    - Query Processor Core
-        - DBMS
-    - SQL Parser
-        - SQLParser
-    - Query Optimizer
-        - QueryOptimizer
-    - Query Executor
-        - QueryExecutor
+  - SQL Parser
+    - SQLParser
+  - Lexical Analysis
+    - Lexer
+  - Parse Tree
+    - AST
+  - Query Optimizer
+    - QueryOptimizer
+  - Execution Planning
+    - LogicalPlan
+    - PhysicalPlan
+  - Query Executor
+    - QueryExecutor
 
 - Transaction
-    - Transaction Manager Core
-        - TransactionManager
-    - Transaction State
-        - Transaction
-    - Lock Management
-        - LockManager
-    - Deadlock Management
-        - DeadlockDetector
-    - MVCC
-        - MVCCManager
+  - Transaction Manager Core
+    - TransactionManager
+  - Transaction State
+    - Transaction
+  - Lock Management
+    - LockManager
+  - MVCC
+    - MVCCManager
 
 - Durability
-    - Transaction Log Management
-        - WALManager
-    - Recovery
-        - RecoveryManager
+  - Transaction Log Management
+    - WALManager
+  - Recovery
+    - RecoveryManager
+  - Replication
+    - ReplicationManager
+    - ClusterNode
+  - Backup Management
+    - BackupManager
+
+- Security & Access Control
+  - Security Access Controller Core
+    - SecurityManager
+  - User Management
+    - User
+  - Role Management
+    - Role
+  - Authorization
+    - Permission
+
+- Performance & Operations
+  - Statistics Management
+    - StatisticsManager
+  - Monitoring & Logging
+    - MonitoringManager

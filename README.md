@@ -6,13 +6,11 @@ Python DBMS architecture project. The repository is currently at the class-desig
 
 ## 🧠 System Architecture & Design
 
-
 ### 1. Mindmap (Level 2 Overview)
 
 The high-level visual representation of the subsystems within the Mini DBMS:
 
 ![Mindmap Level 2](diagrams/mindmap_level_2.png)
-
 
 ---
 
@@ -23,15 +21,6 @@ The architectural components and how they interact conceptually:
 ```mermaid
 classDiagram
     direction TB
-
-    class DBMS {
-        +storage_engine: StorageEngine
-        +transaction_manager: TransactionManager
-        +query_processor: QueryProcessor
-        +start() bool
-        +shutdown() bool
-        +execute(sql: str, session: object) object
-    }
 
     class DatabaseServer {
         +server_id: str
@@ -51,10 +40,14 @@ classDiagram
     }
 
     class Database {
-        +id: str
+        +database_id: str
         +name: str
-        +recovery_model: str
-        +schemas: list
+        +owner: str
+        +status: str
+        +page_size: int
+        +encoding: str
+        +storage_location: str
+        +default_schema: str
         +open() bool
         +close() bool
         +backup() bool
@@ -62,270 +55,242 @@ classDiagram
     }
 
     class CatalogManager {
-        +cache: object
+        +metadata_cache: object
         +register_object(name: str, desc: object) bool
         +remove_object(name: str) bool
         +lookup_object(name: str) object
     }
 
     class Schema {
+        +schema_id: str
         +name: str
-        +database_id: str
-        +tables: list
+        +owner: str
         +create_table(name: str) Table
         +drop_table(name: str) bool
     }
 
     class Table {
-        +id: str
+        +table_id: str
         +name: str
         +columns: list
-        +indexes: list
-        +constraints: list
+        +row_count: int
         +insert(row: Row) bool
         +update(row_id: str, new_values: dict) bool
         +delete(row_id: str) bool
         +truncate() bool
-        +analyze() bool
     }
 
     class Column {
-        +id: str
+        +column_id: str
         +name: str
         +data_type: object
         +nullable: bool
-        +default_value: object
         +validate(value: object) bool
-        +convert(value: object) object
-        +compare(v1: object, v2: object) int
     }
 
     class Row {
-        +id: str
+        +row_id: str
         +values: list
-        +version_chain: list
-        +lock_info: object
+        +version: str
         +read() list
         +update(new_values: list) bool
-        +clone() Row
-    }
-
-    class ForeignKey {
-        +name: str
-        +referenced_table: Table
-        +referenced_columns: list
-        +delete_action: str
-        +update_action: str
     }
 
     class Constraint {
+        +constraint_id: str
         +name: str
         +constraint_type: str
-        +columns: list
         +validate_row(row: Row) bool
     }
 
+    class ForeignKey {
+        +reference_table: Table
+        +on_delete: str
+        +on_update: str
+    }
+
     class Index {
-        +id: str
+        +index_id: str
         +name: str
-        +columns: list
+        +type: str
+        +unique: bool
         +search(key: object) list
-        +insert(key: object, rid: str) bool
-        +delete(key: object, rid: str) bool
+        +insert_key(key: object, rid: str) bool
     }
 
-    class BTreeIndex {
-        +root_page_id: str
-        +split_node(node: BTreeNode) bool
-        +merge_node(node: BTreeNode) bool
+    class Partition {
+        +partition_id: str
+        +name: str
+        +range: object
     }
 
-    class BTreeNode {
-        +page_id: str
-        +is_leaf: bool
-        +keys: list
-        +children: list
+    class View {
+        +view_id: str
+        +name: str
+        +query_definition: str
+    }
+
+    class StoredProcedure {
+        +procedure_id: str
+        +name: str
+        +execute() object
     }
 
     class StorageEngine {
-        +buffer_pool: BufferPool
-        +file_manager: FileManager
-        +read_page(page_id: str) Page
+        +page_size: int
+        +initialize() bool
+        +read_page(page_id: int) Page
         +write_page(page: Page) bool
     }
 
     class FileManager {
-        +active_files: dict
+        +root_path: str
         +create_file(path: str) bool
-        +open_file(path: str) object
-        +close_file(path: str) bool
+        +read(file: object) bytes
+        +write(file: object, data: bytes) bool
     }
 
     class Page {
-        +page_id: str
-        +header: object
-        +data: bytes
-        +initialize() bool
-        +read_tuple(offset: int) bytes
-        +write_tuple(offset: int, data: bytes) bool
+        +page_id: int
+        +checksum: int
     }
 
     class BufferPool {
         +capacity: int
-        +cached_pages: dict
-        +get_page(page_id: str) Page
-        +put_page(page: Page) bool
-        +flush() bool
-    }
-
-    class RecordManager {
-        +schema: object
-        +serialize(row: Row) bytes
-        +deserialize(data: bytes) Row
+        +pin_page(page_id: int) Page
+        +flush_page(page_id: int) bool
     }
 
     class TransactionManager {
-        +lock_manager: LockManager
-        +mvcc_manager: MVCCManager
-        +wal_manager: WALManager
-        +begin() Transaction
+        +begin_transaction() Transaction
         +commit(tx: Transaction) bool
         +rollback(tx: Transaction) bool
     }
 
     class Transaction {
-        +id: str
+        +transaction_id: str
+        +isolation_level: str
         +state: str
-        +lsn: int
-        +locks: list
-        +commit() bool
-        +rollback() bool
     }
 
     class LockManager {
-        +lock_table: dict
-        +acquire(tx: object, resource: str, mode: str) bool
-        +release(tx: object, resource: str) bool
-    }
-
-    class DeadlockDetector {
-        +detect_cycle() bool
-        +select_victim() object
+        +acquire_lock(tx: Transaction, resource: str, mode: str) bool
+        +release_lock(tx: Transaction, resource: str) bool
     }
 
     class MVCCManager {
         +create_snapshot() object
-        +get_visible_version(row: Row, tx: object) Row
+        +read_visible_version(row: Row, tx: Transaction) Row
     }
 
     class WALManager {
-        +log_buffer: list
-        +append_record(record: object) bool
+        +current_lsn: int
+        +append(record: object) bool
         +flush() bool
     }
 
     class RecoveryManager {
-        +analyze() bool
+        +recover() bool
         +redo() bool
         +undo() bool
     }
 
     class SQLParser {
         +parse(sql: str) object
-        +validate_syntax(sql: str) bool
+    }
+    class Lexer {
+        +tokenize() list
+    }
+    class AST {
+        +root_node: object
     }
 
     class QueryOptimizer {
-        +optimize(plan: object) object
-        +estimate_cost(plan: object) float
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
     }
 
+    class LogicalPlan
+    class PhysicalPlan
+
     class QueryExecutor {
-        +execute(plan: object) object
+        +execute(plan: PhysicalPlan) object
         +fetch() list
-        +cancel() bool
+    }
+
+    class StatisticsManager {
+        +collect() bool
+    }
+    class SecurityManager {
+        +authenticate() bool
+        +authorize() bool
+    }
+    class User
+    class Role
+    class Permission
+    class ReplicationManager {
+        +replicate() bool
+    }
+    class ClusterNode
+    class BackupManager {
+        +full_backup() bool
+    }
+    class MonitoringManager {
+        +collect_metrics() object
     }
 
     %% Relationships
-    DBMS *-- StorageEngine
-    DBMS *-- TransactionManager
-    DBMS *-- QueryExecutor
-    
     DatabaseServer *-- DatabaseManager
+    DatabaseServer *-- TransactionManager
+    DatabaseServer *-- StorageEngine
+    DatabaseServer *-- CatalogManager
+    DatabaseServer *-- SecurityManager
+
     DatabaseManager o-- Database
     Database *-- Schema
     Schema *-- Table
+    Schema *-- View
+    Schema *-- StoredProcedure
     Table *-- Column
     Table *-- Constraint
     Table *-- Index
+    Table *-- Partition
     ForeignKey --|> Constraint
     ForeignKey --> Table
-    BTreeIndex --|> Index
-    BTreeIndex o-- BTreeNode
-    
+
     StorageEngine *-- BufferPool
     StorageEngine *-- FileManager
     BufferPool o-- Page
-    RecordManager ..> Row : serializes
-    RecordManager ..> Page : writes
     
     TransactionManager *-- LockManager
     TransactionManager *-- MVCCManager
     TransactionManager *-- WALManager
-    TransactionManager --> Transaction
-    LockManager o-- DeadlockDetector
-    
+    TransactionManager o-- Transaction
     WALManager <-- RecoveryManager
+
+    SQLParser --> Lexer
+    SQLParser --> AST
+    AST --> LogicalPlan
+    QueryOptimizer --> LogicalPlan
+    QueryOptimizer --> PhysicalPlan
+    QueryExecutor --> PhysicalPlan
 ```
 
 ---
 
-### 3. Core Class Descriptions
+### 3. Core Classes
 
-Below is the list of the 20-something core classes designed for this system:
+Below is the list of the 40 main core classes designed for this system:
 
-#### 1. Core Facade & Orchestration
-*   **`DBMS`**: The main system facade orchestrating the query parser, executor, storage engine, and transaction lifecycle.
-*   **`DatabaseServer`**: Coordinates server-level events, state changes, startup, and graceful shutdowns.
-*   **`DatabaseManager`**: Performs DDL operations at the database level (e.g., creating, dropping, or renaming databases).
-*   **`Database`**: Represents a database aggregate holding recovery options, schemas, and filegroups.
-
-#### 2. Schema, Table & Column Metadata
-*   **`CatalogManager`**: The global catalog for resolving physical resources and caching object definitions.
-*   **`Schema`**: Logical namespace partitioning tables, sequences, and views.
-*   **`Table`**: Root domain entity for record storage, holding schema definitions, constraints, indexes, and partition schemes.
-*   **`Column`**: Defines name, datatype, and validation rules for fields.
-*   **`Row`**: Holds row values, MVCC headers, versions, and active lock states.
-
-#### 3. Constraints & Indexes
-*   **`Constraint`**: Enforces relational rules on tables.
-*   **`ForeignKey`**: Validates relationships between source and target tables, handling updates/deletes cascading actions.
-*   **`Index`**: Abstract definition of search index structures.
-*   **`BTreeIndex`**: An index structured as a self-balancing B+ Tree.
-*   **`BTreeNode`**: Represents a B-tree node page holding keys, children references, and leaf links.
-
-#### 4. Storage Engine & Cache Management
-*   **`StorageEngine`**: Allocates pages, routes reads/writes, and wraps buffer pool requests.
-*   **`FileManager`**: Low-level read/write controller managing direct physical files on disk.
-*   **`Page`**: 8KB block structured with headers and slot directories for records.
-*   **`BufferPool`**: Page frame cache optimizing memory access with clocks/LRU replacement policies.
-*   **`RecordManager`**: Handles serialization and deserialization of row objects to bytes.
-
-#### 5. Transactions & Concurrency (ACID)
-*   **`TransactionManager`**: Coordinates beginning, committing, and aborting transactions.
-*   **`Transaction`**: Tracks unique tx status, snapshot isolation info, and local locks.
-*   **`LockManager`**: Implements 2-Phase Locking (2PL) to prevent write-write conflicts.
-*   **`DeadlockDetector`**: Checks the wait-for graph of transactions to resolve cyclic waits.
-*   **`MVCCManager`**: Implements Multi-Version Concurrency Control, resolving visibility snapshots.
-
-#### 6. Logging & Recovery (Durability)
-*   **`WALManager`**: Write-Ahead Logger writing log buffers to disk before transaction commit completes.
-*   **`RecoveryManager`**: Implements ARIES recovery protocol (Analysis, Redo, Undo) to restore consistent states after server crashes.
-
-#### 7. Query Parsing & Execution
-*   **`SQLParser`**: Parses input SQL text into AST representations and validates syntax.
-*   **`QueryOptimizer`**: Rewrites AST plans and calculates estimated cost structures using catalog statistics.
-*   **`QueryExecutor`**: Processes optimized plans, fetching tuples through iterator stages.
+*   **Database Management**: `DatabaseServer`, `DatabaseManager`, `Database`
+*   **Schema, Table & Column Metadata**: `CatalogManager`, `Schema`, `Table`, `Column`, `Row`, `Partition`, `View`, `StoredProcedure`
+*   **Constraints & Indexes**: `Constraint`, `ForeignKey`, `Index`
+*   **Storage Engine**: `StorageEngine`, `FileManager`, `Page`, `BufferPool`
+*   **Query Processing**: `SQLParser`, `Lexer`, `AST`, `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan`, `QueryExecutor`
+*   **Transactions & Concurrency (ACID)**: `TransactionManager`, `Transaction`, `LockManager`, `MVCCManager`
+*   **Logging & Recovery (Durability)**: `WALManager`, `RecoveryManager`, `ReplicationManager`, `ClusterNode`, `BackupManager`
+*   **Security & Access Control**: `SecurityManager`, `User`, `Role`, `Permission`
+*   **Performance & Operations**: `StatisticsManager`, `MonitoringManager`
 
 ---
 
@@ -340,6 +305,7 @@ python -m pip install -r requirements-dev.txt
 ```
 
 ### 2. Run Tests
+
 Run the current core class design tests:
 ```bash
 python -m pytest -q

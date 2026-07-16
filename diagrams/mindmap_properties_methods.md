@@ -1,246 +1,326 @@
 - Database Object
-    - Database Management
-        - DatabaseServer
-            - Properties
-                - server_id
-                - version
-                - status
-            - Methods
-                - start()
-                - stop()
-                - restart()
-        - DatabaseManager
-            - Properties
-                - databases
-            - Methods
-                - create_database()
-                - get_database()
-                - drop_database()
-                - rename_database()
-        - Database
-            - Properties
-                - id
-                - name
-                - recovery_model
-                - schemas
-            - Methods
-                - open()
-                - close()
-                - backup()
-                - restore()
-    - Schema Management
-        - CatalogManager
-            - Properties
-                - cache
-            - Methods
-                - register_object()
-                - remove_object()
-                - lookup_object()
-        - Schema
-            - Properties
-                - name
-                - database_id
-                - tables
-            - Methods
-                - create_table()
-                - drop_table()
-    - Table Management
-        - Table
-            - Properties
-                - id
-                - name
-                - columns
-                - indexes
-                - constraints
-            - Methods
-                - insert()
-                - update()
-                - delete()
-                - truncate()
-                - analyze()
-        - Row
-            - Properties
-                - id
-                - values
-                - version_chain
-                - lock_info
-            - Methods
-                - read()
-                - update()
-                - clone()
-    - Relationship Management
-        - ForeignKey
-            - Properties
-                - name
-                - referenced_table
-                - referenced_columns
-                - delete_action
-                - update_action
-    - Column Management
-        - Column
-            - Properties
-                - id
-                - name
-                - data_type
-                - nullable
-                - default_value
-            - Methods
-                - validate()
-                - convert()
-                - compare()
-    - Constraint Management
-        - Constraint
-            - Properties
-                - name
-                - constraint_type
-                - columns
-            - Methods
-                - validate_row()
-    - Index Management
-        - Index
-            - Properties
-                - id
-                - name
-                - columns
-            - Methods
-                - search()
-                - insert()
-                - delete()
-        - BTreeIndex
-            - Properties
-                - root_page_id
-            - Methods
-                - split_node()
-                - merge_node()
-        - BTreeNode
-            - Properties
-                - page_id
-                - is_leaf
-                - keys
-                - children
+  - Database Management
+    - DatabaseServer
+      - Properties
+        - server_id
+        - version
+        - status
+      - Methods
+        - start()
+        - stop()
+        - restart()
+    - DatabaseManager
+      - Properties
+        - databases
+      - Methods
+        - create_database()
+        - get_database()
+        - drop_database()
+        - rename_database()
+    - Database
+      - Properties
+        - database_id
+        - name
+        - owner
+        - status
+        - page_size
+        - encoding
+        - storage_location
+        - default_schema
+      - Methods
+        - open()
+        - close()
+        - backup()
+        - restore()
+  - Schema Management
+    - CatalogManager
+      - Properties
+        - metadata_cache
+      - Methods
+        - register_object()
+        - remove_object()
+        - lookup_object()
+    - Schema
+      - Properties
+        - schema_id
+        - name
+        - owner
+      - Methods
+        - create_table()
+        - drop_table()
+  - Table Management
+    - Table
+      - Properties
+        - table_id
+        - name
+        - columns
+        - row_count
+      - Methods
+        - insert()
+        - update()
+        - delete()
+        - truncate()
+    - Row
+      - Properties
+        - row_id
+        - values
+        - version
+      - Methods
+        - read()
+        - update()
+    - Partition
+      - Properties
+        - partition_id
+        - name
+        - range
+      - Methods
+        - allocate_space()
+        - release_space()
+  - View Management
+    - View
+      - Properties
+        - view_id
+        - name
+        - query_definition
+      - Methods
+        - create_view()
+        - refresh()
+  - Relationship Management
+    - ForeignKey
+      - Properties
+        - reference_table
+        - on_delete
+        - on_update
+      - Methods
+        - validate_reference()
+  - Column Management
+    - Column
+      - Properties
+        - column_id
+        - name
+        - data_type
+        - nullable
+      - Methods
+        - validate()
+  - Constraint Management
+    - Constraint
+      - Properties
+        - constraint_id
+        - name
+        - constraint_type
+      - Methods
+        - validate_row()
+  - Index Management
+    - Index
+      - Properties
+        - index_id
+        - name
+        - type
+        - unique
+      - Methods
+        - search()
+        - insert_key()
+        - delete_key()
+  - Stored Procedure
+    - StoredProcedure
+      - Properties
+        - procedure_id
+        - name
+      - Methods
+        - execute()
 
 - Storage Engine
-    - Storage Engine Core
-        - StorageEngine
-            - Properties
-                - buffer_pool
-                - file_manager
-            - Methods
-                - read_page()
-                - write_page()
-    - Data File Management
-        - FileManager
-            - Properties
-                - active_files
-            - Methods
-                - create_file()
-                - open_file()
-                - close_file()
-    - Page Management
-        - Page
-            - Properties
-                - page_id
-                - header
-                - data
-            - Methods
-                - initialize()
-                - read_tuple()
-                - write_tuple()
-    - Buffer Pool + Cache
-        - BufferPool
-            - Properties
-                - capacity
-                - cached_pages
-            - Methods
-                - get_page()
-                - put_page()
-                - flush()
-    - Record Management
-        - RecordManager
-            - Properties
-                - schema
-            - Methods
-                - serialize()
-                - deserialize()
+  - Storage Engine Core
+    - StorageEngine
+      - Properties
+        - page_size
+      - Methods
+        - initialize()
+        - read_page()
+        - write_page()
+  - Data File Management
+    - FileManager
+      - Properties
+        - root_path
+      - Methods
+        - create_file()
+        - read()
+        - write()
+  - Page Management
+    - Page
+      - Properties
+        - page_id
+        - checksum
+      - Methods
+        - read_tuple()
+        - write_tuple()
+  - Buffer Pool + Cache
+    - BufferPool
+      - Properties
+        - capacity
+      - Methods
+        - pin_page()
+        - flush_page()
 
 - Query Processing
-    - Query Processor Core
-        - DBMS
-            - Properties
-                - storage_engine
-                - transaction_manager
-                - query_processor
-            - Methods
-                - start()
-                - shutdown()
-                - execute()
-    - SQL Parser
-        - SQLParser
-            - Methods
-                - parse()
-                - validate_syntax()
-    - Query Optimizer
-        - QueryOptimizer
-            - Methods
-                - optimize()
-                - estimate_cost()
-    - Query Executor
-        - QueryExecutor
-            - Methods
-                - execute()
-                - fetch()
-                - cancel()
+  - SQL Parser
+    - SQLParser
+      - Properties
+        - lexer
+      - Methods
+        - parse()
+  - Lexical Analysis
+    - Lexer
+      - Properties
+        - input_text
+      - Methods
+        - tokenize()
+  - Parse Tree
+    - AST
+      - Properties
+        - root_node
+      - Methods
+        - traverse()
+  - Query Optimizer
+    - QueryOptimizer
+      - Properties
+        - rules
+      - Methods
+        - optimize()
+        - estimate_cost()
+  - Execution Planning
+    - LogicalPlan
+      - Properties
+        - operators
+      - Methods
+        - build()
+    - PhysicalPlan
+      - Properties
+        - operators
+      - Methods
+        - generate()
+  - Query Executor
+    - QueryExecutor
+      - Properties
+        - execution_plan
+      - Methods
+        - execute()
+        - fetch()
 
 - Transaction
-    - Transaction Manager Core
-        - TransactionManager
-            - Properties
-                - lock_manager
-                - mvcc_manager
-                - wal_manager
-            - Methods
-                - begin()
-                - commit()
-                - rollback()
-    - Transaction State
-        - Transaction
-            - Properties
-                - id
-                - state
-                - lsn
-                - locks
-            - Methods
-                - commit()
-                - rollback()
-    - Lock Management
-        - LockManager
-            - Properties
-                - lock_table
-            - Methods
-                - acquire()
-                - release()
-    - Deadlock Management
-        - DeadlockDetector
-            - Methods
-                - detect_cycle()
-                - select_victim()
-    - MVCC
-        - MVCCManager
-            - Methods
-                - create_snapshot()
-                - get_visible_version()
+  - Transaction Manager Core
+    - TransactionManager
+      - Properties
+        - active_transactions
+      - Methods
+        - begin_transaction()
+        - commit()
+        - rollback()
+  - Transaction State
+    - Transaction
+      - Properties
+        - transaction_id
+        - isolation_level
+        - state
+      - Methods
+        - commit()
+        - rollback()
+  - Lock Management
+    - LockManager
+      - Properties
+        - lock_table
+      - Methods
+        - acquire_lock()
+        - release_lock()
+  - MVCC
+    - MVCCManager
+      - Properties
+        - version_chain_map
+      - Methods
+        - create_snapshot()
+        - read_visible_version()
 
 - Durability
-    - Transaction Log Management
-        - WALManager
-            - Properties
-                - log_buffer
-            - Methods
-                - append_record()
-                - flush()
-    - Recovery
-        - RecoveryManager
-            - Methods
-                - analyze()
-                - redo()
-                - undo()
+  - Transaction Log Management
+    - WALManager
+      - Properties
+        - current_lsn
+      - Methods
+        - append()
+        - flush()
+  - Recovery
+    - RecoveryManager
+      - Properties
+        - wal_manager
+      - Methods
+        - recover()
+        - redo()
+        - undo()
+  - Replication
+    - ReplicationManager
+      - Properties
+        - replication_mode
+        - replicas
+      - Methods
+        - replicate()
+        - synchronize()
+    - ClusterNode
+      - Properties
+        - node_id
+        - address
+      - Methods
+        - ping()
+  - Backup Management
+    - BackupManager
+      - Properties
+        - backup_jobs
+      - Methods
+        - full_backup()
+
+- Security & Access Control
+  - Security Access Controller Core
+    - SecurityManager
+      - Properties
+        - users
+        - roles
+      - Methods
+        - authenticate()
+        - authorize()
+  - User Management
+    - User
+      - Properties
+        - username
+        - password_hash
+      - Methods
+        - verify_password()
+  - Role Management
+    - Role
+      - Properties
+        - role_name
+        - permissions
+      - Methods
+        - grant()
+        - revoke()
+  - Authorization
+    - Permission
+      - Properties
+        - resource
+        - action
+      - Methods
+        - matches()
+
+- Performance & Operations
+  - Statistics Management
+    - StatisticsManager
+      - Properties
+        - statistics
+      - Methods
+        - collect()
+        - update_histogram()
+        - estimate_cardinality()
+  - Monitoring & Logging
+    - MonitoringManager
+      - Properties
+        - metrics
+      - Methods
+        - collect_metrics()
