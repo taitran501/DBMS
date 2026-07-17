@@ -5,11 +5,14 @@ class BufferPool:
     def __init__(self, capacity: int) -> None:
         self.capacity = capacity
 
-    def get_page(self, page_id: int) -> Page | None:
+    def pin_page(self, page_id: int) -> Page | None:
         return None
 
-    def put_page(self, page: Page) -> bool:
-        return True
+    def cache_page(self, page: Page) -> bool:
+        return False
 
-    def flush(self) -> bool:
-        return True
+    def flush_page(self, page_id: int) -> bool:
+        return False
+
+    def flush_all_pages(self) -> bool:
+        return False

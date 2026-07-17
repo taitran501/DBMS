@@ -8,3 +8,6 @@ class QueryExecutor:
         transaction: object | None = None,
     ) -> object | None:
         return None
+
+    def fetch(self) -> list:
+        return []

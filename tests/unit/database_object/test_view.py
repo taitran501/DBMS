@@ -1,3 +1,6 @@
+from dbms.database_object.view import View
+
+
 def test_view_can_be_created():
     pass
 

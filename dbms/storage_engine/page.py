@@ -3,15 +3,8 @@ class Page:
         self.page_id = page_id
         self.data = data
 
-    def read(self) -> bytes:
-        return b""
-
-    def write(self, data: bytes) -> bool:
-        return True
-
     def read_tuple(self) -> object:
         return None
 
     def write_tuple(self, tuple: object) -> bool:
         return True
-

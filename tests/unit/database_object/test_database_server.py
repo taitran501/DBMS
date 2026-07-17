@@ -1,3 +1,6 @@
+from dbms.database_object.database_server import DatabaseServer
+
+
 def test_database_server_can_be_created():
     pass
 

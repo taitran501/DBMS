@@ -35,8 +35,6 @@ def test_flush_page():
 def test_flush_all_pages():
     pass
 
-def test_buffer_pool_stores_capacity_and_returns_placeholders():
+def test_buffer_pool_stores_capacity():
     pool = BufferPool(10)
     assert pool.capacity == 10
-    assert pool.get_page(1) is None
-    assert pool.flush() is True

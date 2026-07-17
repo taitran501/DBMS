@@ -1,12 +1,12 @@
 from dbms.query_processing.query_executor import QueryExecutor
 from dbms.query_processing.query_validator import QueryValidator
-from dbms.query_processing.sql_parser import SqlParser
+from dbms.query_processing.sql_parser import SQLParser
 
 
 class QueryProcessor:
     def __init__(
         self,
-        sql_parser: SqlParser,
+        sql_parser: SQLParser,
         query_validator: QueryValidator,
         query_executor: QueryExecutor,
     ) -> None:

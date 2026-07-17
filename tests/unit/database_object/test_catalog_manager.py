@@ -1,3 +1,6 @@
+from dbms.database_object.catalog_manager import CatalogManager
+
+
 def test_catalog_manager_can_be_created():
     pass
 

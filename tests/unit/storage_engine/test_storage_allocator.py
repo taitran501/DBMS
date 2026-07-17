@@ -1,15 +1,15 @@
 from dbms.storage_engine.storage_allocator import StorageAllocator
 
-def test_allocate_space():
+def test_allocate_storage_space():
     pass
 
-def test_release_space():
+def test_release_storage_space():
     pass
 
 def test_reallocate_space():
     pass
 
-def test_track_free_space():
+def test_track_allocator_free_space():
     pass
 
 def test_reject_exhausted_storage():

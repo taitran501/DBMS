@@ -1,3 +1,6 @@
+from dbms.performance.statistics_manager import StatisticsManager
+
+
 def test_statistics_manager_can_be_created():
     pass
 

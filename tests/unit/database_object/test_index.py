@@ -1,3 +1,6 @@
+from dbms.database_object.index import Index
+
+
 def test_index_can_be_created():
     pass
 

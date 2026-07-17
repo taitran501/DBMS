@@ -1,2 +1,3 @@
 class BackupManager:
-    pass
+    def full_backup(self) -> bool:
+        return False

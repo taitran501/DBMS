@@ -1,12 +1,15 @@
-from dbms.durability.transaction_log_manager import TransactionLogManager
+from dbms.durability.wal_manager import WALManager
 
 
 class RecoveryManager:
-    def __init__(self, transaction_log_manager: TransactionLogManager) -> None:
-        self.transaction_log_manager = transaction_log_manager
+    def __init__(self, wal_manager: WALManager) -> None:
+        self.wal_manager = wal_manager
 
     def recover(self) -> bool:
         return True
 
-    def rollback(self, transaction_id: int) -> bool:
-        return True
+    def redo(self) -> bool:
+        return False
+
+    def undo(self) -> bool:
+        return False

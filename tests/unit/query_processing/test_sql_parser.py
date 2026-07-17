@@ -1,4 +1,4 @@
-from dbms.query_processing.sql_parser import SqlParser
+from dbms.query_processing.sql_parser import SQLParser
 
 
 def test_parse():
@@ -29,4 +29,4 @@ def test_reject_unexpected_token():
     pass
 
 def test_sql_parser_can_be_created():
-    assert isinstance(SqlParser(), SqlParser)
+    assert isinstance(SQLParser(), SQLParser)

@@ -18,12 +18,8 @@ def test_write_page():
     pass
 
 
-def test_storage_engine_stores_buffer_pool_and_returns_placeholders():
+def test_storage_engine_stores_buffer_pool():
     pool = BufferPool(16)
     engine = StorageEngine(pool)
 
     assert engine.buffer_pool is pool
-    assert engine.read(1) is None
-    assert engine.write(object()) is True
-    assert engine.delete(1) is True
-    assert engine.revert(1) is True

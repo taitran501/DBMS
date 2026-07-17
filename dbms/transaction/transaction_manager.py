@@ -2,7 +2,7 @@ from dbms.transaction.transaction import Transaction
 
 
 class TransactionManager:
-    def begin(self) -> Transaction | None:
+    def begin_transaction(self) -> Transaction | None:
         return None
 
     def commit(self, transaction: Transaction) -> bool:

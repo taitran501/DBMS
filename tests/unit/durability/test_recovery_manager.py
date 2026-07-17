@@ -1,5 +1,5 @@
 from dbms.durability.recovery_manager import RecoveryManager
-from dbms.durability.transaction_log_manager import TransactionLogManager
+from dbms.durability.wal_manager import WALManager
 
 
 def test_recover():
@@ -38,6 +38,6 @@ def test_validate_recovered_state():
     pass
 
 def test_recovery_manager_can_be_created():
-    log_manager = TransactionLogManager()
-    manager = RecoveryManager(log_manager)
-    assert manager.transaction_log_manager is log_manager
+    wal_manager = WALManager()
+    manager = RecoveryManager(wal_manager)
+    assert manager.wal_manager is wal_manager

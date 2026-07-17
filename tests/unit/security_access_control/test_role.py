@@ -1,3 +1,6 @@
+from dbms.security_access_control.role import Role
+
+
 def test_role_can_be_created():
     pass
 

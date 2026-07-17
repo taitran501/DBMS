@@ -12,7 +12,7 @@ def test_release_page():
 def test_reuse_page():
     pass
 
-def test_track_free_space():
+def test_track_page_free_space():
     pass
 
 def test_reject_full_page():
