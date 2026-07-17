@@ -1,14 +1,22 @@
 from dbms.database_object.database import Database
+from dbms.database_object.dependencies import DatabaseFactoryProtocol, DatabaseStorageProtocol
 
 
 class DatabaseManager:
-    def __init__(self) -> None:
-        self.databases: dict[str, Database] = {}
+    def __init__(
+        self,
+        database_factory: DatabaseFactoryProtocol,
+        storage: DatabaseStorageProtocol,
+        databases: dict[str, Database],
+    ) -> None:
+        self.database_factory = database_factory
+        self.storage = storage
+        self.databases = databases
 
-    def create_database(self, name: str) -> Database | None:
+    def create_database(self, name: str) -> Database:
         return None
 
-    def get_database(self, name: str) -> Database | None:
+    def get_database(self, name: str) -> Database:
         return None
 
     def drop_database(self, name: str) -> bool:

@@ -19,4 +19,11 @@ def test_resolve_data_type():
     pass
 
 def test_data_type_manager_can_be_created():
-    assert isinstance(DataTypeManager(), DataTypeManager)
+    data_types = {}
+    manager = DataTypeManager(data_types)
+
+    assert manager.data_types is data_types
+    assert callable(manager.register_data_type)
+    assert callable(manager.validate_value)
+    assert callable(manager.convert_value)
+    assert callable(manager.resolve_data_type)

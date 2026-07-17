@@ -32,6 +32,8 @@ classDiagram
     }
 
     class DatabaseManager {
+        +database_factory: DatabaseFactoryProtocol
+        +storage: DatabaseStorageProtocol
         +databases: dict
         +create_database(name: str) Database
         +get_database(name: str) Database
@@ -48,6 +50,9 @@ classDiagram
         +encoding: str
         +storage_location: str
         +default_schema: str
+        +storage: DatabaseStorageProtocol
+        +backup_service: DatabaseBackupProtocol
+        +schemas: dict
         +open() bool
         +close() bool
         +backup() bool
@@ -55,8 +60,8 @@ classDiagram
     }
 
     class CatalogManager {
-        +metadata_cache: object
-        +register_object(name: str, desc: object) bool
+        +metadata_cache: MetadataCacheProtocol
+        +register_object(name: str, descriptor: object) bool
         +remove_object(name: str) bool
         +lookup_object(name: str) object
     }
@@ -65,6 +70,7 @@ classDiagram
         +schema_id: str
         +name: str
         +owner: str
+        +tables: dict
         +create_table(name: str) Table
         +drop_table(name: str) bool
     }
@@ -74,40 +80,47 @@ classDiagram
         +name: str
         +columns: list
         +row_count: int
+        +rows: dict
+        +constraints: list
+        +indexes: list
         +insert(row: Row) bool
         +update(row_id: str, new_values: dict) bool
         +delete(row_id: str) bool
         +truncate() bool
+        +check_key_exists(key: object) bool
     }
 
     class Column {
         +column_id: str
         +name: str
-        +data_type: object
+        +data_type: DataType
         +nullable: bool
         +validate(value: object) bool
     }
 
     class Row {
         +row_id: str
-        +values: list
+        +values: list or dict
         +version: str
-        +read() list
-        +update(new_values: list) bool
+        +read() list or dict
+        +update(new_values: list or dict) bool
     }
 
     class Constraint {
         +constraint_id: str
         +name: str
         +constraint_type: str
+        +validation_rule: object
         +validate_row(row: Row) bool
     }
 
     class ForeignKey {
+        +constraint_id: str
         +reference_table: Table
+        +reference_column: str
         +on_delete: str
         +on_update: str
-        +validate_reference() bool
+        +validate_reference(value: object) bool
     }
 
     class Index {
@@ -115,6 +128,7 @@ classDiagram
         +name: str
         +type: str
         +unique: bool
+        +entries: dict
         +search(key: object) list
         +insert_key(key: object, rid: str) bool
         +delete_key(key: object, rid: str) bool
@@ -124,6 +138,7 @@ classDiagram
         +partition_id: str
         +name: str
         +range: object
+        +storage_allocator: StorageAllocatorProtocol
         +allocate_space() bool
         +release_space() bool
     }
@@ -132,6 +147,8 @@ classDiagram
         +view_id: str
         +name: str
         +query_definition: str
+        +query_executor: QueryExecutorProtocol
+        +cached_results: object
         +create_view() bool
         +refresh() bool
     }
@@ -139,8 +156,83 @@ classDiagram
     class StoredProcedure {
         +procedure_id: str
         +name: str
+        +query_plan: object
+        +query_executor: QueryExecutorProtocol
         +execute() object
     }
+
+    class DataType {
+        +name: str
+        +validator: Callable
+        +converter: Callable
+        +validate(value: object) bool
+        +convert(value: object) object
+    }
+
+    class DataTypeManager {
+        +data_types: dict
+        +register_data_type(name: str, data_type: DataType) bool
+        +validate_value(value: object, data_type_name: str) bool
+        +convert_value(value: object, data_type_name: str) object
+        +resolve_data_type(name: str) DataType
+    }
+
+    class Trigger {
+        +name: str
+        +event: str
+        +table_name: str
+        +callback: Callable
+        +fire(row: object) bool
+    }
+
+    class TriggerManager {
+        +triggers: dict
+        +create_trigger(name: str, event: str, table_name: str, callback: Callable) Trigger
+        +drop_trigger(name: str) bool
+        +bind_event(event: str, callback: Callable) bool
+        +execute_triggers(event: str, row: object) bool
+    }
+
+    class MetadataCacheProtocol {
+        <<Protocol>>
+        +set(name: str, descriptor: object) None
+        +remove(name: str) None
+        +get(name: str) object or None
+    }
+
+    class DatabaseStorageProtocol {
+        <<Protocol>>
+        +load_schema_metadata(database: object) object
+        +flush_dirty_pages(database: object) None
+        +delete_database_files(name: str) None
+    }
+
+    class DatabaseBackupProtocol {
+        <<Protocol>>
+        +create_backup(database: object) object
+        +restore_backup(database: object) object
+    }
+
+    class StorageAllocatorProtocol {
+        <<Protocol>>
+        +allocate_space(partition: object) object
+        +release_space(partition: object) None
+    }
+
+    class QueryExecutorProtocol {
+        <<Protocol>>
+        +execute(query_or_plan: object) object
+    }
+
+    class DatabaseFactoryProtocol {
+        <<Protocol>>
+        +create(name: str) Database
+    }
+
+    class DuplicateDatabaseError
+    class UnknownDatabaseError
+    class TriggerError
+    class DuplicateTriggerError
 
     class StorageEngine {
         +page_size: int
@@ -314,6 +406,10 @@ classDiagram
     DatabaseServer *-- MonitoringManager
 
     DatabaseManager o-- Database
+    DatabaseManager --> DatabaseFactoryProtocol
+    DatabaseManager --> DatabaseStorageProtocol
+    Database --> DatabaseStorageProtocol
+    Database --> DatabaseBackupProtocol
     Database *-- Schema
     Schema *-- Table
     Schema *-- View
@@ -322,8 +418,15 @@ classDiagram
     Table *-- Constraint
     Table *-- Index
     Table *-- Partition
+    Column --> DataType
+    DataTypeManager o-- DataType
     ForeignKey --|> Constraint
     ForeignKey --> Table
+    CatalogManager --> MetadataCacheProtocol
+    Partition --> StorageAllocatorProtocol
+    StoredProcedure --> QueryExecutorProtocol
+    View --> QueryExecutorProtocol
+    TriggerManager o-- Trigger
 
     StorageEngine *-- BufferPool
     StorageEngine *-- FileManager
@@ -353,10 +456,10 @@ classDiagram
 
 ### 3. Core Classes
 
-Below is the list of the 40 main core classes designed for this system:
+Below is the list of the main core classes designed for this system:
 
 *   **Database Management**: `DatabaseServer`, `DatabaseManager`, `Database`
-*   **Schema, Table & Column Metadata**: `CatalogManager`, `Schema`, `Table`, `Column`, `Row`, `Partition`, `View`, `StoredProcedure`
+*   **Schema, Table & Column Metadata**: `CatalogManager`, `Schema`, `Table`, `Column`, `Row`, `Partition`, `View`, `StoredProcedure`, `DataType`, `Trigger`
 *   **Constraints & Indexes**: `Constraint`, `ForeignKey`, `Index`
 *   **Storage Engine**: `StorageEngine`, `FileManager`, `Page`, `BufferPool`
 *   **Query Processing**: `SQLParser`, `Lexer`, `AST`, `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan`, `QueryExecutor`
@@ -381,6 +484,8 @@ Below is the list of the 40 main core classes designed for this system:
 Supporting classes used by the core architecture:
 
 *   **Database Object**: `DataTypeManager`, `TriggerManager`
+*   **Database Object dependency contracts**: `MetadataCacheProtocol`, `DatabaseStorageProtocol`, `DatabaseBackupProtocol`, `StorageAllocatorProtocol`, `QueryExecutorProtocol`, `DatabaseFactoryProtocol`
+*   **Database Object errors**: `DuplicateDatabaseError`, `UnknownDatabaseError`, `TriggerError`, `DuplicateTriggerError`
 *   **Storage Engine**: `PageManager`, `Record`, `RecordManager`, `StorageAllocator`, `LogFileManager`
 *   **Query Processing**: `QueryProcessor`, `QueryValidator`, `ExecutionPlanner`, `Statement`, `SelectStatement`, `Token`, `TokenType`
 *   **Transactions**: `IsolationManager`, `DeadlockManager`, `TransactionStatus`

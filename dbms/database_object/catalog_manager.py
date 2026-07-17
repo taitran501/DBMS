@@ -1,5 +1,8 @@
+from dbms.database_object.dependencies import MetadataCacheProtocol
+
+
 class CatalogManager:
-    def __init__(self, metadata_cache: object = None) -> None:
+    def __init__(self, metadata_cache: MetadataCacheProtocol) -> None:
         self.metadata_cache = metadata_cache
 
     def register_object(self, name: str, descriptor: object) -> bool:

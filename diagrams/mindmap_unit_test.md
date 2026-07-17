@@ -10,6 +10,10 @@
   - Constraint
     - test_constraint_can_be_created()
     - test_validate_row()
+  - DataType
+    - test_data_type_stores_name_validator_and_converter()
+    - test_data_type_exposes_validate_method()
+    - test_data_type_exposes_convert_method()
   - DataTypeManager
     - test_register_data_type()
     - test_validate_value()
@@ -66,6 +70,9 @@
     - test_update_table_row()
     - test_delete()
     - test_truncate()
+  - Trigger
+    - test_trigger_stores_name_event_table_and_callback()
+    - test_trigger_exposes_fire_method()
   - TriggerManager
     - test_create_trigger()
     - test_drop_trigger()
@@ -79,6 +86,18 @@
     - test_view_can_be_created()
     - test_create_view()
     - test_refresh()
+  - Dependency Protocols
+    - test_metadata_cache_stub_matches_protocol()
+    - test_database_storage_stub_matches_protocol()
+    - test_database_backup_stub_matches_protocol()
+    - test_storage_allocator_stub_matches_protocol()
+    - test_query_executor_stub_matches_protocol()
+    - test_database_factory_stub_matches_protocol()
+  - Exceptions
+    - test_duplicate_database_error_inherits_exception()
+    - test_unknown_database_error_inherits_exception()
+    - test_trigger_error_inherits_exception()
+    - test_duplicate_trigger_error_inherits_exception()
 
 - Storage Engine
   - BufferPool

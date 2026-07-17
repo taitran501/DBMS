@@ -22,4 +22,11 @@ def test_reject_duplicate_trigger():
     pass
 
 def test_trigger_manager_can_be_created():
-    assert isinstance(TriggerManager(), TriggerManager)
+    triggers = {}
+    manager = TriggerManager(triggers)
+
+    assert manager.triggers is triggers
+    assert callable(manager.create_trigger)
+    assert callable(manager.drop_trigger)
+    assert callable(manager.bind_event)
+    assert callable(manager.execute_triggers)
