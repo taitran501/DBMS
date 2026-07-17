@@ -1,7 +1,8 @@
 from dbms.database_object.trigger import Trigger
+from unittest.mock import Mock
 
 
-def test_trigger_stores_name_event_table_and_callback():
+def test_trigger_can_be_created():
     callback = lambda row: None
     trigger = Trigger("tr1", "INSERT", "users", callback)
 
@@ -9,9 +10,15 @@ def test_trigger_stores_name_event_table_and_callback():
     assert trigger.event == "INSERT"
     assert trigger.table_name == "users"
     assert trigger.callback is callback
-
-
-def test_trigger_exposes_fire_method():
-    trigger = Trigger("tr1", "INSERT", "users", lambda row: None)
-
     assert callable(trigger.fire)
+
+
+def test_fire():
+    callback = Mock(return_value=True)
+    trigger = Trigger("tr1", "INSERT", "users", callback)
+    row = object()
+
+    result = trigger.fire(row)
+
+    assert result is True
+    callback.assert_called_once_with(row)

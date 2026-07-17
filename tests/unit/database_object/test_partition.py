@@ -1,26 +1,34 @@
 from dbms.database_object.partition import Partition
-
-
-def create_partition() -> Partition:
-    return Partition("p1", "part_1", (1, 100), object())
+from unittest.mock import Mock
 
 
 def test_partition_can_be_created():
     storage_allocator = object()
-    p = Partition("p1", "part_1", (1, 100), storage_allocator)
-    assert p.partition_id == "p1"
-    assert p.name == "part_1"
-    assert p.range == (1, 100)
-    assert p.storage_allocator is storage_allocator
-    assert callable(p.allocate_space)
-    assert callable(p.release_space)
+    partition = Partition("p1", "part_1", (1, 100), storage_allocator)
+
+    assert partition.partition_id == "p1"
+    assert partition.name == "part_1"
+    assert partition.range == (1, 100)
+    assert partition.storage_allocator is storage_allocator
+    assert callable(partition.allocate_space)
+    assert callable(partition.release_space)
 
 
-def test_allocate_partition_space():
-    p = create_partition()
-    assert p.allocate_space() is True
+def test_allocate_space():
+    storage_allocator = Mock()
+    partition = Partition("p1", "part_1", (1, 100), storage_allocator)
+
+    result = partition.allocate_space()
+
+    assert result is True
+    storage_allocator.allocate_space.assert_called_once_with(partition)
 
 
-def test_release_partition_space():
-    p = create_partition()
-    assert p.release_space() is True
+def test_release_space():
+    storage_allocator = Mock()
+    partition = Partition("p1", "part_1", (1, 100), storage_allocator)
+
+    result = partition.release_space()
+
+    assert result is True
+    storage_allocator.release_space.assert_called_once_with(partition)

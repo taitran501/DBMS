@@ -1,5 +1,6 @@
 from dbms.database_object.column import Column
 from dbms.database_object.data_type import DataType
+from unittest.mock import Mock
 
 
 def test_column_can_be_created():
@@ -14,4 +15,11 @@ def test_column_can_be_created():
 
 
 def test_validate():
-    pass
+    data_type = Mock(spec=DataType)
+    data_type.validate.return_value = True
+    column = Column("c1", "age", data_type)
+
+    result = column.validate(25)
+
+    assert result is True
+    data_type.validate.assert_called_once_with(25)

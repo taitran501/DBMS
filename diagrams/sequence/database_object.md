@@ -1,7 +1,5 @@
 # Database Object Unit Test Sequences
 
-This document outlines the detailed sequence diagrams for the unit tests in the `Database Object` subsystem.
-
 ---
 
 ## 1. test_catalog_manager.py
@@ -15,9 +13,9 @@ sequenceDiagram
     participant SUT as CatalogManager
     participant Cache as MetadataCacheProtocol
 
-    Test->>SUT: CatalogManager(Cache)
-    SUT-->>Test: catalog
-    Test->>Test: assert cache is stored and public methods are callable
+    Test->>SUT: CatalogManager(metadata_cache)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
 ### 1.2 test_register_object()
@@ -29,12 +27,11 @@ sequenceDiagram
     participant SUT as CatalogManager
     participant Cache as MetadataCacheProtocol
 
-    Test->>SUT: register_object("public.users", table)
-    activate SUT
-    SUT->>Cache: set("public.users", table)
+    Test->>SUT: register_object(name, descriptor)
+    SUT->>Cache: set(name, descriptor)
+    Cache-->>SUT: None
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result and cache call
 ```
 
 ### 1.3 test_remove_object()
@@ -46,12 +43,11 @@ sequenceDiagram
     participant SUT as CatalogManager
     participant Cache as MetadataCacheProtocol
 
-    Test->>SUT: remove_object("public.users")
-    activate SUT
-    SUT->>Cache: remove("public.users")
+    Test->>SUT: remove_object(name)
+    SUT->>Cache: remove(name)
+    Cache-->>SUT: None
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result and cache call
 ```
 
 ### 1.4 test_lookup_object()
@@ -63,12 +59,11 @@ sequenceDiagram
     participant SUT as CatalogManager
     participant Cache as MetadataCacheProtocol
 
-    Test->>SUT: lookup_object("public.users")
-    activate SUT
-    SUT->>Cache: get("public.users")
-    SUT-->>Test: table
-    deactivate SUT
-    Test->>Test: assert result is table
+    Test->>SUT: lookup_object(name)
+    SUT->>Cache: get(name)
+    Cache-->>SUT: descriptor
+    SUT-->>Test: descriptor
+    Test->>Test: assert result and cache call
 ```
 
 ---
@@ -84,9 +79,9 @@ sequenceDiagram
     participant SUT as Column
     participant Type as DataType
 
-    Test->>SUT: Column("c1", "age", Type, nullable=True)
-    SUT-->>Test: col
-    Test->>Test: assert attributes are stored and validate is callable
+    Test->>SUT: Column(column_id, name, data_type, nullable)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
 ### 2.2 test_validate()
@@ -98,13 +93,11 @@ sequenceDiagram
     participant SUT as Column
     participant Type as DataType
 
-    Test->>SUT: validate(25)
-    activate SUT
-    SUT->>Type: validate(25)
+    Test->>SUT: validate(value)
+    SUT->>Type: validate(value)
     Type-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result and DataType call
 ```
 
 ---
@@ -118,11 +111,11 @@ sequenceDiagram
     autonumber
     participant Test as test_constraint.py
     participant SUT as Constraint
+    participant Rule as validation_rule
 
-    Test->>SUT: Constraint("c1", "chk_age", "CHECK", validation_rule)
-    SUT-->>Test: const
-    Test->>Test: assert attributes and validation_rule are stored
-    Test->>Test: assert validate_row is callable
+    Test->>SUT: Constraint(constraint_id, name, type, validation_rule)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
 ### 3.2 test_validate_row()
@@ -132,39 +125,73 @@ sequenceDiagram
     autonumber
     participant Test as test_constraint.py
     participant SUT as Constraint
-    participant Row as Row
+    participant Rule as validation_rule
 
     Test->>SUT: validate_row(row)
-    activate SUT
-    SUT->>Row: read()
-    Row-->>SUT: [25]
-    SUT->>SUT: evaluate("[25] satisfies age >= 18")
+    SUT->>Rule: validation_rule(row)
+    Rule-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and rule call
+```
+
+---
+
+## 4. test_data_type.py
+
+### 4.1 test_data_type_can_be_created()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_data_type.py
+    participant SUT as DataType
+    participant Validator as validator
+    participant Converter as converter
+
+    Test->>SUT: DataType(name, validator, converter)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 4.2 test_validate()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_data_type.py
+    participant SUT as DataType
+    participant Validator as validator
+    participant Converter as converter
+
+    Test->>SUT: validate(10)
+    SUT->>Validator: validator(10)
+    Validator-->>SUT: True
+    SUT-->>Test: True
     Test->>Test: assert result is True
 ```
 
----
-
-## 4. test_data_type_manager.py
-
-### 4.1 test_register_data_type()
+### 4.3 test_convert()
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Test as test_data_type_manager.py
-    participant SUT as DataTypeManager
-    participant Type as DataType
+    participant Test as test_data_type.py
+    participant SUT as DataType
+    participant Validator as validator
+    participant Converter as converter
 
-    Test->>SUT: register_data_type("INT", Type)
-    activate SUT
-    SUT->>SUT: data_types["INT"] = Type
-    SUT-->>Test: True
-    deactivate SUT
+    Test->>SUT: convert("10")
+    SUT->>Converter: converter("10")
+    Converter-->>SUT: 10
+    SUT-->>Test: 10
+    Test->>Test: assert result equals 10
 ```
 
-### 4.2 test_validate_value()
+---
+
+## 5. test_data_type_manager.py
+
+### 5.1 test_data_type_manager_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -173,16 +200,43 @@ sequenceDiagram
     participant SUT as DataTypeManager
     participant Type as DataType
 
-    Test->>SUT: validate_value(42, "INT")
-    activate SUT
-    SUT->>SUT: resolve_data_type("INT")
-    SUT->>Type: validate(42)
+    Test->>SUT: DataTypeManager(data_types)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 5.2 test_register_data_type()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_data_type_manager.py
+    participant SUT as DataTypeManager
+    participant Type as DataType
+
+    Test->>SUT: register_data_type("INT", data_type)
+    SUT->>SUT: store data_type in data_types
+    SUT-->>Test: True
+    Test->>Test: assert data_types contains data_type
+```
+
+### 5.3 test_validate_value()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_data_type_manager.py
+    participant SUT as DataTypeManager
+    participant Type as DataType
+
+    Test->>SUT: validate_value(10, "INT")
+    SUT->>Type: validate(10)
     Type-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and DataType call
 ```
 
-### 4.3 test_convert_value()
+### 5.4 test_convert_value()
 
 ```mermaid
 sequenceDiagram
@@ -191,15 +245,14 @@ sequenceDiagram
     participant SUT as DataTypeManager
     participant Type as DataType
 
-    Test->>SUT: convert_value("42", "INT")
-    activate SUT
-    SUT->>Type: convert("42")
-    Type-->>SUT: 42
-    SUT-->>Test: 42
-    deactivate SUT
+    Test->>SUT: convert_value("10", "INT")
+    SUT->>Type: convert("10")
+    Type-->>SUT: 10
+    SUT-->>Test: 10
+    Test->>Test: assert result and DataType call
 ```
 
-### 4.4 test_reject_invalid_value()
+### 5.5 test_resolve_data_type()
 
 ```mermaid
 sequenceDiagram
@@ -207,62 +260,18 @@ sequenceDiagram
     participant Test as test_data_type_manager.py
     participant SUT as DataTypeManager
     participant Type as DataType
-
-    Test->>SUT: validate_value("invalid", "INT")
-    activate SUT
-    SUT->>Type: validate("invalid")
-    Type-->>SUT: False
-    SUT-->>Test: False
-    deactivate SUT
-```
-
-### 4.5 test_reject_invalid_conversion()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type_manager.py
-    participant SUT as DataTypeManager
-    participant Type as DataType
-
-    Test->>SUT: convert_value("invalid", "INT")
-    activate SUT
-    SUT->>Type: convert("invalid")
-    Type-->>SUT: raises ValueError
-    SUT-->>Test: raises ValueError
-    deactivate SUT
-```
-
-### 4.6 test_resolve_data_type()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type_manager.py
-    participant SUT as DataTypeManager
 
     Test->>SUT: resolve_data_type("INT")
-    SUT-->>Test: Type
-```
-
-### 4.7 test_data_type_manager_can_be_created()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type_manager.py
-    participant SUT as DataTypeManager
-
-    Test->>SUT: DataTypeManager({})
-    SUT-->>Test: manager
-    Test->>Test: assert data_types is stored and public methods are callable
+    SUT->>SUT: read data_type from data_types
+    SUT-->>Test: data_type
+    Test->>Test: assert result is data_type
 ```
 
 ---
 
-## 5. test_database.py
+## 6. test_database.py
 
-### 5.1 test_database_can_be_created()
+### 6.1 test_database_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -272,13 +281,12 @@ sequenceDiagram
     participant Storage as DatabaseStorageProtocol
     participant Backup as DatabaseBackupProtocol
 
-    Test->>SUT: Database("db1", "test_db", "admin", "active", 4096, "utf-8", "/data", "public", Storage, Backup, {})
-    SUT-->>Test: db
-    Test->>Test: assert attributes and dependencies are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: Database(..., storage, backup_service, schemas)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 5.2 test_open()
+### 6.2 test_open()
 
 ```mermaid
 sequenceDiagram
@@ -286,16 +294,17 @@ sequenceDiagram
     participant Test as test_database.py
     participant SUT as Database
     participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: open()
-    activate SUT
     SUT->>Storage: load_schema_metadata(SUT)
+    Storage-->>SUT: schemas
+    SUT->>SUT: set schemas and status = open
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result, state and storage call
 ```
 
-### 5.3 test_close()
+### 6.3 test_close()
 
 ```mermaid
 sequenceDiagram
@@ -303,147 +312,119 @@ sequenceDiagram
     participant Test as test_database.py
     participant SUT as Database
     participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: close()
-    activate SUT
     SUT->>Storage: flush_dirty_pages(SUT)
+    Storage-->>SUT: None
+    SUT->>SUT: set status = closed
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result, state and storage call
 ```
 
-### 5.4 test_backup()
+### 6.4 test_backup()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
     participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: backup()
-    activate SUT
     SUT->>Backup: create_backup(SUT)
+    Backup-->>SUT: backup
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result and backup call
 ```
 
-### 5.5 test_restore()
+### 6.5 test_restore()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
     participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: restore()
-    activate SUT
     SUT->>Backup: restore_backup(SUT)
+    Backup-->>SUT: backup
     SUT-->>Test: True
-    deactivate SUT
-    Test->>Test: assert result is True
+    Test->>Test: assert result and restore call
+```
+
+### 6.6 test_create_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
+
+    Test->>SUT: create_schema(schema)
+    SUT->>SUT: store schema in schemas
+    SUT-->>Test: True
+    Test->>Test: assert schemas contains schema
+```
+
+### 6.7 test_get_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
+
+    Test->>SUT: get_schema("public")
+    SUT->>SUT: read schema from schemas
+    SUT-->>Test: schema
+    Test->>Test: assert result is schema
+```
+
+### 6.8 test_rename_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
+
+    Test->>SUT: rename_schema("public", "application")
+    SUT->>SUT: rename schema and move dictionary key
+    SUT-->>Test: True
+    Test->>Test: assert schema name and schemas keys
+```
+
+### 6.9 test_drop_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+    participant Storage as DatabaseStorageProtocol
+    participant Backup as DatabaseBackupProtocol
+
+    Test->>SUT: drop_schema("public")
+    SUT->>SUT: remove schema from schemas
+    SUT-->>Test: True
+    Test->>Test: assert schemas no longer contains schema
 ```
 
 ---
 
-## 6. test_database_manager.py
+## 7. test_database_manager.py
 
-### 6.1 test_create_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-    participant Factory as DatabaseFactoryProtocol
-
-    Test->>SUT: create_database("sales")
-    activate SUT
-    SUT->>SUT: Contains("sales")
-    SUT-->>SUT: False
-    SUT->>Factory: create("sales")
-    Factory-->>SUT: db
-    SUT->>SUT: databases["sales"] = db
-    SUT-->>Test: db
-    deactivate SUT
-```
-
-### 6.2 test_get_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-
-    Test->>SUT: get_database("sales")
-    SUT-->>Test: db
-```
-
-### 6.3 test_rename_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-
-    Test->>SUT: rename_database("sales", "marketing")
-    activate SUT
-    SUT->>SUT: move databases["sales"] to databases["marketing"]
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 6.4 test_drop_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-    participant DB as Database
-    participant Storage as DatabaseStorageProtocol
-
-    Test->>SUT: drop_database("sales")
-    activate SUT
-    SUT->>DB: close()
-    SUT->>Storage: delete_database_files("sales")
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 6.5 test_reject_duplicate_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-
-    Test->>SUT: create_database("sales")
-    activate SUT
-    SUT->>SUT: Contains("sales")
-    SUT-->>SUT: True
-    SUT-->>Test: raises DuplicateDatabaseError
-    deactivate SUT
-```
-
-### 6.6 test_reject_unknown_database()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_database_manager.py
-    participant SUT as DatabaseManager
-
-    Test->>SUT: get_database("unknown")
-    SUT-->>Test: raises UnknownDatabaseError
-```
-
-### 6.7 test_database_manager_can_be_created()
+### 7.1 test_database_manager_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -453,17 +434,84 @@ sequenceDiagram
     participant Factory as DatabaseFactoryProtocol
     participant Storage as DatabaseStorageProtocol
 
-    Test->>SUT: DatabaseManager(Factory, Storage, {})
-    SUT-->>Test: manager
-    Test->>Test: assert factory, storage and databases are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: DatabaseManager(factory, storage, databases)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 7.2 test_create_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+    participant Factory as DatabaseFactoryProtocol
+    participant Storage as DatabaseStorageProtocol
+
+    Test->>SUT: create_database("test_db")
+    SUT->>Factory: create("test_db")
+    Factory-->>SUT: database
+    SUT->>SUT: store database
+    SUT-->>Test: database
+    Test->>Test: assert result, registry and factory call
+```
+
+### 7.3 test_get_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+    participant Factory as DatabaseFactoryProtocol
+    participant Storage as DatabaseStorageProtocol
+
+    Test->>SUT: get_database("test_db")
+    SUT->>SUT: read database from databases
+    SUT-->>Test: database
+    Test->>Test: assert result is database
+```
+
+### 7.4 test_rename_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+    participant Factory as DatabaseFactoryProtocol
+    participant Storage as DatabaseStorageProtocol
+
+    Test->>SUT: rename_database("test_db", "renamed_db")
+    SUT->>SUT: rename database and move registry key
+    SUT-->>Test: True
+    Test->>Test: assert database name and registry keys
+```
+
+### 7.5 test_drop_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+    participant Factory as DatabaseFactoryProtocol
+    participant Storage as DatabaseStorageProtocol
+
+    Test->>SUT: drop_database("test_db")
+    SUT->>SUT: remove database from registry
+    SUT->>Storage: delete_database_files("test_db")
+    Storage-->>SUT: None
+    SUT-->>Test: True
+    Test->>Test: assert registry and storage call
 ```
 
 ---
 
-## 7. test_database_server.py
+## 8. test_database_server.py
 
-### 7.1 test_database_server_can_be_created()
+### 8.1 test_database_server_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -471,12 +519,12 @@ sequenceDiagram
     participant Test as test_database_server.py
     participant SUT as DatabaseServer
 
-    Test->>SUT: DatabaseServer("srv1", "1.0", "stopped")
-    SUT-->>Test: srv
-    Test->>Test: assert attributes are stored and public methods are callable
+    Test->>SUT: DatabaseServer(server_id, version, status)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 7.2 test_start_server()
+### 8.2 test_start()
 
 ```mermaid
 sequenceDiagram
@@ -485,13 +533,12 @@ sequenceDiagram
     participant SUT as DatabaseServer
 
     Test->>SUT: start()
-    activate SUT
-    SUT->>SUT: set_status("running")
+    SUT->>SUT: set status = running
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and status
 ```
 
-### 7.3 test_stop_server()
+### 8.3 test_stop()
 
 ```mermaid
 sequenceDiagram
@@ -500,13 +547,12 @@ sequenceDiagram
     participant SUT as DatabaseServer
 
     Test->>SUT: stop()
-    activate SUT
-    SUT->>SUT: set_status("stopped")
+    SUT->>SUT: set status = stopped
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and status
 ```
 
-### 7.4 test_restart_server()
+### 8.4 test_restart()
 
 ```mermaid
 sequenceDiagram
@@ -515,52 +561,50 @@ sequenceDiagram
     participant SUT as DatabaseServer
 
     Test->>SUT: restart()
-    activate SUT
-    SUT->>SUT: stop()
-    SUT->>SUT: start()
+    SUT->>SUT: restart and keep status = running
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and status
 ```
 
 ---
-## 8. test_foreign_key.py
 
-### 8.1 test_foreign_key_can_be_created()
+## 9. test_foreign_key.py
+
+### 9.1 test_foreign_key_can_be_created()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_foreign_key.py
     participant SUT as ForeignKey
+    participant Table as reference_table
 
-    Test->>SUT: ForeignKey("fk1", ParentTable, "ref_col", "restrict", "cascade")
-    SUT-->>Test: fk
-    Test->>Test: assert foreign-key attributes are stored
-    Test->>Test: assert validate_reference is callable
+    Test->>SUT: ForeignKey(id, table, column, on_delete, on_update)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 8.2 test_validate_reference()
+### 9.2 test_validate_reference()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_foreign_key.py
     participant SUT as ForeignKey
-    participant ParentTable as Table
+    participant Table as reference_table
 
-    Test->>SUT: validate_reference(42)
-    activate SUT
-    SUT->>ParentTable: check_key_exists(42)
-    ParentTable-->>SUT: True
+    Test->>SUT: validate_reference(value)
+    SUT->>Table: check_key_exists(value)
+    Table-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and Table call
 ```
 
 ---
 
-## 9. test_index.py
+## 10. test_index.py
 
-### 9.1 test_index_can_be_created()
+### 10.1 test_index_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -568,13 +612,12 @@ sequenceDiagram
     participant Test as test_index.py
     participant SUT as Index
 
-    Test->>SUT: Index("idx1", "users_age", "B-Tree", True, {})
-    SUT-->>Test: idx
-    Test->>Test: assert attributes and entries are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: Index(index_id, name, type, unique, entries)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 9.2 test_search()
+### 10.2 test_search()
 
 ```mermaid
 sequenceDiagram
@@ -583,13 +626,12 @@ sequenceDiagram
     participant SUT as Index
 
     Test->>SUT: search(25)
-    activate SUT
-    SUT->>SUT: traverse_tree(25)
-    SUT-->>Test: ["P0:1"]
-    deactivate SUT
+    SUT->>SUT: read row_ids from entries
+    SUT-->>Test: row_ids
+    Test->>Test: assert result is row_ids
 ```
 
-### 9.3 test_insert_key()
+### 10.3 test_insert_key()
 
 ```mermaid
 sequenceDiagram
@@ -597,14 +639,13 @@ sequenceDiagram
     participant Test as test_index.py
     participant SUT as Index
 
-    Test->>SUT: insert_key(25, "P0:1")
-    activate SUT
-    SUT->>SUT: insert_into_tree(25, "P0:1")
+    Test->>SUT: insert_key(25, "r1")
+    SUT->>SUT: store row_id in entries[25]
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert entries[25] contains row_id
 ```
 
-### 9.4 test_delete_key()
+### 10.4 test_delete_key()
 
 ```mermaid
 sequenceDiagram
@@ -612,18 +653,17 @@ sequenceDiagram
     participant Test as test_index.py
     participant SUT as Index
 
-    Test->>SUT: delete_key(25, "P0:1")
-    activate SUT
-    SUT->>SUT: remove_from_tree(25, "P0:1")
+    Test->>SUT: delete_key(25, "r1")
+    SUT->>SUT: remove row_id from entries[25]
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert entries[25] no longer contains row_id
 ```
 
 ---
 
-## 10. test_partition.py
+## 11. test_partition.py
 
-### 10.1 test_partition_can_be_created()
+### 11.1 test_partition_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -632,13 +672,12 @@ sequenceDiagram
     participant SUT as Partition
     participant Allocator as StorageAllocatorProtocol
 
-    Test->>SUT: Partition("p1", "part_1", (1, 100), Allocator)
-    SUT-->>Test: p
-    Test->>Test: assert attributes and allocator are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: Partition(id, name, range, storage_allocator)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 10.2 test_allocate_partition_space()
+### 11.2 test_allocate_space()
 
 ```mermaid
 sequenceDiagram
@@ -648,13 +687,13 @@ sequenceDiagram
     participant Allocator as StorageAllocatorProtocol
 
     Test->>SUT: allocate_space()
-    activate SUT
     SUT->>Allocator: allocate_space(SUT)
+    Allocator-->>SUT: allocation
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and allocator call
 ```
 
-### 10.3 test_release_partition_space()
+### 11.3 test_release_space()
 
 ```mermaid
 sequenceDiagram
@@ -664,17 +703,17 @@ sequenceDiagram
     participant Allocator as StorageAllocatorProtocol
 
     Test->>SUT: release_space()
-    activate SUT
     SUT->>Allocator: release_space(SUT)
+    Allocator-->>SUT: None
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and allocator call
 ```
 
 ---
 
-## 11. test_row.py
+## 12. test_row.py
 
-### 11.1 test_row_can_be_created()
+### 12.1 test_row_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -682,12 +721,12 @@ sequenceDiagram
     participant Test as test_row.py
     participant SUT as Row
 
-    Test->>SUT: Row("row1", [1, "Alice"], "v1")
-    SUT-->>Test: row
-    Test->>Test: assert row attributes are stored
+    Test->>SUT: Row(row_id, values, version)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 11.2 test_read_row_values()
+### 12.2 test_read()
 
 ```mermaid
 sequenceDiagram
@@ -696,10 +735,11 @@ sequenceDiagram
     participant SUT as Row
 
     Test->>SUT: read()
-    SUT-->>Test: [1, "Alice"]
+    SUT-->>Test: values
+    Test->>Test: assert result is stored values
 ```
 
-### 11.3 test_update_row_values()
+### 12.3 test_update()
 
 ```mermaid
 sequenceDiagram
@@ -707,19 +747,30 @@ sequenceDiagram
     participant Test as test_row.py
     participant SUT as Row
 
-    Test->>SUT: update([1, "Bob"])
-    activate SUT
-    SUT->>SUT: set_values([1, "Bob"])
-    SUT->>SUT: increment_version()
+    Test->>SUT: update(new_values)
+    SUT->>SUT: replace values
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and stored values
 ```
 
 ---
 
-## 12. test_schema.py
+## 13. test_schema.py
 
-### 12.1 test_schema_can_be_created()
+### 13.1 test_schema_can_be_created()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: Schema(schema_id, name, owner, tables)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 13.2 test_create_table()
 
 ```mermaid
 sequenceDiagram
@@ -727,31 +778,41 @@ sequenceDiagram
     participant Test as test_schema.py
     participant SUT as Schema
 
-    Test->>SUT: Schema("s1", "public", "admin", {})
-    SUT-->>Test: sch
-    Test->>Test: assert attributes and tables are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: create_table(table)
+    SUT->>SUT: store table in tables
+    SUT-->>Test: True
+    Test->>Test: assert tables contains table
 ```
 
-### 12.2 test_create_table()
+### 13.3 test_get_table()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_schema.py
     participant SUT as Schema
-    participant Table as Table
 
-    Test->>SUT: create_table("users")
-    activate SUT
-    SUT->>Table: Table("", "users")
-    Table-->>SUT: tbl
-    SUT->>SUT: register_table("users", tbl)
-    SUT-->>Test: tbl
-    deactivate SUT
+    Test->>SUT: get_table("users")
+    SUT->>SUT: read table from tables
+    SUT-->>Test: table
+    Test->>Test: assert result is table
 ```
 
-### 12.3 test_drop_table()
+### 13.4 test_rename_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: rename_table("users", "customers")
+    SUT->>SUT: rename table and move dictionary key
+    SUT-->>Test: True
+    Test->>Test: assert table name and tables keys
+```
+
+### 13.5 test_drop_table()
 
 ```mermaid
 sequenceDiagram
@@ -760,83 +821,134 @@ sequenceDiagram
     participant SUT as Schema
 
     Test->>SUT: drop_table("users")
-    activate SUT
-    SUT->>SUT: unregister_table("users")
+    SUT->>SUT: remove table from tables
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert tables no longer contains table
+```
+
+### 13.6 test_create_view()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: create_view(view)
+    SUT->>SUT: store view in views
+    SUT-->>Test: True
+    Test->>Test: assert views contains view
+```
+
+### 13.7 test_get_view()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: get_view("active_users")
+    SUT->>SUT: read view from views
+    SUT-->>Test: view
+    Test->>Test: assert result is view
+```
+
+### 13.8 test_drop_view()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: drop_view("active_users")
+    SUT->>SUT: remove view from views
+    SUT-->>Test: True
+    Test->>Test: assert views no longer contains view
+```
+
+### 13.9 test_create_stored_procedure()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: create_stored_procedure(procedure)
+    SUT->>SUT: store procedure in stored_procedures
+    SUT-->>Test: True
+    Test->>Test: assert stored_procedures contains procedure
+```
+
+### 13.10 test_get_stored_procedure()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: get_stored_procedure("calculate_total")
+    SUT->>SUT: read procedure from stored_procedures
+    SUT-->>Test: procedure
+    Test->>Test: assert result is procedure
+```
+
+### 13.11 test_drop_stored_procedure()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: drop_stored_procedure("calculate_total")
+    SUT->>SUT: remove procedure from stored_procedures
+    SUT-->>Test: True
+    Test->>Test: assert stored_procedures no longer contains procedure
 ```
 
 ---
 
-## 13. test_stored_procedure.py
+## 14. test_stored_procedure.py
 
-### 13.1 test_stored_procedure_can_be_created()
+### 14.1 test_stored_procedure_can_be_created()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_stored_procedure.py
     participant SUT as StoredProcedure
-    participant QE as QueryExecutorProtocol
+    participant Executor as QueryExecutorProtocol
 
-    Test->>SUT: StoredProcedure("p1", "calculate_total", query_plan, QE)
-    SUT-->>Test: proc
-    Test->>Test: assert attributes and dependencies are stored
-    Test->>Test: assert execute is callable
+    Test->>SUT: StoredProcedure(id, name, query_plan, query_executor)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 13.2 test_execute_stored_procedure()
+### 14.2 test_execute()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_stored_procedure.py
     participant SUT as StoredProcedure
-    participant QE as QueryExecutorProtocol
+    participant Executor as QueryExecutorProtocol
 
     Test->>SUT: execute()
-    activate SUT
-    SUT->>QE: execute(proc.query_plan)
-    QE-->>SUT: results
+    SUT->>Executor: execute(query_plan)
+    Executor-->>SUT: results
     SUT-->>Test: results
-    deactivate SUT
+    Test->>Test: assert results and executor call
 ```
 
 ---
 
-## 14. test_table.py
+## 15. test_table.py
 
-### 14.1 test_table_can_be_created()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_table.py
-    participant SUT as Table
-
-    Test->>SUT: Table("t1", "users", [], 0, {}, [], [])
-    SUT-->>Test: tbl
-    Test->>Test: assert attributes and collections are stored
-    Test->>Test: assert public methods are callable
-```
-
-### 14.2 test_insert()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_table.py
-    participant SUT as Table
-
-    Test->>SUT: insert(row)
-    activate SUT
-    SUT->>SUT: check_constraints(row)
-    SUT->>SUT: append_row(row)
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 14.3 test_update_table_row()
+### 15.1 test_table_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -845,49 +957,306 @@ sequenceDiagram
     participant SUT as Table
     participant Row as Row
 
-    Test->>SUT: update("row1", {"name": "Bob"})
-    activate SUT
-    SUT->>Row: update({"name": "Bob"})
+    Test->>SUT: Table(id, name, columns, row_count, rows, constraints, indexes)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 15.2 test_insert()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: insert(row)
+    SUT->>SUT: store row and increment row_count
+    SUT-->>Test: True
+    Test->>Test: assert rows and row_count
+```
+
+### 15.3 test_update()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: update(row_id, new_values)
+    SUT->>Row: update(new_values)
     Row-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and Row call
 ```
 
-### 14.4 test_delete()
+### 15.4 test_delete()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
+    participant Row as Row
 
-    Test->>SUT: delete("row1")
-    activate SUT
-    SUT->>SUT: mark_deleted("row1")
+    Test->>SUT: delete(row_id)
+    SUT->>SUT: remove row and decrement row_count
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert rows and row_count
 ```
 
-### 14.5 test_truncate()
+### 15.5 test_truncate()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
+    participant Row as Row
 
     Test->>SUT: truncate()
-    activate SUT
-    SUT->>SUT: clear_all_data()
+    SUT->>SUT: clear rows and reset row_count
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert rows and row_count
+```
+
+### 15.6 test_check_key_exists()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: check_key_exists(row_id)
+    SUT->>SUT: check row_id in rows
+    SUT-->>Test: True
+    Test->>Test: assert result is True
+```
+
+### 15.7 test_add_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: add_column(column)
+    SUT->>SUT: store column in columns
+    SUT-->>Test: True
+    Test->>Test: assert columns contains column
+```
+
+### 15.8 test_get_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: get_column("age")
+    SUT->>SUT: read column from columns
+    SUT-->>Test: column
+    Test->>Test: assert result is column
+```
+
+### 15.9 test_rename_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: rename_column("age", "years")
+    SUT->>SUT: update column name
+    SUT-->>Test: True
+    Test->>Test: assert result and column name
+```
+
+### 15.10 test_drop_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: drop_column("age")
+    SUT->>SUT: remove column from columns
+    SUT-->>Test: True
+    Test->>Test: assert columns no longer contains column
+```
+
+### 15.11 test_add_constraint()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: add_constraint(constraint)
+    SUT->>SUT: store constraint in constraints
+    SUT-->>Test: True
+    Test->>Test: assert constraints contains constraint
+```
+
+### 15.12 test_drop_constraint()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: drop_constraint("adult_only")
+    SUT->>SUT: remove constraint from constraints
+    SUT-->>Test: True
+    Test->>Test: assert constraints no longer contains constraint
+```
+
+### 15.13 test_add_index()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: add_index(index)
+    SUT->>SUT: store index in indexes
+    SUT-->>Test: True
+    Test->>Test: assert indexes contains index
+```
+
+### 15.14 test_get_index()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: get_index("users_age")
+    SUT->>SUT: read index from indexes
+    SUT-->>Test: index
+    Test->>Test: assert result is index
+```
+
+### 15.15 test_drop_index()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: drop_index("users_age")
+    SUT->>SUT: remove index from indexes
+    SUT-->>Test: True
+    Test->>Test: assert indexes no longer contains index
+```
+
+### 15.16 test_add_partition()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: add_partition(partition)
+    SUT->>SUT: store partition in partitions
+    SUT-->>Test: True
+    Test->>Test: assert partitions contains partition
+```
+
+### 15.17 test_get_partition()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: get_partition("part_1")
+    SUT->>SUT: read partition from partitions
+    SUT-->>Test: partition
+    Test->>Test: assert result is partition
+```
+
+### 15.18 test_drop_partition()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+    participant Row as Row
+
+    Test->>SUT: drop_partition("part_1")
+    SUT->>SUT: remove partition from partitions
+    SUT-->>Test: True
+    Test->>Test: assert partitions no longer contains partition
 ```
 
 ---
 
-## 15. test_trigger_manager.py
+## 16. test_trigger.py
 
-### 15.1 test_create_trigger()
+### 16.1 test_trigger_can_be_created()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger.py
+    participant SUT as Trigger
+    participant Callback as callback
+
+    Test->>SUT: Trigger(name, event, table_name, callback)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 16.2 test_fire()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger.py
+    participant SUT as Trigger
+    participant Callback as callback
+
+    Test->>SUT: fire(row)
+    SUT->>Callback: callback(row)
+    Callback-->>SUT: True
+    SUT-->>Test: True
+    Test->>Test: assert result and callback call
+```
+
+---
+
+## 17. test_trigger_manager.py
+
+### 17.1 test_trigger_manager_can_be_created()
 
 ```mermaid
 sequenceDiagram
@@ -896,43 +1265,29 @@ sequenceDiagram
     participant SUT as TriggerManager
     participant Trigger as Trigger
 
-    Test->>SUT: create_trigger("tr1", "INSERT", "users", callback)
-    activate SUT
-    SUT->>Trigger: Trigger("tr1", "INSERT", "users", callback)
+    Test->>SUT: TriggerManager(triggers)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
+```
+
+### 17.2 test_create_trigger()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger_manager.py
+    participant SUT as TriggerManager
+    participant Trigger as Trigger
+
+    Test->>SUT: create_trigger(name, event, table_name, callback)
+    SUT->>Trigger: Trigger(name, event, table_name, callback)
     Trigger-->>SUT: trigger
-    SUT->>SUT: triggers["INSERT"].append(trigger)
+    SUT->>SUT: store trigger by event
     SUT-->>Test: trigger
-    deactivate SUT
+    Test->>Test: assert trigger and registry
 ```
 
-### 15.2 test_drop_trigger()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-
-    Test->>SUT: drop_trigger("tr1")
-    activate SUT
-    SUT->>SUT: remove_trigger("tr1")
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 15.3 test_bind_event()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-
-    Test->>SUT: bind_event("INSERT", callback)
-    SUT-->>Test: True
-```
-
-### 15.4 test_execute_trigger()
+### 17.3 test_drop_trigger()
 
 ```mermaid
 sequenceDiagram
@@ -941,188 +1296,76 @@ sequenceDiagram
     participant SUT as TriggerManager
     participant Trigger as Trigger
 
-    Test->>SUT: execute_triggers("INSERT", row)
-    activate SUT
+    Test->>SUT: drop_trigger(name)
+    SUT->>SUT: remove trigger from event list
+    SUT-->>Test: True
+    Test->>Test: assert event list is empty
+```
+
+### 17.4 test_bind_event()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger_manager.py
+    participant SUT as TriggerManager
+    participant Trigger as Trigger
+
+    Test->>SUT: bind_event(event, callback)
+    SUT->>Trigger: set callback
+    SUT-->>Test: True
+    Test->>Test: assert trigger callback
+```
+
+### 17.5 test_execute_triggers()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger_manager.py
+    participant SUT as TriggerManager
+    participant Trigger as Trigger
+
+    Test->>SUT: execute_triggers(event, row)
     SUT->>Trigger: fire(row)
     Trigger-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
-```
-
-### 15.5 test_skip_unmatched_event()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-
-    Test->>SUT: execute_triggers("UPDATE", row)
-    SUT-->>Test: True
-```
-
-### 15.6 test_abort_on_trigger_failure()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-    participant Trigger as Trigger
-
-    Test->>SUT: execute_triggers("INSERT", row)
-    activate SUT
-    SUT->>Trigger: fire(row)
-    Trigger-->>SUT: raises TriggerError
-    SUT-->>Test: raises TriggerError
-    deactivate SUT
-```
-
-### 15.7 test_reject_duplicate_trigger()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-
-    Test->>SUT: create_trigger("tr1", "INSERT", "users", callback)
-    SUT-->>Test: raises DuplicateTriggerError
-```
-
-### 15.8 test_trigger_manager_can_be_created()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger_manager.py
-    participant SUT as TriggerManager
-
-    Test->>SUT: TriggerManager({})
-    SUT-->>Test: manager
-    Test->>Test: assert triggers is stored and public methods are callable
+    Test->>Test: assert result and Trigger call
 ```
 
 ---
 
-## 16. test_view.py
+## 18. test_view.py
 
-### 16.1 test_view_can_be_created()
+### 18.1 test_view_can_be_created()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_view.py
     participant SUT as View
-    participant QE as QueryExecutorProtocol
+    participant Executor as QueryExecutorProtocol
 
-    Test->>SUT: View("v1", "active_users", "SELECT * FROM users", QE, [])
-    SUT-->>Test: view
-    Test->>Test: assert attributes and dependencies are stored
-    Test->>Test: assert public methods are callable
+    Test->>SUT: View(id, name, query_definition, executor, cached_results)
+    SUT-->>Test: instance
+    Test->>Test: assert constructor state and public methods
 ```
 
-### 16.2 test_create_view()
+### 18.2 test_refresh()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_view.py
     participant SUT as View
-
-    Test->>SUT: create_view()
-    SUT-->>Test: True
-```
-
-### 16.3 test_refresh()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_view.py
-    participant SUT as View
-    participant QE as QueryExecutorProtocol
+    participant Executor as QueryExecutorProtocol
 
     Test->>SUT: refresh()
-    activate SUT
-    SUT->>QE: execute("SELECT * FROM users")
-    QE-->>SUT: updated_data
-    SUT->>SUT: update_cached_results(updated_data)
+    SUT->>Executor: execute(query_definition)
+    Executor-->>SUT: results
+    SUT->>SUT: replace cached_results
     SUT-->>Test: True
-    deactivate SUT
-```
-
----
-
-## 17. test_data_type.py
-
-### 17.1 test_data_type_stores_name_validator_and_converter()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type.py
-    participant SUT as DataType
-
-    Test->>SUT: DataType("INT", validator, converter)
-    SUT-->>Test: data_type
-    Test->>Test: assert stored attributes are injected objects
-```
-
-### 17.2 test_data_type_exposes_validate_method()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type.py
-    participant SUT as DataType
-
-    Test->>SUT: DataType("INT", validator, converter)
-    SUT-->>Test: data_type
-    Test->>Test: assert callable(data_type.validate)
-```
-
-### 17.3 test_data_type_exposes_convert_method()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_data_type.py
-    participant SUT as DataType
-
-    Test->>SUT: DataType("INT", validator, converter)
-    SUT-->>Test: data_type
-    Test->>Test: assert callable(data_type.convert)
-```
-
----
-
-## 18. test_trigger.py
-
-### 18.1 test_trigger_stores_name_event_table_and_callback()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger.py
-    participant SUT as Trigger
-
-    Test->>SUT: Trigger("tr1", "INSERT", "users", callback)
-    SUT-->>Test: trigger
-    Test->>Test: assert stored attributes match constructor arguments
-```
-
-### 18.2 test_trigger_exposes_fire_method()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_trigger.py
-    participant SUT as Trigger
-
-    Test->>SUT: Trigger("tr1", "INSERT", "users", callback)
-    SUT-->>Test: trigger
-    Test->>Test: assert callable(trigger.fire)
+    Test->>Test: assert result, cache and executor call
 ```
 
 ---
@@ -1135,10 +1378,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as MetadataCacheProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(MetadataCacheStub(), MetadataCacheProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(MetadataCacheStub, MetadataCacheProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ### 19.2 test_database_storage_stub_matches_protocol()
@@ -1147,10 +1391,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as DatabaseStorageProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(DatabaseStorageStub(), DatabaseStorageProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(DatabaseStorageStub, DatabaseStorageProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ### 19.3 test_database_backup_stub_matches_protocol()
@@ -1159,10 +1404,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as DatabaseBackupProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(DatabaseBackupStub(), DatabaseBackupProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(DatabaseBackupStub, DatabaseBackupProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ### 19.4 test_storage_allocator_stub_matches_protocol()
@@ -1171,10 +1417,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as StorageAllocatorProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(StorageAllocatorStub(), StorageAllocatorProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(StorageAllocatorStub, StorageAllocatorProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ### 19.5 test_query_executor_stub_matches_protocol()
@@ -1183,10 +1430,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as QueryExecutorProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(QueryExecutorStub(), QueryExecutorProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(QueryExecutorStub, QueryExecutorProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ### 19.6 test_database_factory_stub_matches_protocol()
@@ -1195,10 +1443,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_dependencies.py
-    participant Protocol as DatabaseFactoryProtocol
+    participant SUT as Protocol
 
-    Test->>Protocol: isinstance(DatabaseFactoryStub(), DatabaseFactoryProtocol)
-    Protocol-->>Test: True
+    Test->>SUT: isinstance(DatabaseFactoryStub, DatabaseFactoryProtocol)
+    SUT-->>Test: True
+    Test->>Test: assert structural conformance
 ```
 
 ---
@@ -1211,10 +1460,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_exceptions.py
-    participant Error as DuplicateDatabaseError
+    participant SUT as Exception
 
-    Test->>Error: issubclass(DuplicateDatabaseError, Exception)
-    Error-->>Test: True
+    Test->>SUT: issubclass(DuplicateDatabaseError, Exception)
+    SUT-->>Test: True
+    Test->>Test: assert inheritance
 ```
 
 ### 20.2 test_unknown_database_error_inherits_exception()
@@ -1223,10 +1473,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_exceptions.py
-    participant Error as UnknownDatabaseError
+    participant SUT as Exception
 
-    Test->>Error: issubclass(UnknownDatabaseError, Exception)
-    Error-->>Test: True
+    Test->>SUT: issubclass(UnknownDatabaseError, Exception)
+    SUT-->>Test: True
+    Test->>Test: assert inheritance
 ```
 
 ### 20.3 test_trigger_error_inherits_exception()
@@ -1235,10 +1486,11 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_exceptions.py
-    participant Error as TriggerError
+    participant SUT as Exception
 
-    Test->>Error: issubclass(TriggerError, Exception)
-    Error-->>Test: True
+    Test->>SUT: issubclass(TriggerError, Exception)
+    SUT-->>Test: True
+    Test->>Test: assert inheritance
 ```
 
 ### 20.4 test_duplicate_trigger_error_inherits_exception()
@@ -1247,10 +1499,9 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Test as test_exceptions.py
-    participant Error as DuplicateTriggerError
+    participant SUT as Exception
 
-    Test->>Error: issubclass(DuplicateTriggerError, Exception)
-    Error-->>Test: True
+    Test->>SUT: issubclass(DuplicateTriggerError, Exception)
+    SUT-->>Test: True
+    Test->>Test: assert inheritance
 ```
-
----

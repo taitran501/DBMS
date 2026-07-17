@@ -1,4 +1,6 @@
 from dbms.database_object.constraint import Constraint
+from dbms.database_object.row import Row
+from unittest.mock import Mock
 
 
 def test_constraint_can_be_created():
@@ -13,4 +15,11 @@ def test_constraint_can_be_created():
 
 
 def test_validate_row():
-    pass
+    validation_rule = Mock(return_value=True)
+    constraint = Constraint("c1", "chk_age", "CHECK", validation_rule)
+    row = Row("r1", {"age": 25}, "v1")
+
+    result = constraint.validate_row(row)
+
+    assert result is True
+    validation_rule.assert_called_once_with(row)

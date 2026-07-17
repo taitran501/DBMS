@@ -16,12 +16,26 @@ def test_index_can_be_created():
 
 
 def test_search():
-    pass
+    index = Index("idx1", "users_age", "B-Tree", entries={25: ["r1"]})
+
+    result = index.search(25)
+
+    assert result == ["r1"]
 
 
 def test_insert_key():
-    pass
+    index = Index("idx1", "users_age", "B-Tree", entries={})
+
+    result = index.insert_key(25, "r1")
+
+    assert result is True
+    assert index.entries[25] == ["r1"]
 
 
 def test_delete_key():
-    pass
+    index = Index("idx1", "users_age", "B-Tree", entries={25: ["r1"]})
+
+    result = index.delete_key(25, "r1")
+
+    assert result is True
+    assert 25 not in index.entries

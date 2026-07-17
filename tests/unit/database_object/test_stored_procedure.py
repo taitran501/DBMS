@@ -1,4 +1,5 @@
 from dbms.database_object.stored_procedure import StoredProcedure
+from unittest.mock import Mock
 
 
 def test_stored_procedure_can_be_created():
@@ -13,5 +14,13 @@ def test_stored_procedure_can_be_created():
     assert callable(procedure.execute)
 
 
-def test_execute_stored_procedure():
-    pass
+def test_execute():
+    query_plan = object()
+    query_executor = Mock()
+    query_executor.execute.return_value = [{"total": 100}]
+    procedure = StoredProcedure("p1", "calculate_total", query_plan, query_executor)
+
+    result = procedure.execute()
+
+    assert result == [{"total": 100}]
+    query_executor.execute.assert_called_once_with(query_plan)

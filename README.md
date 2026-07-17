@@ -57,6 +57,10 @@ classDiagram
         +close() bool
         +backup() bool
         +restore() bool
+        +create_schema(schema: Schema) bool
+        +get_schema(name: str) Schema
+        +rename_schema(old_name: str, new_name: str) bool
+        +drop_schema(name: str) bool
     }
 
     class CatalogManager {
@@ -71,8 +75,18 @@ classDiagram
         +name: str
         +owner: str
         +tables: dict
-        +create_table(name: str) Table
+        +views: dict
+        +stored_procedures: dict
+        +create_table(table: Table) bool
+        +get_table(name: str) Table
+        +rename_table(old_name: str, new_name: str) bool
         +drop_table(name: str) bool
+        +create_view(view: View) bool
+        +get_view(name: str) View
+        +drop_view(name: str) bool
+        +create_stored_procedure(procedure: StoredProcedure) bool
+        +get_stored_procedure(name: str) StoredProcedure
+        +drop_stored_procedure(name: str) bool
     }
 
     class Table {
@@ -83,11 +97,24 @@ classDiagram
         +rows: dict
         +constraints: list
         +indexes: list
+        +partitions: list
         +insert(row: Row) bool
         +update(row_id: str, new_values: dict) bool
         +delete(row_id: str) bool
         +truncate() bool
         +check_key_exists(key: object) bool
+        +add_column(column: Column) bool
+        +get_column(name: str) Column
+        +rename_column(old_name: str, new_name: str) bool
+        +drop_column(name: str) bool
+        +add_constraint(constraint: Constraint) bool
+        +drop_constraint(name: str) bool
+        +add_index(index: Index) bool
+        +get_index(name: str) Index
+        +drop_index(name: str) bool
+        +add_partition(partition: Partition) bool
+        +get_partition(name: str) Partition
+        +drop_partition(name: str) bool
     }
 
     class Column {
@@ -149,7 +176,6 @@ classDiagram
         +query_definition: str
         +query_executor: QueryExecutorProtocol
         +cached_results: object
-        +create_view() bool
         +refresh() bool
     }
 
