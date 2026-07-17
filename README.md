@@ -107,6 +107,7 @@ classDiagram
         +reference_table: Table
         +on_delete: str
         +on_update: str
+        +validate_reference() bool
     }
 
     class Index {
@@ -122,12 +123,16 @@ classDiagram
         +partition_id: str
         +name: str
         +range: object
+        +allocate_space() bool
+        +release_space() bool
     }
 
     class View {
         +view_id: str
         +name: str
         +query_definition: str
+        +create_view() bool
+        +refresh() bool
     }
 
     class StoredProcedure {
@@ -153,6 +158,8 @@ classDiagram
     class Page {
         +page_id: int
         +checksum: int
+        +read_tuple() object
+        +write_tuple(tuple: object) bool
     }
 
     class BufferPool {
@@ -196,46 +203,95 @@ classDiagram
     }
 
     class SQLParser {
+        +lexer: Lexer
         +parse(sql: str) object
     }
+
     class Lexer {
+        +input_text: str
         +tokenize() list
     }
+
     class AST {
         +root_node: object
+        +traverse() list
     }
 
     class QueryOptimizer {
+        +rules: list
         +optimize(plan: LogicalPlan) PhysicalPlan
         +estimate_cost(plan: LogicalPlan) float
     }
 
-    class LogicalPlan
-    class PhysicalPlan
+    class LogicalPlan {
+        +operators: list
+        +build() bool
+    }
+
+    class PhysicalPlan {
+        +operators: list
+        +generate() bool
+    }
 
     class QueryExecutor {
+        +execution_plan: PhysicalPlan
         +execute(plan: PhysicalPlan) object
         +fetch() list
     }
 
     class StatisticsManager {
+        +statistics: dict
         +collect() bool
+        +update_histogram() bool
+        +estimate_cardinality() float
     }
+
     class SecurityManager {
+        +users: list
+        +roles: list
         +authenticate() bool
         +authorize() bool
     }
-    class User
-    class Role
-    class Permission
-    class ReplicationManager {
-        +replicate() bool
+
+    class User {
+        +username: str
+        +password_hash: str
+        +verify_password(password: str) bool
     }
-    class ClusterNode
+
+    class Role {
+        +role_name: str
+        +permissions: list
+        +grant(permission: Permission) bool
+        +revoke(permission: Permission) bool
+    }
+
+    class Permission {
+        +resource: str
+        +action: str
+        +matches(other_resource: str, other_action: str) bool
+    }
+
+    class ReplicationManager {
+        +replication_mode: str
+        +replicas: list
+        +replicate() bool
+        +synchronize() bool
+    }
+
+    class ClusterNode {
+        +node_id: str
+        +address: str
+        +ping() bool
+    }
+
     class BackupManager {
+        +backup_jobs: list
         +full_backup() bool
     }
+
     class MonitoringManager {
+        +metrics: dict
         +collect_metrics() object
     }
 
