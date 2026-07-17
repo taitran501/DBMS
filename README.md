@@ -117,6 +117,7 @@ classDiagram
         +unique: bool
         +search(key: object) list
         +insert_key(key: object, rid: str) bool
+        +delete_key(key: object, rid: str) bool
     }
 
     class Partition {
@@ -165,7 +166,9 @@ classDiagram
     class BufferPool {
         +capacity: int
         +pin_page(page_id: int) Page
+        +cache_page(page: Page) bool
         +flush_page(page_id: int) bool
+        +flush_all_pages() bool
     }
 
     class TransactionManager {
@@ -361,6 +364,29 @@ Below is the list of the 40 main core classes designed for this system:
 *   **Logging & Recovery (Durability)**: `WALManager`, `RecoveryManager`, `ReplicationManager`, `ClusterNode`, `BackupManager`
 *   **Security & Access Control**: `SecurityManager`, `User`, `Role`, `Permission`
 *   **Performance & Operations**: `StatisticsManager`, `MonitoringManager`
+
+### 4. Architecture Boundary Rules
+
+*   An **entity** stores its own state and implements behavior local to that object.
+    For example, `Database` owns `open()`, `close()`, `backup()`, and `restore()`.
+*   A **manager** owns a collection or coordinates the lifecycle of multiple objects.
+    For example, `DatabaseManager` owns `create_database()`, `get_database()`,
+    `rename_database()`, and `drop_database()`.
+*   A manager must not repeat the local behavior of its entity. Entity/manager pairs
+    from the previous Database Object architecture were removed when the core entity
+    already owns that responsibility.
+*   Lower-level helpers are retained only when they represent a separate layer, such
+    as `PageManager` managing page allocation while `Page` represents one page.
+
+Supporting classes used by the core architecture:
+
+*   **Database Object**: `DataTypeManager`, `TriggerManager`
+*   **Storage Engine**: `PageManager`, `Record`, `RecordManager`, `StorageAllocator`, `LogFileManager`
+*   **Query Processing**: `QueryProcessor`, `QueryValidator`, `ExecutionPlanner`, `Statement`, `SelectStatement`, `Token`, `TokenType`
+*   **Transactions**: `IsolationManager`, `DeadlockManager`, `TransactionStatus`
+*   **Durability**: `CheckpointManager`, `RestoreManager`, `LogRecord`
+*   **Security & Access Control**: `UserManager`, `RoleManager`, `AuthenticationService`, `AuthorizationService`, `EncryptionService`, `AuditLogger`
+*   **Administration & Operations**: `ConfigurationManager`, `ImportExportManager`, `OperationalLogger`
 
 ---
 
