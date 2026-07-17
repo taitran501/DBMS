@@ -1,477 +1,325 @@
 classDiagram
-direction TB
-    class DBMS {
-	    +database_object_manager: DatabaseObjectManager
-	    +storage_engine: StorageEngine
-	    +security_controller: SecurityAccessController
-	    +query_processor: QueryProcessor
-	    +transaction_manager: TransactionConcurrencyManager
-	    +recovery_manager: RecoveryManager
-	    +performance_manager: PerformanceManager
-	    +admin_manager: AdministrationLoggingManager
-	    +start()
-	    +shutdown()
-	    +execute(sql: str, session: Session)
-    }
+    direction TB
 
-    class DatabaseObjectManager {
-	    +database_manager: DatabaseManager
-	    +schema_manager: SchemaManager
-	    +table_manager: TableManager
-	    +view_manager: ViewManager
-	    +relationship_manager: RelationshipManager
-	    +column_manager: ColumnManager
-	    +constraint_manager: ConstraintManager
-	    +data_type_manager: DataTypeManager
-	    +index_manager: IndexManager
+    class DatabaseServer {
+        +server_id: str
+        +version: str
+        +status: str
+        +start() bool
+        +stop() bool
+        +restart() bool
     }
 
     class DatabaseManager {
-	    +create_database(name: str)
-	    +drop_database(name: str)
-	    +get_database(name: str)
-    }
-
-    class SchemaManager {
-	    +create_schema(database_name: str, schema_name: str)
-	    +drop_schema(schema_name: str)
-	    +get_schema(schema_name: str)
-    }
-
-    class TableManager {
-	    +create_table(schema_name: str, table_name: str)
-	    +drop_table(table_name: str)
-	    +get_table(table_name: str)
-    }
-
-    class ViewManager {
-	    +create_view(name: str, query: str)
-	    +drop_view(name: str)
-	    +get_view(name: str)
-    }
-
-    class RelationshipManager {
-	    +create_relationship(rel: Relationship)
-	    +drop_relationship(name: str)
-	    +validate_relationship(rel: Relationship)
-    }
-
-    class ColumnManager {
-	    +add_column(table_name: str, column: Column)
-	    +drop_column(table_name: str, column_name: str)
-	    +get_column(table_name: str, column_name: str)
-    }
-
-    class ConstraintManager {
-	    +add_constraint(table_name: str, constraint: Constraint)
-	    +validate_constraints(record: Record)
-    }
-
-    class DataTypeManager {
-	    +register_type(data_type: DataType)
-	    +validate_value(data_type: DataType, value)
-    }
-
-    class IndexManager {
-	    +create_index(index: Index)
-	    +drop_index(name: str)
-	    +get_index(name: str)
+        +databases: dict
+        +create_database(name: str) Database
+        +get_database(name: str) Database
+        +drop_database(name: str) bool
+        +rename_database(old_name: str, new_name: str) bool
     }
 
     class Database {
-	    +name: str
+        +database_id: str
+        +name: str
+        +owner: str
+        +status: str
+        +page_size: int
+        +encoding: str
+        +storage_location: str
+        +default_schema: str
+        +open() bool
+        +close() bool
+        +backup() bool
+        +restore() bool
+    }
+
+    class CatalogManager {
+        +metadata_cache: object
+        +register_object(name: str, desc: object) bool
+        +remove_object(name: str) bool
+        +lookup_object(name: str) object
     }
 
     class Schema {
-	    +name: str
+        +schema_id: str
+        +name: str
+        +owner: str
+        +create_table(name: str) Table
+        +drop_table(name: str) bool
     }
 
     class Table {
-	    +name: str
-    }
-
-    class View {
-	    +name: str
-	    +query: str
-    }
-
-    class Relationship {
-	    +name: str
-	    +source_table: str
-	    +target_table: str
-	    +relationship_type: str
+        +table_id: str
+        +name: str
+        +columns: list
+        +row_count: int
+        +insert(row: Row) bool
+        +update(row_id: str, new_values: dict) bool
+        +delete(row_id: str) bool
+        +truncate() bool
     }
 
     class Column {
-	    +name: str
-	    +nullable: bool
-	    +default_value: str
+        +column_id: str
+        +name: str
+        +data_type: object
+        +nullable: bool
+        +validate(value: object) bool
+    }
+
+    class Row {
+        +row_id: str
+        +values: list
+        +version: str
+        +read() list
+        +update(new_values: list) bool
     }
 
     class Constraint {
-	    +name: str
-	    +constraint_type: str
-	    +rule: str
+        +constraint_id: str
+        +name: str
+        +constraint_type: str
+        +validate_row(row: Row) bool
     }
 
-    class DataType {
-	    +name: str
+    class ForeignKey {
+        +reference_table: Table
+        +on_delete: str
+        +on_update: str
+        +validate_reference() bool
     }
 
     class Index {
-	    +name: str
-	    +index_type: str
-	    +unique: bool
+        +index_id: str
+        +name: str
+        +type: str
+        +unique: bool
+        +search(key: object) list
+        +insert_key(key: object, rid: str) bool
+    }
+
+    class Partition {
+        +partition_id: str
+        +name: str
+        +range: object
+        +allocate_space() bool
+        +release_space() bool
+    }
+
+    class View {
+        +view_id: str
+        +name: str
+        +query_definition: str
+        +create_view() bool
+        +refresh() bool
+    }
+
+    class StoredProcedure {
+        +procedure_id: str
+        +name: str
+        +execute() object
     }
 
     class StorageEngine {
-	    +data_file_manager: DataFileManager
-	    +page_manager: PageManager
-	    +buffer_pool: BufferPool
-	    +storage_allocator: StorageAllocator
-	    +record_manager: RecordManager
+        +page_size: int
+        +initialize() bool
+        +read_page(page_id: int) Page
+        +write_page(page: Page) bool
     }
 
-    class DataFileManager {
-	    +create_file(path: str)
-	    +read_file(path: str)
-	    +write_file(path: str, data)
-    }
-
-    class PageManager {
-	    +allocate_page()
-	    +read_page(page_id: int)
-	    +write_page(page: Page)
-    }
-
-    class BufferPool {
-	    +get_page(page_id: int)
-	    +pin_page(page_id: int)
-	    +unpin_page(page_id: int)
-	    +flush()
-    }
-
-    class StorageAllocator {
-	    +allocate()
-	    +deallocate(location: StorageLocation)
-    }
-
-    class RecordManager {
-	    +insert_record(table_name: str, record: Record)
-	    +update_record(record_id: int, values: dict)
-	    +delete_record(record_id: int)
-	    +read_record(record_id: int)
-    }
-
-    class DataFile {
-	    +path: str
+    class FileManager {
+        +root_path: str
+        +create_file(path: str) bool
+        +read(file: object) bytes
+        +write(file: object, data: bytes) bool
     }
 
     class Page {
-	    +page_id: int
-	    +is_dirty: bool
+        +page_id: int
+        +checksum: int
+        +read_tuple() object
+        +write_tuple(tuple: object) bool
     }
 
-    class Record {
-	    +record_id: int
-	    +values: dict
+    class BufferPool {
+        +capacity: int
+        +pin_page(page_id: int) Page
+        +flush_page(page_id: int) bool
     }
 
-    class StorageLocation {
-	    +file_id: int
-	    +page_id: int
-	    +slot_id: int
-    }
-
-    class SecurityAccessController {
-	    +user_manager: UserManager
-	    +authentication_service: AuthenticationService
-	    +authorization_service: AuthorizationService
-	    +credential_manager: CredentialManager
-	    +session_manager: SessionManager
-    }
-
-    class UserManager {
-	    +create_user(username: str)
-	    +delete_user(username: str)
-	    +get_user(username: str)
-    }
-
-    class AuthenticationService {
-	    +authenticate(username: str, password: str)
-    }
-
-    class AuthorizationService {
-	    +authorize(user: User, action: str, resource: str)
-    }
-
-    class CredentialManager {
-	    +store_credential(credential: Credential)
-	    +verify_credential(username: str, password: str)
-    }
-
-    class SessionManager {
-	    +create_session(user: User)
-	    +destroy_session(session_id: str)
-	    +get_session(session_id: str)
-    }
-
-    class User {
-	    +username: str
-    }
-
-    class Credential {
-	    +username: str
-	    +password_hash: str
-    }
-
-    class Session {
-	    +session_id: str
-	    +created_at: str
-    }
-
-    class QueryProcessor {
-	    +sql_parser: SQLParser
-	    +query_optimizer: QueryOptimizer
-	    +query_executor: QueryExecutor
-	    +execution_planner: ExecutionPlanner
-	    +query_validator: QueryValidator
-	    +process(sql: str, session: Session)
-    }
-
-    class SQLParser {
-	    +parse(sql: str) : SQLStatement
-    }
-
-    class QueryOptimizer {
-	    +optimize(plan: ExecutionPlan) : ExecutionPlan
-    }
-
-    class QueryExecutor {
-	    +execute(plan: ExecutionPlan, context: ExecutionContext)
-    }
-
-    class ExecutionPlanner {
-	    +build_plan(statement: SQLStatement) : ExecutionPlan
-    }
-
-    class QueryValidator {
-	    +validate(statement: SQLStatement)
-    }
-
-    class SQLStatement {
-	    +raw_sql: str
-	    +statement_type: str
-    }
-
-    class ExecutionPlan {
-	    +steps: list
-    }
-
-    class ExecutionContext {
-	    +session: Session
-	    +database: Database
-    }
-
-    class TransactionConcurrencyManager {
-	    +transaction_state_manager: TransactionStateManager
-	    +lock_manager: LockManager
-	    +isolation_manager: IsolationManager
-	    +deadlock_manager: DeadlockManager
-	    +acid_manager: ACIDManager
-	    +begin()
-	    +commit(tx: Transaction)
-	    +rollback(tx: Transaction)
-    }
-
-    class TransactionStateManager {
-	    +set_state(tx: Transaction, state: str)
-    }
-
-    class LockManager {
-	    +acquire_lock(resource: str, mode: str, tx: Transaction)
-	    +release_lock(resource: str, tx: Transaction)
-    }
-
-    class IsolationManager {
-	    +set_isolation_level(tx: Transaction, level: str)
-    }
-
-    class DeadlockManager {
-	    +detect_deadlock()
-	    +resolve_deadlock()
-    }
-
-    class ACIDManager {
-	    +ensure_atomicity()
-	    +ensure_consistency()
-	    +ensure_isolation()
-	    +ensure_durability()
+    class TransactionManager {
+        +begin_transaction() Transaction
+        +commit(tx: Transaction) bool
+        +rollback(tx: Transaction) bool
     }
 
     class Transaction {
-	    +transaction_id: str
-	    +state: str
-	    +isolation_level: str
+        +transaction_id: str
+        +isolation_level: str
+        +state: str
     }
 
-    class Lock {
-	    +resource: str
-	    +mode: str
+    class LockManager {
+        +acquire_lock(tx: Transaction, resource: str, mode: str) bool
+        +release_lock(tx: Transaction, resource: str) bool
+    }
+
+    class MVCCManager {
+        +create_snapshot() object
+        +read_visible_version(row: Row, tx: Transaction) Row
+    }
+
+    class WALManager {
+        +current_lsn: int
+        +append(record: object) bool
+        +flush() bool
     }
 
     class RecoveryManager {
-	    +backup_manager: BackupManager
-	    +restore_manager: RestoreManager
-	    +transaction_log_manager: TransactionLogManager
-	    +checkpoint_manager: CheckpointManager
-	    +recovery_service: RecoveryService
-	    +replication_manager: ReplicationManager
+        +recover() bool
+        +redo() bool
+        +undo() bool
     }
 
-    class BackupManager {
-	    +create_backup()
-	    +list_backups()
+    class SQLParser {
+        +lexer: Lexer
+        +parse(sql: str) object
     }
 
-    class RestoreManager {
-	    +restore(backup_id: str)
+    class Lexer {
+        +input_text: str
+        +tokenize() list
     }
 
-    class TransactionLogManager {
-	    +append(entry: LogEntry)
-	    +read_logs()
+    class AST {
+        +root_node: object
+        +traverse() list
     }
 
-    class CheckpointManager {
-	    +create_checkpoint()
+    class QueryOptimizer {
+        +rules: list
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
     }
 
-    class RecoveryService {
-	    +redo()
-	    +undo()
-	    +recover()
+    class LogicalPlan {
+        +operators: list
+        +build() bool
+    }
+
+    class PhysicalPlan {
+        +operators: list
+        +generate() bool
+    }
+
+    class QueryExecutor {
+        +execution_plan: PhysicalPlan
+        +execute(plan: PhysicalPlan) object
+        +fetch() list
+    }
+
+    class StatisticsManager {
+        +statistics: dict
+        +collect() bool
+        +update_histogram() bool
+        +estimate_cardinality() float
+    }
+
+    class SecurityManager {
+        +users: list
+        +roles: list
+        +authenticate() bool
+        +authorize() bool
+    }
+
+    class User {
+        +username: str
+        +password_hash: str
+        +verify_password(password: str) bool
+    }
+
+    class Role {
+        +role_name: str
+        +permissions: list
+        +grant(permission: Permission) bool
+        +revoke(permission: Permission) bool
+    }
+
+    class Permission {
+        +resource: str
+        +action: str
+        +matches(other_resource: str, other_action: str) bool
     }
 
     class ReplicationManager {
-	    +replicate()
-	    +sync_replica()
+        +replication_mode: str
+        +replicas: list
+        +replicate() bool
+        +synchronize() bool
     }
 
-    class Backup {
-	    +backup_id: str
-	    +location: str
+    class ClusterNode {
+        +node_id: str
+        +address: str
+        +ping() bool
     }
 
-    class TransactionLog {
-	    +entries: list
+    class BackupManager {
+        +backup_jobs: list
+        +full_backup() bool
     }
 
-    class LogEntry {
-	    +transaction_id: str
-	    +operation: str
-	    +before_image: str
-	    +after_image: str
+    class MonitoringManager {
+        +metrics: dict
+        +collect_metrics() object
     }
 
-    class Checkpoint {
-	    +checkpoint_id: str
-	    +timestamp: str
-    }
+    %% Relationships
+    DatabaseServer *-- DatabaseManager
+    DatabaseServer *-- TransactionManager
+    DatabaseServer *-- StorageEngine
+    DatabaseServer *-- CatalogManager
+    DatabaseServer *-- SecurityManager
+    DatabaseServer *-- SQLParser
+    DatabaseServer *-- QueryOptimizer
+    DatabaseServer *-- QueryExecutor
+    DatabaseServer *-- RecoveryManager
+    DatabaseServer *-- ReplicationManager
+    DatabaseServer *-- BackupManager
+    DatabaseServer *-- StatisticsManager
+    DatabaseServer *-- MonitoringManager
 
-    class PerformanceManager {
-	    +optimize_index_strategy()
-	    +optimize_query_performance()
-	    +optimize_memory_storage()
-	    +manage_data_distribution()
-    }
-
-    class AdministrationLoggingManager {
-	    +manage_backup_strategy()
-	    +monitor()
-	    +import_data()
-	    +export_data()
-	    +update_configuration()
-    }
-
-    DBMS *-- DatabaseObjectManager
-    DatabaseObjectManager *-- DatabaseManager
-    DatabaseObjectManager *-- SchemaManager
-    DatabaseObjectManager *-- TableManager
-    DatabaseObjectManager *-- ViewManager
-    DatabaseObjectManager *-- RelationshipManager
-    DatabaseObjectManager *-- ColumnManager
-    DatabaseObjectManager *-- ConstraintManager
-    DatabaseObjectManager *-- DataTypeManager
-    DatabaseObjectManager *-- IndexManager
-    DatabaseManager --> Database
-    SchemaManager --> Schema
-    TableManager --> Table
-    ViewManager --> View
-    RelationshipManager --> Relationship
-    ColumnManager --> Column
-    ConstraintManager --> Constraint
-    DataTypeManager --> DataType
-    IndexManager --> Index
+    DatabaseManager o-- Database
     Database *-- Schema
     Schema *-- Table
+    Schema *-- View
+    Schema *-- StoredProcedure
     Table *-- Column
     Table *-- Constraint
     Table *-- Index
-    DBMS *-- StorageEngine
-    StorageEngine *-- DataFileManager
-    StorageEngine *-- PageManager
+    Table *-- Partition
+    ForeignKey --|> Constraint
+    ForeignKey --> Table
+
     StorageEngine *-- BufferPool
-    StorageEngine *-- StorageAllocator
-    StorageEngine *-- RecordManager
-    DataFileManager --> DataFile
-    PageManager --> Page
-    RecordManager --> Record
-    Record --> StorageLocation
-    Page *-- Record
-    DataFile *-- Page
-    DBMS *-- SecurityAccessController
-    SecurityAccessController *-- UserManager
-    SecurityAccessController *-- AuthenticationService
-    SecurityAccessController *-- AuthorizationService
-    SecurityAccessController *-- CredentialManager
-    SecurityAccessController *-- SessionManager
-    UserManager --> User
-    CredentialManager --> Credential
-    SessionManager --> Session
-    Session --> User
-    DBMS *-- QueryProcessor
-    QueryProcessor *-- SQLParser
-    QueryProcessor *-- QueryOptimizer
-    QueryProcessor *-- QueryExecutor
-    QueryProcessor *-- ExecutionPlanner
-    QueryProcessor *-- QueryValidator
-    SQLParser --> SQLStatement
-    ExecutionPlanner --> ExecutionPlan
-    QueryValidator --> SQLStatement
-    QueryExecutor --> ExecutionPlan
-    QueryExecutor --> ExecutionContext
-    QueryProcessor ..> DatabaseObjectManager
-    QueryProcessor ..> StorageEngine
-    DBMS *-- TransactionConcurrencyManager
-    TransactionConcurrencyManager *-- TransactionStateManager
-    TransactionConcurrencyManager *-- LockManager
-    TransactionConcurrencyManager *-- IsolationManager
-    TransactionConcurrencyManager *-- DeadlockManager
-    TransactionConcurrencyManager *-- ACIDManager
-    TransactionConcurrencyManager --> Transaction
-    LockManager --> Lock
-    Lock --> Transaction
-    DBMS *-- RecoveryManager
-    RecoveryManager *-- BackupManager
-    RecoveryManager *-- RestoreManager
-    RecoveryManager *-- TransactionLogManager
-    RecoveryManager *-- CheckpointManager
-    RecoveryManager *-- RecoveryService
-    RecoveryManager *-- ReplicationManager
-    BackupManager --> Backup
-    TransactionLogManager --> TransactionLog
-    TransactionLog *-- LogEntry
-    CheckpointManager --> Checkpoint
-    DBMS *-- PerformanceManager
-    DBMS *-- AdministrationLoggingManager
+    StorageEngine *-- FileManager
+    BufferPool o-- Page
+    
+    TransactionManager *-- LockManager
+    TransactionManager *-- MVCCManager
+    TransactionManager *-- WALManager
+    TransactionManager o-- Transaction
+    WALManager <-- RecoveryManager
+
+    SQLParser --> Lexer
+    SQLParser --> AST
+    AST --> LogicalPlan
+    QueryOptimizer --> LogicalPlan
+    QueryOptimizer --> PhysicalPlan
+    QueryExecutor --> PhysicalPlan
+
+    SecurityManager o-- User
+    SecurityManager o-- Role
+    Role o-- Permission
+
+    ReplicationManager o-- ClusterNode

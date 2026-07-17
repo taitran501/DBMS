@@ -301,6 +301,14 @@ classDiagram
     DatabaseServer *-- StorageEngine
     DatabaseServer *-- CatalogManager
     DatabaseServer *-- SecurityManager
+    DatabaseServer *-- SQLParser
+    DatabaseServer *-- QueryOptimizer
+    DatabaseServer *-- QueryExecutor
+    DatabaseServer *-- RecoveryManager
+    DatabaseServer *-- ReplicationManager
+    DatabaseServer *-- BackupManager
+    DatabaseServer *-- StatisticsManager
+    DatabaseServer *-- MonitoringManager
 
     DatabaseManager o-- Database
     Database *-- Schema
@@ -330,6 +338,12 @@ classDiagram
     QueryOptimizer --> LogicalPlan
     QueryOptimizer --> PhysicalPlan
     QueryExecutor --> PhysicalPlan
+
+    SecurityManager o-- User
+    SecurityManager o-- Role
+    Role o-- Permission
+
+    ReplicationManager o-- ClusterNode
 ```
 
 ---
