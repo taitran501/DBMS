@@ -1,2 +1,0 @@
-class TableManager:
-    pass

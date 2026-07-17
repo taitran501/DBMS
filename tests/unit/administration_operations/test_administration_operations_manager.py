@@ -1,5 +1,0 @@
-from dbms.administration_operations.administration_operations_manager import AdministrationOperationsManager
-
-
-def test_administration_operations_manager_can_be_created():
-    assert isinstance(AdministrationOperationsManager(), AdministrationOperationsManager)

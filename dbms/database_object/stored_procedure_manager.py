@@ -1,2 +1,0 @@
-class StoredProcedureManager:
-    pass
