@@ -8,3 +8,10 @@ class Page:
 
     def write(self, data: bytes) -> bool:
         return True
+
+    def read_tuple(self) -> object:
+        return None
+
+    def write_tuple(self, tuple: object) -> bool:
+        return True
+

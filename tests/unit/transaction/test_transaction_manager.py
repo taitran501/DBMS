@@ -2,6 +2,10 @@ from dbms.transaction.transaction_manager import TransactionManager
 from dbms.transaction.transaction import Transaction
 from dbms.transaction.transaction_status import TransactionStatus
 
+
+def test_transaction_manager_can_be_created():
+    pass
+
 def test_begin_transaction():
     pass
 

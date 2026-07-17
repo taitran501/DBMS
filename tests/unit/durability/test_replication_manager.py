@@ -1,5 +1,13 @@
 from dbms.durability.replication_manager import ReplicationManager
 
+
+def test_replicate():
+    pass
+
+
+def test_synchronize():
+    pass
+
 def test_ship_log_record():
     pass
 

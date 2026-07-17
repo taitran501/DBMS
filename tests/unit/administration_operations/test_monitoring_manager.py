@@ -1,5 +1,9 @@
 from dbms.administration_operations.monitoring_manager import MonitoringManager
 
+
+def test_collect_metrics():
+    pass
+
 def test_get_system_health():
     pass
 

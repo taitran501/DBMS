@@ -1,5 +1,9 @@
 from dbms.query_processing.query_optimizer import QueryOptimizer
 
+
+def test_optimize():
+    pass
+
 def test_estimate_cost():
     pass
 

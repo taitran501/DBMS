@@ -1,5 +1,13 @@
 from dbms.query_processing.query_executor import QueryExecutor
 
+
+def test_execute():
+    pass
+
+
+def test_fetch():
+    pass
+
 def test_execute_select():
     pass
 

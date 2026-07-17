@@ -1,5 +1,9 @@
 from dbms.query_processing.sql_parser import SqlParser
 
+
+def test_parse():
+    pass
+
 def test_parse_select():
     pass
 

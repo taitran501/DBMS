@@ -1,5 +1,13 @@
 from dbms.storage_engine.buffer_pool import BufferPool
 
+
+def test_buffer_pool_can_be_created():
+    pass
+
+
+def test_pin_page():
+    pass
+
 def test_cache_page():
     pass
 

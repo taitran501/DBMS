@@ -1,5 +1,9 @@
 from dbms.query_processing.lexer import Lexer
 
+
+def test_tokenize():
+    pass
+
 def test_tokenize_keyword():
     pass
 

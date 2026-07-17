@@ -1,5 +1,9 @@
 from dbms.durability.backup_manager import BackupManager
 
+
+def test_full_backup():
+    pass
+
 def test_create_full_backup():
     pass
 

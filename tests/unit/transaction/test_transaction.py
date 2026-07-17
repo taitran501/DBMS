@@ -1,6 +1,14 @@
 from dbms.transaction.transaction import Transaction
 from dbms.transaction.transaction_status import TransactionStatus
 
+
+def test_commit():
+    pass
+
+
+def test_rollback():
+    pass
+
 def test_commit_changes():
     pass
 

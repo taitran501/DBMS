@@ -1,5 +1,9 @@
 from dbms.transaction.lock_manager import LockManager
 
+
+def test_acquire_lock():
+    pass
+
 def test_acquire_shared_lock():
     pass
 
