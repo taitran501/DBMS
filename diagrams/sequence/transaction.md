@@ -14,10 +14,10 @@ sequenceDiagram
     participant Test as test_deadlock_manager.py
     participant SUT as DeadlockManager
 
-    Test->>SUT: build_wait_graph(active_locks)
+    Test->>SUT: build_wait_graph(holders_and_waiters)
     activate SUT
-    SUT->>SUT: add_nodes_and_dependency_edges()
-    SUT-->>Test: wait_graph
+    SUT-->>Test: waiting_tx -> holder_tx
+    Test->>Test: assert wait relationship
     deactivate SUT
 ```
 
@@ -29,10 +29,10 @@ sequenceDiagram
     participant Test as test_deadlock_manager.py
     participant SUT as DeadlockManager
 
-    Test->>SUT: detect_cycle(wait_graph)
+    Test->>SUT: detect_cycle(tx1 -> tx2 -> tx1)
     activate SUT
-    SUT->>SUT: run_dfs_cycle_detection()
     SUT-->>Test: True
+    Test->>Test: assert cycle detected
     deactivate SUT
 ```
 
@@ -44,10 +44,10 @@ sequenceDiagram
     participant Test as test_deadlock_manager.py
     participant SUT as DeadlockManager
 
-    Test->>SUT: select_victim(cycle)
+    Test->>SUT: select_victim(older_tx, younger_tx)
     activate SUT
-    SUT->>SUT: compare_transaction_priorities()
-    SUT-->>Test: victim_tx
+    SUT-->>Test: younger_tx
+    Test->>Test: assert youngest transaction selected
     deactivate SUT
 ```
 
@@ -79,7 +79,7 @@ sequenceDiagram
 
     Test->>SUT: release_victim_locks(victim_tx)
     activate SUT
-    SUT->>LockManager: release_all(victim_tx)
+    SUT->>LockManager: release_all_locks(victim_tx)
     LockManager-->>SUT: True
     SUT-->>Test: True
     deactivate SUT
@@ -110,7 +110,7 @@ sequenceDiagram
     participant Test as test_deadlock_manager.py
     participant SUT as DeadlockManager
 
-    Test->>SUT: DeadlockManager()
+    Test->>SUT: DeadlockManager(lock_manager, transaction_manager)
     SUT-->>Test: manager
     Test->>Test: assert isinstance(manager, DeadlockManager)
 ```
@@ -129,8 +129,8 @@ sequenceDiagram
 
     Test->>SUT: enforce_read_committed(tx, row)
     activate SUT
-    SUT->>SUT: check_committed_version(row)
-    SUT-->>Test: visible_row
+    SUT-->>Test: "committed"
+    Test->>Test: assert result == "committed"
     deactivate SUT
 ```
 
@@ -144,8 +144,8 @@ sequenceDiagram
 
     Test->>SUT: enforce_repeatable_read(tx, row)
     activate SUT
-    SUT->>SUT: check_snapshot_version(tx, row)
-    SUT-->>Test: visible_row
+    SUT-->>Test: "initial"
+    Test->>Test: assert result == "initial"
     deactivate SUT
 ```
 
@@ -176,8 +176,8 @@ sequenceDiagram
 
     Test->>SUT: enforce_snapshot_isolation(tx, row)
     activate SUT
-    SUT->>SUT: check_tx_snapshot(tx, row)
-    SUT-->>Test: visible_row
+    SUT-->>Test: "snapshot"
+    Test->>Test: assert result == "snapshot"
     deactivate SUT
 ```
 
@@ -191,8 +191,8 @@ sequenceDiagram
 
     Test->>SUT: read_value(tx, uncommitted_row)
     activate SUT
-    SUT->>SUT: filter_uncommitted()
     SUT-->>Test: None
+    Test->>Test: assert uncommitted value is hidden
     deactivate SUT
 ```
 
@@ -206,8 +206,8 @@ sequenceDiagram
 
     Test->>SUT: read_value(tx, modified_row)
     activate SUT
-    SUT->>SUT: retrieve_initial_version(tx)
-    SUT-->>Test: initial_row
+    SUT-->>Test: "initial"
+    Test->>Test: assert initial value retained
     deactivate SUT
 ```
 
@@ -221,8 +221,8 @@ sequenceDiagram
 
     Test->>SUT: range_query(tx, range)
     activate SUT
-    SUT->>SUT: filter_newly_inserted_rows(tx)
-    SUT-->>Test: initial_range_rows
+    SUT-->>Test: ["row1"]
+    Test->>Test: assert post-snapshot rows excluded
     deactivate SUT
 ```
 
@@ -234,7 +234,7 @@ sequenceDiagram
     participant Test as test_isolation_manager.py
     participant SUT as IsolationManager
 
-    Test->>SUT: IsolationManager()
+    Test->>SUT: IsolationManager(lock_manager)
     SUT-->>Test: manager
     Test->>Test: assert isinstance(manager, IsolationManager)
 ```
@@ -253,7 +253,6 @@ sequenceDiagram
 
     Test->>SUT: acquire_lock(tx, "row1", "SHARED")
     activate SUT
-    SUT->>SUT: check_compatibility("row1", "SHARED")
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -292,7 +291,6 @@ sequenceDiagram
 
     Test->>SUT: upgrade_lock(tx, "row1", "EXCLUSIVE")
     activate SUT
-    SUT->>SUT: check_sole_holder(tx, "row1")
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -307,7 +305,6 @@ sequenceDiagram
 
     Test->>SUT: downgrade_lock(tx, "row1", "SHARED")
     activate SUT
-    SUT->>SUT: set_lock_mode("row1", "SHARED")
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -322,8 +319,6 @@ sequenceDiagram
 
     Test->>SUT: release_lock(tx, "row1")
     activate SUT
-    SUT->>SUT: remove_holder(tx, "row1")
-    SUT->>SUT: notify_waiters("row1")
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -337,11 +332,12 @@ sequenceDiagram
     participant SUT as LockManager
     participant DeadlockManager as DeadlockManager
 
-    Test->>SUT: acquire_lock(tx1, "row2", "EXCLUSIVE")
+    Test->>SUT: acquire_lock(holder_tx, "orders:42", "EXCLUSIVE")
+    Test->>SUT: acquire_lock(waiting_tx, "orders:42", "EXCLUSIVE")
     activate SUT
     SUT->>DeadlockManager: detect_cycle(wait_graph)
     DeadlockManager-->>SUT: True
-    SUT-->>Test: raises DeadlockException
+    SUT-->>Test: raises DeadlockError
     deactivate SUT
 ```
 
@@ -353,10 +349,10 @@ sequenceDiagram
     participant Test as test_lock_manager.py
     participant SUT as LockManager
 
-    Test->>SUT: acquire_lock(tx, "row1", "EXCLUSIVE", timeout=1)
+    Test->>SUT: acquire_lock(holder_tx, "orders:42", "EXCLUSIVE")
+    Test->>SUT: acquire_lock(waiting_tx, "orders:42", "EXCLUSIVE", timeout=1)
     activate SUT
-    SUT->>SUT: wait_for_lock("row1", timeout=1)
-    SUT-->>Test: raises LockTimeoutException
+    SUT-->>Test: raises LockTimeoutError
     deactivate SUT
 ```
 
@@ -370,8 +366,6 @@ sequenceDiagram
 
     Test->>SUT: release_all_locks(tx)
     activate SUT
-    SUT->>SUT: find_all_locks_held_by(tx)
-    SUT->>SUT: release_each_lock()
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -384,7 +378,7 @@ sequenceDiagram
     participant Test as test_lock_manager.py
     participant SUT as LockManager
 
-    Test->>SUT: LockManager()
+    Test->>SUT: LockManager(deadlock_detector)
     SUT-->>Test: manager
     Test->>Test: assert isinstance(manager, LockManager)
 ```
@@ -416,9 +410,9 @@ sequenceDiagram
 
     Test->>SUT: MVCCManager({"row1": []})
     SUT-->>Test: mvcc
-    Test->>SUT: mvcc.create_snapshot()
-    SUT-->>Test: None
-    Test->>Test: assert result is None
+    Test->>SUT: mvcc.create_snapshot(transaction_id=1)
+    SUT-->>Test: snapshot
+    Test->>Test: assert snapshot content
 ```
 
 ### 4.3 test_read_visible_version()
@@ -431,9 +425,9 @@ sequenceDiagram
 
     Test->>SUT: MVCCManager({"row1": []})
     SUT-->>Test: mvcc
-    Test->>SUT: mvcc.read_visible_version(row, tx)
-    SUT-->>Test: row
-    Test->>Test: assert result is row
+    Test->>SUT: mvcc.read_visible_version("row1", transaction_id=1)
+    SUT-->>Test: visible_version
+    Test->>Test: assert result == "old"
 ```
 
 ---
@@ -450,8 +444,8 @@ sequenceDiagram
 
     Test->>SUT: create_savepoint("sp1")
     activate SUT
-    SUT->>SUT: savepoints.append("sp1")
     SUT-->>Test: True
+    Test->>Test: assert "sp1" in savepoints
     deactivate SUT
 ```
 
@@ -465,8 +459,8 @@ sequenceDiagram
 
     Test->>SUT: release_savepoint("sp1")
     activate SUT
-    SUT->>SUT: savepoints.remove("sp1")
     SUT-->>Test: True
+    Test->>Test: assert "sp1" not in savepoints
     deactivate SUT
 ```
 
@@ -480,8 +474,8 @@ sequenceDiagram
 
     Test->>SUT: set_isolation_level("SERIALIZABLE")
     activate SUT
-    SUT->>SUT: set_level("SERIALIZABLE")
     SUT-->>Test: True
+    Test->>Test: assert isolation_level == "SERIALIZABLE"
     deactivate SUT
 ```
 
@@ -495,8 +489,8 @@ sequenceDiagram
 
     Test->>SUT: change_state(TransactionStatus.COMMITTED)
     activate SUT
-    SUT->>SUT: set_status(TransactionStatus.COMMITTED)
     SUT-->>Test: True
+    Test->>Test: assert status == COMMITTED
     deactivate SUT
 ```
 
@@ -526,7 +520,7 @@ sequenceDiagram
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
 
-    Test->>SUT: TransactionManager()
+    Test->>SUT: TransactionManager(lock_manager, recovery_log)
     SUT-->>Test: manager
 ```
 
@@ -537,14 +531,11 @@ sequenceDiagram
     autonumber
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
-    participant TX as Transaction
 
     Test->>SUT: begin_transaction()
     activate SUT
-    SUT->>TX: Instantiate(new_id, ACTIVE)
-    TX-->>SUT: tx
-    SUT->>SUT: active_transactions[tx.id] = tx
     SUT-->>Test: tx
+    Test->>Test: assert active transaction state
     deactivate SUT
 ```
 
@@ -555,15 +546,13 @@ sequenceDiagram
     autonumber
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
-    participant TX as Transaction
     participant LockManager as LockManager
 
     Test->>SUT: commit(tx)
     activate SUT
-    SUT->>TX: change_state(COMMITTED)
     SUT->>LockManager: release_all_locks(tx)
-    SUT->>SUT: remove_from_active(tx)
     SUT-->>Test: True
+    Test->>Test: assert status == COMMITTED
     deactivate SUT
 ```
 
@@ -574,15 +563,13 @@ sequenceDiagram
     autonumber
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
-    participant TX as Transaction
     participant LockManager as LockManager
 
     Test->>SUT: rollback(tx)
     activate SUT
-    SUT->>TX: change_state(ROLLED_BACK)
     SUT->>LockManager: release_all_locks(tx)
-    SUT->>SUT: remove_from_active(tx)
     SUT-->>Test: True
+    Test->>Test: assert status == ROLLED_BACK
     deactivate SUT
 ```
 
@@ -609,13 +596,11 @@ sequenceDiagram
     autonumber
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
-    participant TX as Transaction
 
     Test->>SUT: begin_nested_transaction(parent_tx)
     activate SUT
-    SUT->>TX: Instantiate_nested(new_id, parent_tx)
-    TX-->>SUT: nested_tx
     SUT-->>Test: nested_tx
+    Test->>Test: assert parent relationship and active status
     deactivate SUT
 ```
 
@@ -629,7 +614,6 @@ sequenceDiagram
 
     Test->>SUT: prepare_distributed(tx)
     activate SUT
-    SUT->>SUT: run_two_phase_commit_prepare(tx)
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -641,14 +625,11 @@ sequenceDiagram
     autonumber
     participant Test as test_transaction_manager.py
     participant SUT as TransactionManager
-    participant TX as Transaction
 
     Test->>SUT: begin_transaction(timeout=2)
     activate SUT
-    SUT->>TX: Instantiate(new_id, ACTIVE)
-    TX-->>SUT: tx
-    SUT->>SUT: schedule_timeout_check(tx, timeout=2)
     SUT-->>Test: tx
+    Test->>Test: assert tx.timeout == 2
     deactivate SUT
 ```
 
@@ -662,8 +643,8 @@ sequenceDiagram
 
     Test->>SUT: cancel(tx)
     activate SUT
-    SUT->>SUT: rollback(tx)
     SUT-->>Test: True
+    Test->>Test: assert rollback(tx) called
     deactivate SUT
 ```
 
@@ -677,9 +658,8 @@ sequenceDiagram
 
     Test->>SUT: retry(tx)
     activate SUT
-    SUT->>SUT: rollback(tx)
-    SUT->>SUT: begin_transaction()
     SUT-->>Test: new_tx
+    Test->>Test: assert rollback then begin_transaction called
     deactivate SUT
 ```
 
@@ -696,7 +676,6 @@ sequenceDiagram
     activate SUT
     SUT->>WALManager: scan_active_records()
     WALManager-->>SUT: active_txs
-    SUT->>SUT: resolve_uncommitted_txs(active_txs)
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -716,6 +695,92 @@ sequenceDiagram
     Test->>Test: assert TransactionStatus.ACTIVE.name == "ACTIVE"
     Test->>Test: assert TransactionStatus.COMMITTED.name == "COMMITTED"
     Test->>Test: assert TransactionStatus.ROLLED_BACK.name == "ROLLED_BACK"
+```
+
+---
+
+## 8. test_dependencies.py
+
+### 8.1 test_lock_release_stub_matches_protocol()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_dependencies.py
+    participant Stub as LockReleaseStub
+    participant Contract as LockReleaseProtocol
+    Test->>Stub: LockReleaseStub()
+    Test->>Contract: isinstance(stub, LockReleaseProtocol)
+    Contract-->>Test: True
+```
+
+### 8.2 test_transaction_starter_stub_matches_protocol()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_dependencies.py
+    participant Stub as TransactionStarterStub
+    participant Contract as TransactionStarterProtocol
+    Test->>Stub: TransactionStarterStub()
+    Test->>Contract: isinstance(stub, TransactionStarterProtocol)
+    Contract-->>Test: True
+```
+
+### 8.3 test_range_lock_stub_matches_protocol()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_dependencies.py
+    participant Stub as RangeLockStub
+    participant Contract as RangeLockProtocol
+    Test->>Stub: RangeLockStub()
+    Test->>Contract: isinstance(stub, RangeLockProtocol)
+    Contract-->>Test: True
+```
+
+### 8.4 test_deadlock_detector_stub_matches_protocol()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_dependencies.py
+    participant Stub as DeadlockDetectorStub
+    participant Contract as DeadlockDetectorProtocol
+    Test->>Stub: DeadlockDetectorStub()
+    Test->>Contract: isinstance(stub, DeadlockDetectorProtocol)
+    Contract-->>Test: True
+```
+
+### 8.5 test_transaction_recovery_log_stub_matches_protocol()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_dependencies.py
+    participant Stub as TransactionRecoveryLogStub
+    participant Contract as TransactionRecoveryLogProtocol
+    Test->>Stub: TransactionRecoveryLogStub()
+    Test->>Contract: isinstance(stub, TransactionRecoveryLogProtocol)
+    Contract-->>Test: True
+```
+
+---
+
+## 9. test_errors.py
+
+### 9.1 test_deadlock_error_inherits_exception()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_errors.py
+    participant Error as DeadlockError
+    Test->>Test: issubclass(Error, Exception)
+```
+
+### 9.2 test_lock_timeout_error_inherits_exception()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_errors.py
+    participant Error as LockTimeoutError
+    Test->>Test: issubclass(Error, Exception)
 ```
 
 ---
