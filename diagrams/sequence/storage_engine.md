@@ -14,7 +14,7 @@ sequenceDiagram
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
 
-    Test->>SUT: BufferPool(10)
+    Test->>SUT: BufferPool(10, page_store)
     SUT-->>Test: pool
     Test->>Test: assert isinstance(pool, BufferPool)
 ```
@@ -71,14 +71,14 @@ sequenceDiagram
     autonumber
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
-    participant StorageEngine as StorageEngine
+    participant PageStore as PageStore
 
     Test->>SUT: pin_page(5)
     activate SUT
     SUT->>SUT: lookup_hashmap(5)
     SUT-->>SUT: None (Cache Miss)
-    SUT->>StorageEngine: read_page(5)
-    StorageEngine-->>SUT: Page
+    SUT->>PageStore: load_page(5)
+    PageStore-->>SUT: Page
     SUT->>SUT: store_in_hashmap(5, Page)
     SUT-->>Test: Page
     deactivate SUT
@@ -108,12 +108,12 @@ sequenceDiagram
     autonumber
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
-    participant StorageEngine as StorageEngine
+    participant PageStore as PageStore
 
     Test->>SUT: evict_page()
     activate SUT
     SUT->>SUT: select_unpinned_lru_page()
-    SUT->>StorageEngine: write_page(evicted_page)
+    SUT->>PageStore: write_page(evicted_page)
     SUT->>SUT: remove_from_hashmap(evicted_page.page_id)
     SUT-->>Test: True
     deactivate SUT
@@ -157,11 +157,11 @@ sequenceDiagram
     autonumber
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
-    participant StorageEngine as StorageEngine
+    participant PageStore as PageStore
 
     Test->>SUT: flush_page(1)
     activate SUT
-    SUT->>StorageEngine: write_page(Page)
+    SUT->>PageStore: write_page(Page)
     SUT->>SUT: set_dirty_flag(1, False)
     SUT-->>Test: True
     deactivate SUT
@@ -174,13 +174,13 @@ sequenceDiagram
     autonumber
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
-    participant StorageEngine as StorageEngine
+    participant PageStore as PageStore
 
     Test->>SUT: flush_all_pages()
     activate SUT
     SUT->>SUT: get_all_dirty_pages()
-    SUT->>StorageEngine: write_page(dirty_page1)
-    SUT->>StorageEngine: write_page(dirty_page2)
+    SUT->>PageStore: write_page(dirty_page1)
+    SUT->>PageStore: write_page(dirty_page2)
     SUT-->>Test: True
     deactivate SUT
 ```
@@ -193,7 +193,7 @@ sequenceDiagram
     participant Test as test_buffer_pool.py
     participant SUT as BufferPool
 
-    Test->>SUT: BufferPool(10)
+    Test->>SUT: BufferPool(10, page_store)
     SUT-->>Test: pool
     Test->>Test: assert pool.capacity == 10
 ```
@@ -860,9 +860,9 @@ sequenceDiagram
     participant Test as test_storage_engine.py
     participant SUT as StorageEngine
 
-    Test->>SUT: StorageEngine(Pool)
+    Test->>SUT: StorageEngine(buffer_pool)
     SUT-->>Test: engine
-    Test->>Test: assert isinstance(engine, StorageEngine)
+    Test->>Test: assert dependency and public methods
 ```
 
 ### 9.2 test_initialize()
@@ -872,14 +872,10 @@ sequenceDiagram
     autonumber
     participant Test as test_storage_engine.py
     participant SUT as StorageEngine
-    participant FileManager as FileManager
 
     Test->>SUT: initialize()
-    activate SUT
-    SUT->>FileManager: create_file("db.dat")
-    FileManager-->>SUT: True
+    SUT->>SUT: self.is_initialized = True
     SUT-->>Test: True
-    deactivate SUT
 ```
 
 ### 9.3 test_read_page()
@@ -892,11 +888,10 @@ sequenceDiagram
     participant SUT as StorageEngine
 
     Test->>SUT: read_page(1)
-    activate SUT
     SUT->>Pool: pin_page(1)
-    Pool-->>SUT: Page
-    SUT-->>Test: Page
-    deactivate SUT
+    Pool-->>SUT: page
+    SUT-->>Test: page
+    Test->>Test: assert result and BufferPool call
 ```
 
 ### 9.4 test_write_page()
@@ -908,29 +903,30 @@ sequenceDiagram
     participant Pool as BufferPool
     participant SUT as StorageEngine
 
-    Test->>SUT: write_page(Page)
-    activate SUT
-    SUT->>Pool: mark_dirty(Page.page_id)
-    SUT->>Pool: flush_page(Page.page_id)
+    Test->>SUT: write_page(page)
+    SUT->>Pool: cache_page(page)
     Pool-->>SUT: True
     SUT-->>Test: True
-    deactivate SUT
+    Test->>Test: assert result and BufferPool call
 ```
 
-### 9.5 test_storage_engine_stores_buffer_pool()
+---
+
+## 10. test_dependencies.py
+
+### 10.1 test_page_store_stub_matches_protocol()
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Test as test_storage_engine.py
-    participant Pool as BufferPool
-    participant SUT as StorageEngine
+    participant Test as test_dependencies.py
+    participant Stub as PageStoreStub
+    participant Contract as PageStoreProtocol
 
-    Test->>Pool: BufferPool(16)
-    Pool-->>Test: pool
-    Test->>SUT: StorageEngine(pool)
-    SUT-->>Test: engine
-    Test->>Test: assert engine.buffer_pool is pool
+    Test->>Stub: PageStoreStub()
+    Stub-->>Test: page_store
+    Test->>Contract: isinstance(page_store, PageStoreProtocol)
+    Contract-->>Test: True
 ```
 
 ---

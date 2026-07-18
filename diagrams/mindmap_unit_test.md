@@ -117,6 +117,8 @@
     - test_duplicate_trigger_error_inherits_exception()
 
 - Storage Engine
+  - Dependency Protocols
+    - test_page_store_stub_matches_protocol()
   - BufferPool
     - test_buffer_pool_can_be_created()
     - test_pin_page()
@@ -181,7 +183,6 @@
     - test_initialize()
     - test_read_page()
     - test_write_page()
-    - test_storage_engine_stores_buffer_pool()
 
 - Query Processing
   - AST
