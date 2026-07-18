@@ -11,7 +11,6 @@ sequenceDiagram
     autonumber
     participant Test as test_catalog_manager.py
     participant SUT as CatalogManager
-    participant Cache as MetadataCacheProtocol
 
     Test->>SUT: CatalogManager(metadata_cache)
     SUT-->>Test: instance
@@ -77,7 +76,6 @@ sequenceDiagram
     autonumber
     participant Test as test_column.py
     participant SUT as Column
-    participant Type as DataType
 
     Test->>SUT: Column(column_id, name, data_type, nullable)
     SUT-->>Test: instance
@@ -111,7 +109,6 @@ sequenceDiagram
     autonumber
     participant Test as test_constraint.py
     participant SUT as Constraint
-    participant Rule as validation_rule
 
     Test->>SUT: Constraint(constraint_id, name, type, validation_rule)
     SUT-->>Test: instance
@@ -145,8 +142,6 @@ sequenceDiagram
     autonumber
     participant Test as test_data_type.py
     participant SUT as DataType
-    participant Validator as validator
-    participant Converter as converter
 
     Test->>SUT: DataType(name, validator, converter)
     SUT-->>Test: instance
@@ -161,13 +156,12 @@ sequenceDiagram
     participant Test as test_data_type.py
     participant SUT as DataType
     participant Validator as validator
-    participant Converter as converter
 
     Test->>SUT: validate(10)
     SUT->>Validator: validator(10)
     Validator-->>SUT: True
     SUT-->>Test: True
-    Test->>Test: assert result is True
+    Test->>Test: assert result and validator call
 ```
 
 ### 4.3 test_convert()
@@ -177,14 +171,13 @@ sequenceDiagram
     autonumber
     participant Test as test_data_type.py
     participant SUT as DataType
-    participant Validator as validator
     participant Converter as converter
 
     Test->>SUT: convert("10")
     SUT->>Converter: converter("10")
     Converter-->>SUT: 10
     SUT-->>Test: 10
-    Test->>Test: assert result equals 10
+    Test->>Test: assert result and converter call
 ```
 
 ---
@@ -198,7 +191,6 @@ sequenceDiagram
     autonumber
     participant Test as test_data_type_manager.py
     participant SUT as DataTypeManager
-    participant Type as DataType
 
     Test->>SUT: DataTypeManager(data_types)
     SUT-->>Test: instance
@@ -212,7 +204,6 @@ sequenceDiagram
     autonumber
     participant Test as test_data_type_manager.py
     participant SUT as DataTypeManager
-    participant Type as DataType
 
     Test->>SUT: register_data_type("INT", data_type)
     SUT->>SUT: store data_type in data_types
@@ -259,7 +250,6 @@ sequenceDiagram
     autonumber
     participant Test as test_data_type_manager.py
     participant SUT as DataTypeManager
-    participant Type as DataType
 
     Test->>SUT: resolve_data_type("INT")
     SUT->>SUT: read data_type from data_types
@@ -278,8 +268,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: Database(..., storage, backup_service, schemas)
     SUT-->>Test: instance
@@ -294,7 +282,6 @@ sequenceDiagram
     participant Test as test_database.py
     participant SUT as Database
     participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: open()
     SUT->>Storage: load_schema_metadata(SUT)
@@ -312,7 +299,6 @@ sequenceDiagram
     participant Test as test_database.py
     participant SUT as Database
     participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: close()
     SUT->>Storage: flush_dirty_pages(SUT)
@@ -329,7 +315,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
     participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: backup()
@@ -346,7 +331,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
     participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: restore()
@@ -363,8 +347,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: create_schema(schema)
     SUT->>SUT: store schema in schemas
@@ -379,8 +361,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: get_schema("public")
     SUT->>SUT: read schema from schemas
@@ -395,8 +375,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: rename_schema("public", "application")
     SUT->>SUT: rename schema and move dictionary key
@@ -411,8 +389,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database.py
     participant SUT as Database
-    participant Storage as DatabaseStorageProtocol
-    participant Backup as DatabaseBackupProtocol
 
     Test->>SUT: drop_schema("public")
     SUT->>SUT: remove schema from schemas
@@ -431,8 +407,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database_manager.py
     participant SUT as DatabaseManager
-    participant Factory as DatabaseFactoryProtocol
-    participant Storage as DatabaseStorageProtocol
 
     Test->>SUT: DatabaseManager(factory, storage, databases)
     SUT-->>Test: instance
@@ -447,7 +421,6 @@ sequenceDiagram
     participant Test as test_database_manager.py
     participant SUT as DatabaseManager
     participant Factory as DatabaseFactoryProtocol
-    participant Storage as DatabaseStorageProtocol
 
     Test->>SUT: create_database("test_db")
     SUT->>Factory: create("test_db")
@@ -464,8 +437,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database_manager.py
     participant SUT as DatabaseManager
-    participant Factory as DatabaseFactoryProtocol
-    participant Storage as DatabaseStorageProtocol
 
     Test->>SUT: get_database("test_db")
     SUT->>SUT: read database from databases
@@ -480,8 +451,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database_manager.py
     participant SUT as DatabaseManager
-    participant Factory as DatabaseFactoryProtocol
-    participant Storage as DatabaseStorageProtocol
 
     Test->>SUT: rename_database("test_db", "renamed_db")
     SUT->>SUT: rename database and move registry key
@@ -496,7 +465,6 @@ sequenceDiagram
     autonumber
     participant Test as test_database_manager.py
     participant SUT as DatabaseManager
-    participant Factory as DatabaseFactoryProtocol
     participant Storage as DatabaseStorageProtocol
 
     Test->>SUT: drop_database("test_db")
@@ -577,7 +545,6 @@ sequenceDiagram
     autonumber
     participant Test as test_foreign_key.py
     participant SUT as ForeignKey
-    participant Table as reference_table
 
     Test->>SUT: ForeignKey(id, table, column, on_delete, on_update)
     SUT-->>Test: instance
@@ -670,7 +637,6 @@ sequenceDiagram
     autonumber
     participant Test as test_partition.py
     participant SUT as Partition
-    participant Allocator as StorageAllocatorProtocol
 
     Test->>SUT: Partition(id, name, range, storage_allocator)
     SUT-->>Test: instance
@@ -921,7 +887,6 @@ sequenceDiagram
     autonumber
     participant Test as test_stored_procedure.py
     participant SUT as StoredProcedure
-    participant Executor as QueryExecutorProtocol
 
     Test->>SUT: StoredProcedure(id, name, query_plan, query_executor)
     SUT-->>Test: instance
@@ -955,7 +920,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: Table(id, name, columns, row_count, rows, constraints, indexes)
     SUT-->>Test: instance
@@ -969,7 +933,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: insert(row)
     SUT->>SUT: store row and increment row_count
@@ -1000,7 +963,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: delete(row_id)
     SUT->>SUT: remove row and decrement row_count
@@ -1015,7 +977,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: truncate()
     SUT->>SUT: clear rows and reset row_count
@@ -1030,7 +991,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: check_key_exists(row_id)
     SUT->>SUT: check row_id in rows
@@ -1045,7 +1005,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: add_column(column)
     SUT->>SUT: store column in columns
@@ -1060,7 +1019,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: get_column("age")
     SUT->>SUT: read column from columns
@@ -1075,7 +1033,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: rename_column("age", "years")
     SUT->>SUT: update column name
@@ -1090,7 +1047,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: drop_column("age")
     SUT->>SUT: remove column from columns
@@ -1105,7 +1061,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: add_constraint(constraint)
     SUT->>SUT: store constraint in constraints
@@ -1120,7 +1075,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: drop_constraint("adult_only")
     SUT->>SUT: remove constraint from constraints
@@ -1135,7 +1089,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: add_index(index)
     SUT->>SUT: store index in indexes
@@ -1150,7 +1103,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: get_index("users_age")
     SUT->>SUT: read index from indexes
@@ -1165,7 +1117,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: drop_index("users_age")
     SUT->>SUT: remove index from indexes
@@ -1180,7 +1131,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: add_partition(partition)
     SUT->>SUT: store partition in partitions
@@ -1195,7 +1145,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: get_partition("part_1")
     SUT->>SUT: read partition from partitions
@@ -1210,7 +1159,6 @@ sequenceDiagram
     autonumber
     participant Test as test_table.py
     participant SUT as Table
-    participant Row as Row
 
     Test->>SUT: drop_partition("part_1")
     SUT->>SUT: remove partition from partitions
@@ -1229,7 +1177,6 @@ sequenceDiagram
     autonumber
     participant Test as test_trigger.py
     participant SUT as Trigger
-    participant Callback as callback
 
     Test->>SUT: Trigger(name, event, table_name, callback)
     SUT-->>Test: instance
@@ -1263,7 +1210,6 @@ sequenceDiagram
     autonumber
     participant Test as test_trigger_manager.py
     participant SUT as TriggerManager
-    participant Trigger as Trigger
 
     Test->>SUT: TriggerManager(triggers)
     SUT-->>Test: instance
@@ -1294,7 +1240,6 @@ sequenceDiagram
     autonumber
     participant Test as test_trigger_manager.py
     participant SUT as TriggerManager
-    participant Trigger as Trigger
 
     Test->>SUT: drop_trigger(name)
     SUT->>SUT: remove trigger from event list
@@ -1344,7 +1289,6 @@ sequenceDiagram
     autonumber
     participant Test as test_view.py
     participant SUT as View
-    participant Executor as QueryExecutorProtocol
 
     Test->>SUT: View(id, name, query_definition, executor, cached_results)
     SUT-->>Test: instance

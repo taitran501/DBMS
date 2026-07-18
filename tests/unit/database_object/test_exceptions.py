@@ -7,16 +7,24 @@ from dbms.database_object.exceptions import (
 
 
 def test_duplicate_database_error_inherits_exception():
+    # Arrange
+    # Assert
     assert issubclass(DuplicateDatabaseError, Exception)
 
 
 def test_unknown_database_error_inherits_exception():
+    # Arrange
+    # Assert
     assert issubclass(UnknownDatabaseError, Exception)
 
 
 def test_trigger_error_inherits_exception():
+    # Arrange
+    # Assert
     assert issubclass(TriggerError, Exception)
 
 
 def test_duplicate_trigger_error_inherits_exception():
+    # Arrange
+    # Assert
     assert issubclass(DuplicateTriggerError, Exception)

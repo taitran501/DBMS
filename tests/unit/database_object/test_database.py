@@ -14,6 +14,7 @@ def create_database(schemas=None):
 
 
 def test_database_can_be_created():
+    # Arrange
     storage = object()
     backup_service = object()
     schemas = {}
@@ -31,6 +32,7 @@ def test_database_can_be_created():
         schemas,
     )
 
+    # Assert
     assert database.database_id == "db1"
     assert database.name == "test_db"
     assert database.owner == "admin"
@@ -49,12 +51,15 @@ def test_database_can_be_created():
 
 
 def test_open():
+    # Arrange
     database, storage, _ = create_database()
     schemas = {"public": Schema("s1", "public", "admin")}
     storage.load_schema_metadata.return_value = schemas
 
+    # Act
     result = database.open()
 
+    # Assert
     assert result is True
     assert database.status == "open"
     assert database.schemas is schemas
@@ -62,58 +67,76 @@ def test_open():
 
 
 def test_close():
+    # Arrange
     database, storage, _ = create_database()
 
+    # Act
     result = database.close()
 
+    # Assert
     assert result is True
     assert database.status == "closed"
     storage.flush_dirty_pages.assert_called_once_with(database)
 
 
 def test_backup():
+    # Arrange
     database, _, backup_service = create_database()
 
+    # Act
     result = database.backup()
 
+    # Assert
     assert result is True
     backup_service.create_backup.assert_called_once_with(database)
 
 
 def test_restore():
+    # Arrange
     database, _, backup_service = create_database()
 
+    # Act
     result = database.restore()
 
+    # Assert
     assert result is True
     backup_service.restore_backup.assert_called_once_with(database)
 
 
 def test_create_schema():
+    # Arrange
     database, _, _ = create_database({})
     schema = Schema("s1", "public", "admin")
 
+    # Act
     result = database.create_schema(schema)
 
+    # Assert
     assert result is True
     assert database.schemas["public"] is schema
 
 
 def test_get_schema():
+    # Arrange
     schema = Schema("s1", "public", "admin")
     database, _, _ = create_database({"public": schema})
 
+    # Act
     result = database.get_schema("public")
 
+    # Assert
     assert result is schema
 
 
 def test_rename_schema():
+    # Arrange
     schema = Schema("s1", "public", "admin")
     database, _, _ = create_database({"public": schema})
 
+    # Act
     result = database.rename_schema("public", "application")
 
+    # Assert
     assert result is True
     assert schema.name == "application"
     assert database.schemas["application"] is schema
@@ -121,10 +144,13 @@ def test_rename_schema():
 
 
 def test_drop_schema():
+    # Arrange
     schema = Schema("s1", "public", "admin")
     database, _, _ = create_database({"public": schema})
 
+    # Act
     result = database.drop_schema("public")
 
+    # Assert
     assert result is True
     assert "public" not in database.schemas

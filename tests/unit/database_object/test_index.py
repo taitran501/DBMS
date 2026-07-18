@@ -2,9 +2,11 @@ from dbms.database_object.index import Index
 
 
 def test_index_can_be_created():
+    # Arrange
     entries = {}
     index = Index("idx1", "users_age", "B-Tree", True, entries)
 
+    # Assert
     assert index.index_id == "idx1"
     assert index.name == "users_age"
     assert index.type == "B-Tree"
@@ -16,26 +18,35 @@ def test_index_can_be_created():
 
 
 def test_search():
+    # Arrange
     index = Index("idx1", "users_age", "B-Tree", entries={25: ["r1"]})
 
+    # Act
     result = index.search(25)
 
+    # Assert
     assert result == ["r1"]
 
 
 def test_insert_key():
+    # Arrange
     index = Index("idx1", "users_age", "B-Tree", entries={})
 
+    # Act
     result = index.insert_key(25, "r1")
 
+    # Assert
     assert result is True
     assert index.entries[25] == ["r1"]
 
 
 def test_delete_key():
+    # Arrange
     index = Index("idx1", "users_age", "B-Tree", entries={25: ["r1"]})
 
+    # Act
     result = index.delete_key(25, "r1")
 
+    # Assert
     assert result is True
     assert 25 not in index.entries

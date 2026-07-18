@@ -4,9 +4,11 @@ from unittest.mock import Mock
 
 
 def test_foreign_key_can_be_created():
+    # Arrange
     reference_table = object()
     foreign_key = ForeignKey("fk1", reference_table, "id", "restrict", "cascade")
 
+    # Assert
     assert foreign_key.constraint_id == "fk1"
     assert foreign_key.reference_table is reference_table
     assert foreign_key.reference_column == "id"
@@ -16,11 +18,14 @@ def test_foreign_key_can_be_created():
 
 
 def test_validate_reference():
+    # Arrange
     reference_table = Mock(spec=Table)
     reference_table.check_key_exists.return_value = True
     foreign_key = ForeignKey("fk1", reference_table, "id", "restrict", "cascade")
 
+    # Act
     result = foreign_key.validate_reference(10)
 
+    # Assert
     assert result is True
     reference_table.check_key_exists.assert_called_once_with(10)
