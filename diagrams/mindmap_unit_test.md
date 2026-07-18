@@ -322,6 +322,15 @@
     - test_recover_transaction()
   - TransactionStatus
     - test_transaction_status_defines_core_lifecycle_states()
+  - Dependency Protocols
+    - test_lock_release_stub_matches_protocol()
+    - test_transaction_starter_stub_matches_protocol()
+    - test_range_lock_stub_matches_protocol()
+    - test_deadlock_detector_stub_matches_protocol()
+    - test_transaction_recovery_log_stub_matches_protocol()
+  - Exceptions
+    - test_deadlock_error_inherits_exception()
+    - test_lock_timeout_error_inherits_exception()
 
 - Durability
   - BackupManager
