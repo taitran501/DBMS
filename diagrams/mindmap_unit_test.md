@@ -139,6 +139,7 @@
   - BufferPool
     - test_buffer_pool_can_be_created()
     - test_pin_page()
+    - test_unpin_page()
     - test_cache_page()
     - test_get_cached_page()
     - test_load_missing_page()

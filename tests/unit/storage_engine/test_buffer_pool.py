@@ -38,6 +38,21 @@ def test_pin_page():
     assert pool.pin_counts[1] == 1
 
 
+def test_unpin_page():
+    # Arrange
+    page = Page(1)
+    pool = BufferPool(10, Mock())
+    pool.cache_page(page)
+    pool.pin_page(1)
+
+    # Act
+    result = pool.unpin_page(1)
+
+    # Assert
+    assert result is True
+    assert pool.pin_counts[1] == 0
+
+
 def test_cache_page():
     # Arrange
     page = Page(1)

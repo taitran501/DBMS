@@ -34,7 +34,23 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.3 test_cache_page()
+### 1.3 test_unpin_page()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_buffer_pool.py
+    participant SUT as BufferPool
+
+    Test->>SUT: unpin_page(1)
+    activate SUT
+    SUT->>SUT: decrement_pin_count(1)
+    SUT-->>Test: True
+    deactivate SUT
+    Test->>Test: assert pin_count == 0
+```
+
+### 1.4 test_cache_page()
 
 ```mermaid
 sequenceDiagram
@@ -49,7 +65,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.4 test_get_cached_page()
+### 1.5 test_get_cached_page()
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +80,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.5 test_load_missing_page()
+### 1.6 test_load_missing_page()
 
 ```mermaid
 sequenceDiagram
@@ -84,7 +100,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.6 test_enforce_capacity()
+### 1.7 test_enforce_capacity()
 
 ```mermaid
 sequenceDiagram
@@ -101,7 +117,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.7 test_evict_page()
+### 1.8 test_evict_page()
 
 ```mermaid
 sequenceDiagram
@@ -119,7 +135,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.8 test_preserve_pinned_page()
+### 1.9 test_preserve_pinned_page()
 
 ```mermaid
 sequenceDiagram
@@ -135,7 +151,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.9 test_mark_dirty()
+### 1.10 test_mark_dirty()
 
 ```mermaid
 sequenceDiagram
@@ -150,7 +166,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.10 test_flush_page()
+### 1.11 test_flush_page()
 
 ```mermaid
 sequenceDiagram
@@ -167,7 +183,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.11 test_flush_all_pages()
+### 1.12 test_flush_all_pages()
 
 ```mermaid
 sequenceDiagram
@@ -185,7 +201,7 @@ sequenceDiagram
     deactivate SUT
 ```
 
-### 1.12 test_buffer_pool_stores_capacity()
+### 1.13 test_buffer_pool_stores_capacity()
 
 ```mermaid
 sequenceDiagram
