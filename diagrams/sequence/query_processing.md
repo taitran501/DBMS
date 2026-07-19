@@ -530,6 +530,60 @@ sequenceDiagram
     Test->>Test: assert isinstance(executor, QueryExecutor)
 ```
 
+### 6.13 test_execute_group_by()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_executor.py
+    participant SUT as QueryExecutor
+
+    Test->>SUT: execute_aggregation(GroupByPlan)
+    SUT-->>Test: grouped_rows
+```
+
+### 6.14 test_execute_sort()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_executor.py
+    participant SUT as QueryExecutor
+
+    Test->>SUT: execute_sort(SortPlan)
+    SUT-->>Test: sorted_rows
+```
+
+### 6.15 test_execute_parallel()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_executor.py
+    participant SUT as QueryExecutor
+    participant Worker as WorkerThread
+
+    Test->>SUT: execute_parallel(ParallelPlan)
+    activate SUT
+    SUT->>Worker: dispatch_tasks()
+    Worker-->>SUT: partial_results
+    SUT->>SUT: merge_results()
+    SUT-->>Test: rows
+    deactivate SUT
+```
+
+### 6.16 test_cancel_execution()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_executor.py
+    participant SUT as QueryExecutor
+
+    Test->>SUT: cancel_execution()
+    SUT-->>Test: True
+```
+
 ---
 
 ## 7. test_query_optimizer.py
@@ -669,6 +723,81 @@ sequenceDiagram
     Test->>SUT: QueryOptimizer()
     SUT-->>Test: optimizer
     Test->>Test: assert isinstance(optimizer, QueryOptimizer)
+```
+
+### 7.10 test_constant_folding()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant SUT as QueryOptimizer
+
+    Test->>SUT: optimize(LP_with_constants)
+    activate SUT
+    SUT->>SUT: apply_constant_folding()
+    SUT-->>Test: optimized_PP
+    deactivate SUT
+```
+
+### 7.11 test_projection_pruning()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant SUT as QueryOptimizer
+
+    Test->>SUT: optimize(LP_with_unused_columns)
+    activate SUT
+    SUT->>SUT: prune_projections()
+    SUT-->>Test: pruned_PP
+    deactivate SUT
+```
+
+### 7.12 test_estimate_cardinality()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant SUT as QueryOptimizer
+    participant Stats as StatisticsManager
+
+    Test->>SUT: estimate_cardinality(LP)
+    activate SUT
+    SUT->>Stats: get_statistics()
+    Stats-->>SUT: stats
+    SUT-->>Test: 1000
+    deactivate SUT
+```
+
+### 7.13 test_choose_parallel_plan()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant SUT as QueryOptimizer
+
+    Test->>SUT: optimize(heavy_LP)
+    activate SUT
+    SUT->>SUT: estimate_cost(heavy_LP)
+    SUT->>SUT: generate_parallel_plan()
+    SUT-->>Test: parallel_PP
+    deactivate SUT
+```
+
+### 7.14 test_generate_physical_plan()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant SUT as QueryOptimizer
+
+    Test->>SUT: generate_physical_plan(optimized_LP)
+    SUT-->>Test: PP
 ```
 
 ---
@@ -1010,6 +1139,78 @@ sequenceDiagram
     Test->>SUT: SQLParser(Lexer)
     SUT-->>Test: parser
     Test->>Test: assert isinstance(parser, SQLParser)
+```
+
+### 11.11 test_parse_create_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("CREATE TABLE users (id INT)")
+    SUT-->>Test: CreateTableStatementAST
+```
+
+### 11.12 test_parse_alter_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("ALTER TABLE users ADD age INT")
+    SUT-->>Test: AlterTableStatementAST
+```
+
+### 11.13 test_parse_join()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("SELECT * FROM a JOIN b ON a.id = b.id")
+    SUT-->>Test: SelectStatementAST_with_Join
+```
+
+### 11.14 test_parse_sub_query()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("SELECT * FROM (SELECT id FROM a)")
+    SUT-->>Test: SelectStatementAST_with_Subquery
+```
+
+### 11.15 test_parse_cte()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("WITH cte AS (...) SELECT * FROM cte")
+    SUT-->>Test: SelectStatementAST_with_CTE
+```
+
+### 11.16 test_parse_window_function()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_sql_parser.py
+    participant SUT as SQLParser
+
+    Test->>SUT: parse("SELECT ROW_NUMBER() OVER(...)")
+    SUT-->>Test: SelectStatementAST_with_Window
 ```
 
 ---

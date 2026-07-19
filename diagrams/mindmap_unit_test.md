@@ -244,6 +244,10 @@
     - test_return_empty_result()
     - test_rollback_on_failure()
     - test_query_executor_can_be_created()
+    - test_execute_group_by()
+    - test_execute_sort()
+    - test_execute_parallel()
+    - test_cancel_execution()
   - QueryOptimizer
     - test_optimize()
     - test_estimate_cost()
@@ -254,6 +258,11 @@
     - test_use_safe_estimate_without_statistics()
     - test_preserve_query_result()
     - test_query_optimizer_can_be_created()
+    - test_constant_folding()
+    - test_projection_pruning()
+    - test_estimate_cardinality()
+    - test_choose_parallel_plan()
+    - test_generate_physical_plan()
   - QueryProcessor
     - test_query_processor_can_be_created()
     - test_query_processor_stores_dependencies()
@@ -280,6 +289,12 @@
     - test_reject_incomplete_statement()
     - test_reject_unexpected_token()
     - test_sql_parser_can_be_created()
+    - test_parse_create_table()
+    - test_parse_alter_table()
+    - test_parse_join()
+    - test_parse_sub_query()
+    - test_parse_cte()
+    - test_parse_window_function()
   - Statement
     - test_statement_stores_statement_type()
   - Token
