@@ -43,6 +43,7 @@ def test_unpin_page():
     page = Page(1)
     pool = BufferPool(10, Mock())
     pool.cache_page(page)
+    # Pinning protects the page from eviction until its pin count returns to zero.
     pool.pin_page(1)
 
     # Act

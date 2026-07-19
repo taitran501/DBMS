@@ -31,6 +31,7 @@ def test_validate():
 
 
 def test_validate_nullable():
+    # NULL handling is controlled by column metadata and must not depend on DataType.
     nullable_column = Column("c1", "age", Mock(spec=DataType), nullable=True)
     required_column = Column("c2", "age", Mock(spec=DataType), nullable=False)
 
@@ -39,6 +40,7 @@ def test_validate_nullable():
 
 
 def test_validate_length():
+    # The maximum length is inclusive; only longer values are rejected.
     column = Column("c1", "name", Mock(spec=DataType))
 
     assert column.validate_length("Ada", 3) is True
@@ -46,6 +48,7 @@ def test_validate_length():
 
 
 def test_validate_precision():
+    # Precision limits the number of digits after the decimal point.
     column = Column("c1", "amount", Mock(spec=DataType))
 
     assert column.validate_precision("12.34", 2) is True
@@ -53,6 +56,7 @@ def test_validate_precision():
 
 
 def test_apply_default_value():
+    # A default replaces only a missing value, never an explicit value.
     column = Column("c1", "status", Mock(spec=DataType))
 
     assert column.apply_default_value(None, "pending") == "pending"
@@ -60,6 +64,7 @@ def test_apply_default_value():
 
 
 def test_generate_identity():
+    # Identity generation is delegated so the Column does not own sequence state.
     column = Column("c1", "id", Mock(spec=DataType))
     generator = Mock(return_value=42)
 
@@ -68,6 +73,7 @@ def test_generate_identity():
 
 
 def test_evaluate_computed_column():
+    # The expression receives the complete row values needed for the calculation.
     column = Column("c1", "total", Mock(spec=DataType))
     values = {"quantity": 3, "unit_price": 12}
     expression = Mock(return_value=36)
