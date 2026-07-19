@@ -7,9 +7,20 @@
   - Column
     - test_column_can_be_created()
     - test_validate()
+    - test_validate_nullable()
+    - test_validate_length()
+    - test_validate_precision()
+    - test_apply_default_value()
+    - test_generate_identity()
+    - test_evaluate_computed_column()
   - Constraint
     - test_constraint_can_be_created()
     - test_validate_row()
+    - test_validate_primary_key()
+    - test_validate_unique()
+    - test_validate_foreign_key()
+    - test_cascade_delete()
+    - test_cascade_update()
   - DataType
     - test_data_type_can_be_created()
     - test_validate()
@@ -57,6 +68,12 @@
     - test_row_can_be_created()
     - test_read()
     - test_update()
+    - test_delete_row()
+    - test_clone_version()
+    - test_restore_version()
+    - test_compare_rows()
+    - test_serialize()
+    - test_deserialize()
   - Schema
     - test_schema_can_be_created()
     - test_create_table()

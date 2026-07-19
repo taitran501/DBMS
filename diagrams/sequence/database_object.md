@@ -98,6 +98,76 @@ sequenceDiagram
     Test->>Test: assert result and DataType call
 ```
 
+### 2.3 test_validate_nullable()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    Test->>SUT: validate(None)
+    SUT-->>Test: nullable result
+    Test->>Test: assert nullable and required columns
+```
+
+### 2.4 test_validate_length()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    Test->>SUT: validate_length(value, maximum)
+    SUT-->>Test: length result
+    Test->>Test: assert valid and excessive lengths
+```
+
+### 2.5 test_validate_precision()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    Test->>SUT: validate_precision(value, precision)
+    SUT-->>Test: precision result
+    Test->>Test: assert valid and excessive precision
+```
+
+### 2.6 test_apply_default_value()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    Test->>SUT: apply_default_value(value, default)
+    SUT-->>Test: resolved value
+    Test->>Test: assert default and supplied values
+```
+
+### 2.7 test_generate_identity()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    participant Generator
+    Test->>SUT: generate_identity(generator)
+    SUT->>Generator: generator()
+    Generator-->>SUT: identity
+    SUT-->>Test: identity
+```
+
+### 2.8 test_evaluate_computed_column()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_column.py
+    participant SUT as Column
+    participant Expression
+    Test->>SUT: evaluate_computed_column(values, expression)
+    SUT->>Expression: expression(values)
+    Expression-->>SUT: computed value
+    SUT-->>Test: computed value
+```
+
 ---
 
 ## 3. test_constraint.py
@@ -129,6 +199,63 @@ sequenceDiagram
     Rule-->>SUT: True
     SUT-->>Test: True
     Test->>Test: assert result and rule call
+```
+
+### 3.3 test_validate_primary_key()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_constraint.py
+    participant SUT as Constraint
+    Test->>SUT: validate_primary_key(row, fields)
+    SUT-->>Test: validation result
+    Test->>Test: assert present and null keys
+```
+
+### 3.4 test_validate_unique()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_constraint.py
+    participant SUT as Constraint
+    Test->>SUT: validate_unique(row, fields, existing_rows)
+    SUT-->>Test: validation result
+    Test->>Test: assert unique and duplicate values
+```
+
+### 3.5 test_validate_foreign_key()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_constraint.py
+    participant SUT as Constraint
+    Test->>SUT: validate_foreign_key(row, field, keys)
+    SUT-->>Test: validation result
+    Test->>Test: assert existing and missing references
+```
+
+### 3.6 test_cascade_delete()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_constraint.py
+    participant SUT as Constraint
+    participant Children as child_rows
+    Test->>SUT: cascade_delete(parent_key, child_rows, field)
+    SUT->>Children: remove matching rows
+    SUT-->>Test: deleted row ids
+```
+
+### 3.7 test_cascade_update()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_constraint.py
+    participant SUT as Constraint
+    participant Children as child_rows
+    Test->>SUT: cascade_update(old_key, new_key, child_rows, field)
+    SUT->>Children: update matching keys
+    SUT-->>Test: updated row count
 ```
 
 ---
@@ -717,6 +844,74 @@ sequenceDiagram
     SUT->>SUT: replace values
     SUT-->>Test: True
     Test->>Test: assert result and stored values
+```
+
+### 12.4 test_delete_row()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    Test->>SUT: delete()
+    SUT-->>Test: True
+    Test->>Test: assert deleted state
+```
+
+### 12.5 test_clone_version()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    Test->>SUT: clone_version(version)
+    SUT-->>Test: cloned Row
+    Test->>Test: assert clone state
+```
+
+### 12.6 test_restore_version()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    participant Snapshot as Row snapshot
+    Test->>SUT: restore_version(snapshot)
+    SUT->>Snapshot: read state
+    SUT-->>Test: True
+    Test->>Test: assert restored state
+```
+
+### 12.7 test_compare_rows()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    Test->>SUT: compare(other)
+    SUT-->>Test: comparison result
+    Test->>Test: assert matching and different rows
+```
+
+### 12.8 test_serialize()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    Test->>SUT: serialize()
+    SUT-->>Test: JSON payload
+    Test->>Test: assert serialized values
+```
+
+### 12.9 test_deserialize()
+
+```mermaid
+sequenceDiagram
+    participant Test as test_row.py
+    participant SUT as Row
+    Test->>SUT: deserialize(payload)
+    SUT-->>Test: reconstructed Row
+    Test->>Test: assert reconstructed values
 ```
 
 ---

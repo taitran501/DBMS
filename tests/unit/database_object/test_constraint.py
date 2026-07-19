@@ -28,3 +28,57 @@ def test_validate_row():
     # Assert
     assert result is True
     validation_rule.assert_called_once_with(row)
+
+
+def test_validate_primary_key():
+    constraint = Constraint("pk1", "pk_users", "PRIMARY_KEY", Mock())
+
+    assert constraint.validate_primary_key(Row("r1", {"id": 1}, "v1"), ("id",)) is True
+    assert constraint.validate_primary_key(Row("r2", {"id": None}, "v1"), ("id",)) is False
+
+
+def test_validate_unique():
+    constraint = Constraint("uq1", "uq_email", "UNIQUE", Mock())
+    existing_rows = [Row("r1", {"email": "ada@example.com"}, "v1")]
+
+    assert constraint.validate_unique(
+        Row("r2", {"email": "grace@example.com"}, "v1"),
+        ("email",),
+        existing_rows,
+    ) is True
+    assert constraint.validate_unique(
+        Row("r3", {"email": "ada@example.com"}, "v1"),
+        ("email",),
+        existing_rows,
+    ) is False
+
+
+def test_validate_foreign_key():
+    constraint = Constraint("fk1", "fk_orders", "FOREIGN_KEY", Mock())
+    row = Row("r1", {"customer_id": 2}, "v1")
+
+    assert constraint.validate_foreign_key(row, "customer_id", {1, 2}) is True
+    assert constraint.validate_foreign_key(row, "customer_id", {1}) is False
+
+
+def test_cascade_delete():
+    constraint = Constraint("fk1", "fk_orders", "FOREIGN_KEY", Mock())
+    child_rows = [
+        Row("o1", {"customer_id": 1}, "v1"),
+        Row("o2", {"customer_id": 2}, "v1"),
+    ]
+
+    deleted_ids = constraint.cascade_delete(1, child_rows, "customer_id")
+
+    assert deleted_ids == ["o1"]
+    assert [row.row_id for row in child_rows] == ["o2"]
+
+
+def test_cascade_update():
+    constraint = Constraint("fk1", "fk_orders", "FOREIGN_KEY", Mock())
+    child_rows = [Row("o1", {"customer_id": 1}, "v1")]
+
+    updated_count = constraint.cascade_update(1, 10, child_rows, "customer_id")
+
+    assert updated_count == 1
+    assert child_rows[0].values["customer_id"] == 10
