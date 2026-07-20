@@ -5,6 +5,6 @@ __pycache__/
 .venv/
 .coverage
 *.py[cod]
-diagrams/full_version/
+docs/diagrams/full_version/
 unit_test_probability.md
 unit_test_list.md

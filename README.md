@@ -10,7 +10,7 @@ Python DBMS architecture project. The repository is currently at the class-desig
 
 The high-level visual representation of the subsystems within the Mini DBMS:
 
-![Mindmap Level 2](diagrams/mindmap_level_2.png)
+![Mindmap Level 2](docs/diagrams/mindmap_level_2.png)
 
 ---
 
