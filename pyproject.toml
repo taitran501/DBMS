@@ -4,3 +4,4 @@ addopts = "-ra --strict-markers"
 markers = [
     "unit: isolated contract tests",
 ]
+pythonpath = ["src"]
