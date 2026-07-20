@@ -1,6 +1,9 @@
 from unittest.mock import Mock
 
+import pytest
+
 from dbms.storage_engine.buffer_pool import BufferPool
+from dbms.storage_engine.exceptions import BufferPoolFullError
 from dbms.storage_engine.page import Page
 
 
@@ -211,3 +214,66 @@ def test_buffer_pool_stores_capacity():
 
     # Assert
     assert pool.capacity == capacity
+
+
+def test_failed_flush_preserves_dirty_page():
+    """Ensure that if flushing a dirty page to disk fails (disk I/O error),
+
+    the buffer pool retains the page in RAM and keeps its dirty status.
+    """
+    # Arrange: Cache a page and mark it dirty while mimicking a disk write failure
+    page = Page(1)
+    page_store = Mock()
+    page_store.write_page.return_value = False
+    pool = BufferPool(10, page_store)
+    pool.cache_page(page)
+    pool.mark_dirty(1)
+
+    # Act: Attempt to flush the dirty page to disk
+    result = pool.flush_page(1)
+
+    # Assert: Flush should fail, but page must remain in RAM and stay dirty for future retries
+    assert result is False
+    assert pool.get_cached_page(1) is page
+    assert 1 in pool.dirty_page_ids
+
+
+def test_failed_dirty_eviction_preserves_page():
+    """Ensure that if evicting a dirty page fails during disk flush,
+
+    the buffer pool preserves the page in memory instead of dropping it.
+    """
+    # Arrange: Setup pool with a dirty page and failing disk write
+    page = Page(1)
+    page_store = Mock()
+    page_store.write_page.return_value = False
+    pool = BufferPool(10, page_store)
+    pool.cache_page(page)
+    pool.mark_dirty(1)
+
+    # Act: Attempt to evict the dirty page
+    result = pool.evict_page()
+
+    # Assert: Eviction should fail to prevent unwritten data loss
+    assert result is False
+    assert pool.get_cached_page(1) is page
+    assert 1 in pool.dirty_page_ids
+
+
+def test_reject_cache_when_all_pages_are_pinned():
+    """Ensure that attempting to cache a new page when all existing pages
+
+    are pinned raises BufferPoolFullError to prevent unpinning active pages.
+    """
+    # Arrange: Fill buffer pool to capacity with a pinned page
+    pinned_page = Page(1)
+    pool = BufferPool(1, Mock())
+    pool.cache_page(pinned_page)
+    pool.pin_page(1)
+
+    # Act & Assert: Caching a new page should fail with BufferPoolFullError
+    with pytest.raises(BufferPoolFullError):
+        pool.cache_page(Page(2))
+
+    assert pool.get_cached_page(1) is pinned_page
+    assert pool.get_cached_page(2) is None

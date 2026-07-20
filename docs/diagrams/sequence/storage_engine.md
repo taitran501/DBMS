@@ -214,6 +214,52 @@ sequenceDiagram
     Test->>Test: assert pool.capacity == 10
 ```
 
+### 1.14 test_failed_flush_preserves_dirty_page()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_buffer_pool.py
+    participant SUT as BufferPool
+    participant PageStore as PageStore
+
+    Test->>SUT: flush_page(1)
+    SUT->>PageStore: write_page(page)
+    PageStore-->>SUT: False
+    SUT-->>Test: False
+    Test->>Test: assert page remains cached and dirty
+```
+
+### 1.15 test_failed_dirty_eviction_preserves_page()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_buffer_pool.py
+    participant SUT as BufferPool
+    participant PageStore as PageStore
+
+    Test->>SUT: evict_page()
+    SUT->>PageStore: write_page(dirty_page)
+    PageStore-->>SUT: False
+    SUT-->>Test: False
+    Test->>Test: assert page remains cached and dirty
+```
+
+### 1.16 test_reject_cache_when_all_pages_are_pinned()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_buffer_pool.py
+    participant SUT as BufferPool
+
+    Test->>SUT: cache_page(second_page)
+    SUT->>SUT: find unpinned eviction candidate
+    SUT-->>Test: raise BufferPoolFullError
+    Test->>Test: assert pinned page preserved and second page absent
+```
+
 ---
 
 ## 2. test_file_manager.py
@@ -274,6 +320,20 @@ sequenceDiagram
     SUT->>SUT: write_to_disk("db.dat", 0, b"new_data")
     SUT-->>Test: True
     deactivate SUT
+```
+
+### 2.5 test_create_file_rejects_path_outside_root()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_file_manager.py
+    participant SUT as FileManager
+
+    Test->>SUT: create_file("../outside.dat")
+    SUT->>SUT: resolve path against root_path
+    SUT-->>Test: raise StoragePathError
+    Test->>Test: assert outside file was not created
 ```
 
 ---
@@ -753,6 +813,74 @@ sequenceDiagram
     Test->>Test: assert isinstance(manager, RecordManager)
 ```
 
+### 7.8 test_read_unknown_record()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_record_manager.py
+    participant SUT as RecordManager
+    participant PageManager as PageManager
+
+    Test->>SUT: read_record("1:2")
+    SUT->>PageManager: get_page(1)
+    PageManager-->>SUT: None
+    SUT-->>Test: raise RecordNotFoundError
+    Test->>Test: assert RecordNotFoundError raised
+```
+
+### 7.9 test_update_unknown_record()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_record_manager.py
+    participant SUT as RecordManager
+    participant PageManager as PageManager
+
+    Test->>SUT: update_record("1:2", record)
+    SUT->>PageManager: get_page(1)
+    PageManager-->>SUT: None
+    SUT-->>Test: raise RecordNotFoundError
+    Test->>Test: assert RecordNotFoundError raised
+```
+
+### 7.10 test_delete_unknown_record()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_record_manager.py
+    participant SUT as RecordManager
+    participant PageManager as PageManager
+
+    Test->>SUT: delete_record("1:2")
+    SUT->>PageManager: get_page(1)
+    PageManager-->>SUT: None
+    SUT-->>Test: raise RecordNotFoundError
+    Test->>Test: assert RecordNotFoundError raised
+```
+
+### 7.11 test_failed_record_operation_releases_page()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_record_manager.py
+    participant SUT as RecordManager
+    participant PageManager as PageManager
+    participant Page as Page
+
+    Test->>SUT: update_record("1:2", record)
+    SUT->>PageManager: get_page(1)
+    PageManager-->>SUT: page
+    SUT->>Page: write_tuple(2, serialized_record)
+    Page-->>SUT: raise OSError
+    SUT->>PageManager: release_page(1)
+    SUT-->>Test: propagate OSError
+    Test->>Test: assert page released
+```
+
 ---
 
 ## 8. test_storage_allocator.py
@@ -864,6 +992,22 @@ sequenceDiagram
     Test->>Test: assert isinstance(allocator, StorageAllocator)
 ```
 
+### 8.8 test_failed_reallocation_preserves_original_allocation()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_storage_allocator.py
+    participant SUT as StorageAllocator
+
+    Test->>SUT: reallocate_space(address, 2048)
+    SUT->>SUT: check available storage
+    SUT-->>Test: raise StorageExhaustedError
+    Test->>Test: assert free space unchanged
+    Test->>SUT: release_space(original_address)
+    SUT-->>Test: True
+```
+
 ---
 
 ## 9. test_storage_engine.py
@@ -903,6 +1047,8 @@ sequenceDiagram
     participant Pool as BufferPool
     participant SUT as StorageEngine
 
+    Test->>SUT: initialize()
+    SUT-->>Test: True
     Test->>SUT: read_page(1)
     SUT->>Pool: pin_page(1)
     Pool-->>SUT: page
@@ -919,11 +1065,43 @@ sequenceDiagram
     participant Pool as BufferPool
     participant SUT as StorageEngine
 
+    Test->>SUT: initialize()
+    SUT-->>Test: True
     Test->>SUT: write_page(page)
     SUT->>Pool: cache_page(page)
     Pool-->>SUT: True
     SUT-->>Test: True
     Test->>Test: assert result and BufferPool call
+```
+
+### 9.5 test_read_before_initialize()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_storage_engine.py
+    participant Pool as BufferPool
+    participant SUT as StorageEngine
+
+    Test->>SUT: read_page(1)
+    SUT->>SUT: check initialization state
+    SUT-->>Test: raise StorageEngineNotInitializedError
+    Test->>Test: assert Pool.pin_page was not called
+```
+
+### 9.6 test_write_before_initialize()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_storage_engine.py
+    participant Pool as BufferPool
+    participant SUT as StorageEngine
+
+    Test->>SUT: write_page(page)
+    SUT->>SUT: check initialization state
+    SUT-->>Test: raise StorageEngineNotInitializedError
+    Test->>Test: assert Pool.cache_page was not called
 ```
 
 ---
