@@ -1,5 +1,7 @@
-from dbms.database_object.catalog_manager import CatalogManager
 from unittest.mock import Mock
+import pytest
+
+from dbms.database_object.catalog_manager import CatalogManager
 
 
 def test_catalog_manager_can_be_created():
@@ -54,3 +56,36 @@ def test_lookup_object():
     # Assert
     assert result is descriptor
     metadata_cache.get.assert_called_once_with("public.users")
+
+
+def test_lookup_unknown_object():
+    # Arrange: Cache returns None for non-existent object
+    metadata_cache = Mock()
+    metadata_cache.get.return_value = None
+    catalog = CatalogManager(metadata_cache)
+
+    # Act & Assert: Looking up a non-existent object should raise KeyError
+    with pytest.raises(KeyError):
+        catalog.lookup_object("non_existent_object")
+
+
+def test_remove_unknown_object():
+    # Arrange: Cache raises KeyError when removing non-existent object
+    metadata_cache = Mock()
+    metadata_cache.remove.side_effect = KeyError("Object not found")
+    catalog = CatalogManager(metadata_cache)
+
+    # Act & Assert: Removing non-existent object should raise KeyError
+    with pytest.raises(KeyError):
+        catalog.remove_object("non_existent_object")
+
+
+def test_register_duplicate_object():
+    # Arrange: Cache raises ValueError when object name is duplicate
+    metadata_cache = Mock()
+    metadata_cache.set.side_effect = ValueError("Object already exists")
+    catalog = CatalogManager(metadata_cache)
+
+    # Act & Assert: Registering a duplicate object should raise ValueError
+    with pytest.raises(ValueError):
+        catalog.register_object("public.users", object())

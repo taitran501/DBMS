@@ -1,3 +1,5 @@
+import pytest
+
 from dbms.database_object.schema import Schema
 from dbms.database_object.table import Table
 from dbms.database_object.view import View
@@ -151,3 +153,43 @@ def test_drop_stored_procedure():
     # Assert
     assert result is True
     assert "calculate_total" not in schema.stored_procedures
+
+
+def test_reject_duplicate_table():
+    # Arrange
+    existing_table = Table("t1", "users")
+    schema = Schema("s1", "public", "admin", tables={"users": existing_table})
+    new_table = Table("t2", "users")
+
+    # Act & Assert
+    with pytest.raises(ValueError):
+        schema.create_table(new_table)
+
+
+def test_get_unknown_table():
+    # Arrange
+    schema = Schema("s1", "public", "admin", tables={})
+
+    # Act & Assert
+    with pytest.raises(KeyError):
+        schema.get_table("non_existent_table")
+
+
+def test_drop_unknown_table():
+    # Arrange
+    schema = Schema("s1", "public", "admin", tables={})
+
+    # Act & Assert
+    with pytest.raises(KeyError):
+        schema.drop_table("non_existent_table")
+
+
+def test_rename_table_to_existing_name():
+    # Arrange
+    t1 = Table("t1", "users")
+    t2 = Table("t2", "customers")
+    schema = Schema("s1", "public", "admin", tables={"users": t1, "customers": t2})
+
+    # Act & Assert
+    with pytest.raises(ValueError):
+        schema.rename_table("users", "customers")

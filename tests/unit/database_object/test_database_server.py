@@ -1,3 +1,5 @@
+import pytest
+
 from dbms.database_object.database_server import DatabaseServer
 
 
@@ -48,3 +50,21 @@ def test_restart():
     # Assert
     assert result is True
     assert server.status == "running"
+
+
+def test_start_already_running_server_raises_exception():
+    # Arrange: Server is already running
+    server = DatabaseServer("srv1", "1.0", "running")
+
+    # Act & Assert: Starting an already running server should raise RuntimeError
+    with pytest.raises(RuntimeError):
+        server.start()
+
+
+def test_stop_already_stopped_server_raises_exception():
+    # Arrange: Server is already stopped
+    server = DatabaseServer("srv1", "1.0", "stopped")
+
+    # Act & Assert: Stopping an already stopped server should raise RuntimeError
+    with pytest.raises(RuntimeError):
+        server.stop()

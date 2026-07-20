@@ -4,6 +4,9 @@
     - test_register_object()
     - test_remove_object()
     - test_lookup_object()
+    - test_lookup_unknown_object()
+    - test_remove_unknown_object()
+    - test_register_duplicate_object()
   - Column
     - test_column_can_be_created()
     - test_validate()
@@ -41,17 +44,30 @@
     - test_get_schema()
     - test_rename_schema()
     - test_drop_schema()
+    - test_reject_duplicate_schema()
+    - test_get_unknown_schema()
+    - test_drop_unknown_schema()
+    - test_rename_schema_to_existing_name()
   - DatabaseManager
     - test_database_manager_can_be_created()
     - test_create_database()
     - test_get_database()
     - test_rename_database()
     - test_drop_database()
+    - test_reject_duplicate_database()
+    - test_get_unknown_database()
+    - test_drop_unknown_database()
+    - test_rename_database_to_existing_name()
+    - test_rename_unknown_database_raises_exception()
+    - test_create_database_invalid_name_raises_value_error()
+    - test_drop_open_database_raises_database_in_use_error()
   - DatabaseServer
     - test_database_server_can_be_created()
     - test_start()
     - test_stop()
     - test_restart()
+    - test_start_already_running_server_raises_exception()
+    - test_stop_already_stopped_server_raises_exception()
   - ForeignKey
     - test_foreign_key_can_be_created()
     - test_validate_reference()
@@ -86,6 +102,10 @@
     - test_create_stored_procedure()
     - test_get_stored_procedure()
     - test_drop_stored_procedure()
+    - test_reject_duplicate_table()
+    - test_get_unknown_table()
+    - test_drop_unknown_table()
+    - test_rename_table_to_existing_name()
   - StoredProcedure
     - test_stored_procedure_can_be_created()
     - test_execute()
@@ -108,6 +128,12 @@
     - test_add_partition()
     - test_get_partition()
     - test_drop_partition()
+    - test_insert_duplicate_row_id()
+    - test_update_unknown_row()
+    - test_delete_unknown_row()
+    - test_add_duplicate_column()
+    - test_get_unknown_column()
+    - test_drop_unknown_column()
   - Trigger
     - test_trigger_can_be_created()
     - test_fire()
@@ -120,19 +146,6 @@
   - View
     - test_view_can_be_created()
     - test_refresh()
-  - Dependency Protocols
-    - test_metadata_cache_stub_matches_protocol()
-    - test_database_storage_stub_matches_protocol()
-    - test_database_backup_stub_matches_protocol()
-    - test_storage_allocator_stub_matches_protocol()
-    - test_query_executor_stub_matches_protocol()
-    - test_database_factory_stub_matches_protocol()
-  - Exceptions
-    - test_duplicate_database_error_inherits_exception()
-    - test_unknown_database_error_inherits_exception()
-    - test_trigger_error_inherits_exception()
-    - test_duplicate_trigger_error_inherits_exception()
-
 - Storage Engine
   - Dependency Protocols
     - test_page_store_stub_matches_protocol()
