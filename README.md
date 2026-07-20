@@ -511,7 +511,7 @@ Supporting classes used by the core architecture:
 
 *   **Database Object**: `DataTypeManager`, `TriggerManager`
 *   **Database Object dependency contracts**: `MetadataCacheProtocol`, `DatabaseStorageProtocol`, `DatabaseBackupProtocol`, `StorageAllocatorProtocol`, `QueryExecutorProtocol`, `DatabaseFactoryProtocol`
-*   **Database Object errors**: `DuplicateDatabaseError`, `UnknownDatabaseError`, `TriggerError`, `DuplicateTriggerError`
+*   **Database Object errors**: `DuplicateDatabaseError`, `UnknownDatabaseError`, `DuplicateSchemaError`, `UnknownSchemaError`, `DatabaseInUseError`, `TriggerError`, `DuplicateTriggerError`
 *   **Storage Engine**: `PageManager`, `Record`, `RecordManager`, `StorageAllocator`, `LogFileManager`
 *   **Query Processing**: `QueryProcessor`, `QueryValidator`, `ExecutionPlanner`, `Statement`, `SelectStatement`, `Token`, `TokenType`
 *   **Transactions**: `IsolationManager`, `DeadlockManager`, `TransactionStatus`
@@ -534,8 +534,6 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_database_server.py`
 - `test_data_type.py`
 - `test_data_type_manager.py`
-- `test_dependencies.py`
-- `test_exceptions.py`
 - `test_foreign_key.py`
 - `test_index.py`
 - `test_partition.py`

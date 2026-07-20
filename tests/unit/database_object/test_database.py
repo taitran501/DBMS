@@ -1,6 +1,9 @@
+from unittest.mock import Mock
+import pytest
+
 from dbms.database_object.database import Database
 from dbms.database_object.schema import Schema
-from unittest.mock import Mock
+from dbms.database_object.exceptions import DuplicateSchemaError, UnknownSchemaError
 
 
 def create_database(schemas=None):
@@ -8,7 +11,7 @@ def create_database(schemas=None):
     backup_service = Mock()
     database = Database(
         "db1", "test_db", "admin", "closed", 4096, "utf-8",
-        "/data", "public", storage, backup_service, schemas,
+        "/data", "public", storage, backup_service, schemas if schemas is not None else {},
     )
     return database, storage, backup_service
 
@@ -154,3 +157,43 @@ def test_drop_schema():
     # Assert
     assert result is True
     assert "public" not in database.schemas
+
+
+def test_reject_duplicate_schema():
+    # Arrange: Setup database with an existing "public" schema
+    existing_schema = Schema("s1", "public", "admin")
+    database, _, _ = create_database({"public": existing_schema})
+    new_schema = Schema("s2", "public", "admin")
+
+    # Act & Assert: Creating a schema with duplicate name "public" should raise DuplicateSchemaError
+    with pytest.raises(DuplicateSchemaError):
+        database.create_schema(new_schema)
+
+
+def test_get_unknown_schema():
+    # Arrange: Setup database with empty schemas
+    database, _, _ = create_database({})
+
+    # Act & Assert: Getting a non-existent schema should raise UnknownSchemaError
+    with pytest.raises(UnknownSchemaError):
+        database.get_schema("non_existent_schema")
+
+
+def test_drop_unknown_schema():
+    # Arrange: Setup database with empty schemas
+    database, _, _ = create_database({})
+
+    # Act & Assert: Dropping a non-existent schema should raise UnknownSchemaError
+    with pytest.raises(UnknownSchemaError):
+        database.drop_schema("non_existent_schema")
+
+
+def test_rename_schema_to_existing_name():
+    # Arrange: Setup database with two schemas ("s1" and "s2")
+    s1 = Schema("id1", "s1", "admin")
+    s2 = Schema("id2", "s2", "admin")
+    database, _, _ = create_database({"s1": s1, "s2": s2})
+
+    # Act & Assert: Renaming s1 to existing name s2 should raise DuplicateSchemaError
+    with pytest.raises(DuplicateSchemaError):
+        database.rename_schema("s1", "s2")

@@ -65,6 +65,54 @@ sequenceDiagram
     Test->>Test: assert result and cache call
 ```
 
+### 1.5 test_lookup_unknown_object()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_catalog_manager.py
+    participant SUT as CatalogManager
+    participant Cache as MetadataCacheProtocol
+
+    Test->>SUT: lookup_object("non_existent_object")
+    SUT->>Cache: get("non_existent_object")
+    Cache-->>SUT: None
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 1.6 test_remove_unknown_object()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_catalog_manager.py
+    participant SUT as CatalogManager
+    participant Cache as MetadataCacheProtocol
+
+    Test->>SUT: remove_object("non_existent_object")
+    SUT->>Cache: remove("non_existent_object")
+    Cache-->>SUT: raise KeyError
+    SUT-->>Test: propagate KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 1.7 test_register_duplicate_object()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_catalog_manager.py
+    participant SUT as CatalogManager
+    participant Cache as MetadataCacheProtocol
+
+    Test->>SUT: register_object("public.users", descriptor)
+    SUT->>Cache: set("public.users", descriptor)
+    Cache-->>SUT: raise ValueError
+    SUT-->>Test: propagate ValueError
+    Test->>Test: assert ValueError raised
+```
+
 ---
 
 ## 2. test_column.py
@@ -523,6 +571,62 @@ sequenceDiagram
     Test->>Test: assert schemas no longer contains schema
 ```
 
+### 6.10 test_reject_duplicate_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+
+    Test->>SUT: create_schema(schema named "public")
+    SUT->>SUT: check schema name in schemas
+    SUT-->>Test: raise DuplicateSchemaError
+    Test->>Test: assert DuplicateSchemaError raised
+```
+
+### 6.11 test_get_unknown_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+
+    Test->>SUT: get_schema("non_existent_schema")
+    SUT->>SUT: check schema name in schemas
+    SUT-->>Test: raise UnknownSchemaError
+    Test->>Test: assert UnknownSchemaError raised
+```
+
+### 6.12 test_drop_unknown_schema()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+
+    Test->>SUT: drop_schema("non_existent_schema")
+    SUT->>SUT: check schema name in schemas
+    SUT-->>Test: raise UnknownSchemaError
+    Test->>Test: assert UnknownSchemaError raised
+```
+
+### 6.13 test_rename_schema_to_existing_name()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database.py
+    participant SUT as Database
+
+    Test->>SUT: rename_schema("s1", "s2")
+    SUT->>SUT: check new schema name in schemas
+    SUT-->>Test: raise DuplicateSchemaError
+    Test->>Test: assert DuplicateSchemaError raised
+```
+
 ---
 
 ## 7. test_database_manager.py
@@ -602,6 +706,104 @@ sequenceDiagram
     Test->>Test: assert registry and storage call
 ```
 
+### 7.6 test_reject_duplicate_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: create_database("test_db")
+    SUT->>SUT: check if "test_db" exists in registry
+    SUT-->>Test: raise DuplicateDatabaseError
+    Test->>Test: assert DuplicateDatabaseError raised
+```
+
+### 7.7 test_get_unknown_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: get_database("non_existent_db")
+    SUT->>SUT: check if "non_existent_db" in registry
+    SUT-->>Test: raise UnknownDatabaseError
+    Test->>Test: assert UnknownDatabaseError raised
+```
+
+### 7.8 test_drop_unknown_database()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: drop_database("non_existent_db")
+    SUT->>SUT: check if "non_existent_db" in registry
+    SUT-->>Test: raise UnknownDatabaseError
+    Test->>Test: assert UnknownDatabaseError raised
+```
+
+### 7.9 test_rename_database_to_existing_name()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: rename_database("db1", "db2")
+    SUT->>SUT: check if "db2" exists in registry
+    SUT-->>Test: raise DuplicateDatabaseError
+    Test->>Test: assert DuplicateDatabaseError raised
+```
+
+### 7.10 test_rename_unknown_database_raises_exception()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: rename_database("non_existent_db", "new_name")
+    SUT->>SUT: check if "non_existent_db" in registry
+    SUT-->>Test: raise UnknownDatabaseError
+    Test->>Test: assert UnknownDatabaseError raised
+```
+
+### 7.11 test_create_database_invalid_name_raises_value_error()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: create_database("")
+    SUT->>SUT: validate database name
+    SUT-->>Test: raise ValueError
+    Test->>Test: assert ValueError raised
+```
+
+### 7.12 test_drop_open_database_raises_database_in_use_error()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_manager.py
+    participant SUT as DatabaseManager
+
+    Test->>SUT: drop_database("active_db")
+    SUT->>SUT: check database status is "open"
+    SUT-->>Test: raise DatabaseInUseError
+    Test->>Test: assert DatabaseInUseError raised
+```
+
 ---
 
 ## 8. test_database_server.py
@@ -659,6 +861,34 @@ sequenceDiagram
     SUT->>SUT: restart and keep status = running
     SUT-->>Test: True
     Test->>Test: assert result and status
+```
+
+### 8.5 test_start_already_running_server_raises_exception()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_server.py
+    participant SUT as DatabaseServer
+
+    Test->>SUT: start()
+    SUT->>SUT: check status is "running"
+    SUT-->>Test: raise RuntimeError
+    Test->>Test: assert RuntimeError raised
+```
+
+### 8.6 test_stop_already_stopped_server_raises_exception()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_database_server.py
+    participant SUT as DatabaseServer
+
+    Test->>SUT: stop()
+    SUT->>SUT: check status is "stopped"
+    SUT-->>Test: raise RuntimeError
+    Test->>Test: assert RuntimeError raised
 ```
 
 ---
@@ -1071,6 +1301,62 @@ sequenceDiagram
     Test->>Test: assert stored_procedures no longer contains procedure
 ```
 
+### 13.12 test_reject_duplicate_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: create_table(table named "users")
+    SUT->>SUT: check table name in tables
+    SUT-->>Test: raise ValueError
+    Test->>Test: assert ValueError raised
+```
+
+### 13.13 test_get_unknown_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: get_table("non_existent_table")
+    SUT->>SUT: check table name in tables
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 13.14 test_drop_unknown_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: drop_table("non_existent_table")
+    SUT->>SUT: check table name in tables
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 13.15 test_rename_table_to_existing_name()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_schema.py
+    participant SUT as Schema
+
+    Test->>SUT: rename_table("users", "customers")
+    SUT->>SUT: check new table name in tables
+    SUT-->>Test: raise ValueError
+    Test->>Test: assert ValueError raised
+```
+
 ---
 
 ## 14. test_stored_procedure.py
@@ -1361,6 +1647,90 @@ sequenceDiagram
     Test->>Test: assert partitions no longer contains partition
 ```
 
+### 15.19 test_insert_duplicate_row_id()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: insert(row with id "r1")
+    SUT->>SUT: check row id in rows
+    SUT-->>Test: raise ValueError
+    Test->>Test: assert ValueError raised
+```
+
+### 15.20 test_update_unknown_row()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: update("non_existent_row", values)
+    SUT->>SUT: check row id in rows
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 15.21 test_delete_unknown_row()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: delete("non_existent_row")
+    SUT->>SUT: check row id in rows
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 15.22 test_add_duplicate_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: add_column(column named "age")
+    SUT->>SUT: check column name in columns
+    SUT-->>Test: raise ValueError
+    Test->>Test: assert ValueError raised
+```
+
+### 15.23 test_get_unknown_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: get_column("non_existent_column")
+    SUT->>SUT: search columns by name
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
+### 15.24 test_drop_unknown_column()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_table.py
+    participant SUT as Table
+
+    Test->>SUT: drop_column("non_existent_column")
+    SUT->>SUT: search columns by name
+    SUT-->>Test: raise KeyError
+    Test->>Test: assert KeyError raised
+```
+
 ---
 
 ## 16. test_trigger.py
@@ -1508,139 +1878,3 @@ sequenceDiagram
 ```
 
 ---
-
-## 19. test_dependencies.py
-
-### 19.1 test_metadata_cache_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(MetadataCacheStub, MetadataCacheProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
-### 19.2 test_database_storage_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(DatabaseStorageStub, DatabaseStorageProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
-### 19.3 test_database_backup_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(DatabaseBackupStub, DatabaseBackupProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
-### 19.4 test_storage_allocator_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(StorageAllocatorStub, StorageAllocatorProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
-### 19.5 test_query_executor_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(QueryExecutorStub, QueryExecutorProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
-### 19.6 test_database_factory_stub_matches_protocol()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_dependencies.py
-    participant SUT as Protocol
-
-    Test->>SUT: isinstance(DatabaseFactoryStub, DatabaseFactoryProtocol)
-    SUT-->>Test: True
-    Test->>Test: assert structural conformance
-```
-
----
-
-## 20. test_exceptions.py
-
-### 20.1 test_duplicate_database_error_inherits_exception()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_exceptions.py
-    participant SUT as Exception
-
-    Test->>SUT: issubclass(DuplicateDatabaseError, Exception)
-    SUT-->>Test: True
-    Test->>Test: assert inheritance
-```
-
-### 20.2 test_unknown_database_error_inherits_exception()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_exceptions.py
-    participant SUT as Exception
-
-    Test->>SUT: issubclass(UnknownDatabaseError, Exception)
-    SUT-->>Test: True
-    Test->>Test: assert inheritance
-```
-
-### 20.3 test_trigger_error_inherits_exception()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_exceptions.py
-    participant SUT as Exception
-
-    Test->>SUT: issubclass(TriggerError, Exception)
-    SUT-->>Test: True
-    Test->>Test: assert inheritance
-```
-
-### 20.4 test_duplicate_trigger_error_inherits_exception()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_exceptions.py
-    participant SUT as Exception
-
-    Test->>SUT: issubclass(DuplicateTriggerError, Exception)
-    SUT-->>Test: True
-    Test->>Test: assert inheritance
-```

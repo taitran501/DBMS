@@ -1,3 +1,6 @@
+from unittest.mock import Mock
+import pytest
+
 from dbms.database_object.table import Table
 from dbms.database_object.column import Column
 from dbms.database_object.constraint import Constraint
@@ -5,7 +8,6 @@ from dbms.database_object.data_type import DataType
 from dbms.database_object.index import Index
 from dbms.database_object.partition import Partition
 from dbms.database_object.row import Row
-from unittest.mock import Mock
 
 
 def test_table_can_be_created():
@@ -251,3 +253,61 @@ def test_drop_partition():
     # Assert
     assert result is True
     assert table.partitions == []
+
+
+def test_insert_duplicate_row_id():
+    # Arrange: Setup table with existing row 'r1'
+    existing_row = Row("r1", {"name": "Alice"}, "v1")
+    table = Table("t1", "users", rows={"r1": existing_row}, row_count=1)
+    duplicate_row = Row("r1", {"name": "Bob"}, "v1")
+
+    # Act & Assert: Inserting row with duplicate row_id 'r1' should raise ValueError
+    with pytest.raises(ValueError):
+        table.insert(duplicate_row)
+
+
+def test_update_unknown_row():
+    # Arrange: Setup table with empty rows
+    table = Table("t1", "users", rows={}, row_count=0)
+
+    # Act & Assert: Updating a non-existent row should raise KeyError
+    with pytest.raises(KeyError):
+        table.update("non_existent_row", {"name": "Bob"})
+
+
+def test_delete_unknown_row():
+    # Arrange: Setup table with empty rows
+    table = Table("t1", "users", rows={}, row_count=0)
+
+    # Act & Assert: Deleting a non-existent row should raise KeyError
+    with pytest.raises(KeyError):
+        table.delete("non_existent_row")
+
+
+def test_add_duplicate_column():
+    # Arrange: Setup table with existing column 'age'
+    col1 = Column("c1", "age", DataType("INT", lambda v: True, int))
+    table = Table("t1", "users", columns=[col1])
+    col2 = Column("c2", "age", DataType("INT", lambda v: True, int))
+
+    # Act & Assert: Adding a column with duplicate name 'age' should raise ValueError
+    with pytest.raises(ValueError):
+        table.add_column(col2)
+
+
+def test_get_unknown_column():
+    # Arrange: Setup table with no columns
+    table = Table("t1", "users", columns=[])
+
+    # Act & Assert: Getting a non-existent column should raise KeyError
+    with pytest.raises(KeyError):
+        table.get_column("non_existent_column")
+
+
+def test_drop_unknown_column():
+    # Arrange: Setup table with no columns
+    table = Table("t1", "users", columns=[])
+
+    # Act & Assert: Dropping a non-existent column should raise KeyError
+    with pytest.raises(KeyError):
+        table.drop_column("non_existent_column")
