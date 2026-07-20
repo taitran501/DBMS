@@ -163,11 +163,15 @@
     - test_flush_page()
     - test_flush_all_pages()
     - test_buffer_pool_stores_capacity()
+    - test_failed_flush_preserves_dirty_page()
+    - test_failed_dirty_eviction_preserves_page()
+    - test_reject_cache_when_all_pages_are_pinned()
   - FileManager
     - test_file_manager_can_be_created()
     - test_create_file()
     - test_read_file_bytes()
     - test_write()
+    - test_create_file_rejects_path_outside_root()
   - LogFileManager
     - test_append_log_entry()
     - test_read_log_entry()
@@ -200,6 +204,10 @@
     - test_update_record()
     - test_delete_record()
     - test_reject_oversized_record()
+    - test_read_unknown_record()
+    - test_update_unknown_record()
+    - test_delete_unknown_record()
+    - test_failed_record_operation_releases_page()
     - test_record_manager_can_be_created()
   - StorageAllocator
     - test_allocate_storage_space()
@@ -208,12 +216,15 @@
     - test_track_allocator_free_space()
     - test_reject_exhausted_storage()
     - test_reject_double_release()
+    - test_failed_reallocation_preserves_original_allocation()
     - test_storage_allocator_can_be_created()
   - StorageEngine
     - test_storage_engine_can_be_created()
     - test_initialize()
     - test_read_page()
     - test_write_page()
+    - test_read_before_initialize()
+    - test_write_before_initialize()
 
 - Query Processing
   - AST
