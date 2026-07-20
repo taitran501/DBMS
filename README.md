@@ -4,7 +4,7 @@ Python DBMS architecture project. The repository is currently at the class-desig
 
 ---
 
-## 🧠 System Architecture & Design
+## System Architecture & Design
 
 ### 1. Mindmap (Level 2 Overview)
 
@@ -521,7 +521,162 @@ Supporting classes used by the core architecture:
 
 ---
 
-## 🛠️ Installation & Running Tests
+## Unit Tests by Core Component
+
+Our testing strategy organizes unit tests around the core capabilities of the DBMS. The following lists the comprehensive suite of unit tests implemented so far:
+
+### 1. Database Object (Schema, Metadata, & Management)
+- `test_catalog_manager.py`
+- `test_column.py`
+- `test_constraint.py`
+- `test_database.py`
+- `test_database_manager.py`
+- `test_database_server.py`
+- `test_data_type.py`
+- `test_data_type_manager.py`
+- `test_dependencies.py`
+- `test_exceptions.py`
+- `test_foreign_key.py`
+- `test_index.py`
+- `test_partition.py`
+- `test_row.py`
+- `test_schema.py`
+- `test_stored_procedure.py`
+- `test_table.py`
+- `test_trigger.py`
+- `test_trigger_manager.py`
+- `test_view.py`
+
+### 2. Storage Engine
+- `test_buffer_pool.py`
+- `test_dependencies.py`
+- `test_file_manager.py`
+- `test_log_file_manager.py`
+- `test_page.py`
+- `test_page_manager.py`
+- `test_record.py`
+- `test_record_manager.py`
+- `test_storage_allocator.py`
+- `test_storage_engine.py`
+
+### 3. Query Processing
+- `test_ast.py`
+- `test_execution_planner.py`
+- `test_lexer.py`
+- `test_logical_plan.py`
+- `test_physical_plan.py`
+- `test_query_executor.py`
+- `test_query_optimizer.py`
+- `test_query_processor.py`
+- `test_query_validator.py`
+- `test_select_statement.py`
+- `test_sql_parser.py`
+- `test_statement.py`
+- `test_token.py`
+- `test_token_type.py`
+
+### 4. Transactions & Concurrency
+- `test_deadlock_manager.py`
+- `test_dependencies.py`
+- `test_errors.py`
+- `test_isolation_manager.py`
+- `test_lock_manager.py`
+- `test_mvcc_manager.py`
+- `test_transaction.py`
+- `test_transaction_manager.py`
+- `test_transaction_status.py`
+
+### 5. Durability (Logging & Recovery)
+- `test_backup_manager.py`
+- `test_checkpoint_manager.py`
+- `test_cluster_node.py`
+- `test_log_record.py`
+- `test_recovery_manager.py`
+- `test_replication_manager.py`
+- `test_restore_manager.py`
+- `test_wal_manager.py`
+
+### 6. Security & Access Control
+- `test_audit_logger.py`
+- `test_authentication_service.py`
+- `test_authorization_service.py`
+- `test_encryption_service.py`
+- `test_permission.py`
+- `test_role.py`
+- `test_role_manager.py`
+- `test_security_manager.py`
+- `test_user.py`
+- `test_user_manager.py`
+
+### 7. Performance
+- `test_statistics_manager.py`
+
+### 8. Administration & Operations
+- `test_configuration_manager.py`
+- `test_import_export_manager.py`
+- `test_monitoring_manager.py`
+- `test_operational_logger.py`
+
+---
+
+## Implementation Roadmap (Descending Order of Importance)
+
+The development roadmap aligns with the top-down architecture design, starting from the core database management interfaces and metadata structures before diving into the lower-level execution and storage mechanics.
+
+### Priority 1: Database Management Layer
+*The entry point of the DBMS that manages the lifecycle of databases and server states.*
+- `DatabaseServer` initialization and state management.
+- `DatabaseManager` logic for creating, dropping, and retrieving databases.
+
+### Priority 2: Schema, Table & Column Metadata (Data Dictionary)
+*Defines the logical boundaries and structures of the data to be stored.*
+- System catalogs and `CatalogManager` implementation.
+- DDL logic for `Database`, `Schema`, `Table`, and `Column`.
+- Data types handling (`DataTypeManager`) and triggers setup.
+
+### Priority 3: Constraints & Indexes
+*Maintains data integrity and optimizes access paths.*
+- Primary, unique, and foreign key `Constraint` validations.
+- `Index` structures for efficient record lookups.
+
+### Priority 4: Storage Engine
+*The physical storage layer responsible for translating logical data into bytes on disk.*
+- Disk I/O management and `FileManager`.
+- `Page` layout and `BufferPool` caching.
+- Space allocation, `Record` and page management.
+
+### Priority 5: Query Processing
+*Allows users to interact with the database using SQL, processing requests and translating them into executable plans.*
+- SQL parsing and AST construction (`SQLParser`, `Lexer`).
+- Logical and physical plan generation (`QueryOptimizer`).
+- Execution engine linking plans to the Storage layer (`QueryExecutor`).
+
+### Priority 6: Transactions & Concurrency (ACID - Consistency & Isolation)
+*Ensures that multiple concurrent operations do not corrupt data and maintain a consistent state.*
+- `TransactionManager` and transaction lifecycle (Begin, Commit, Rollback).
+- Concurrency control mechanisms (`LockManager`, `MVCCManager`).
+- Deadlock detection and resolution.
+
+### Priority 7: Logging & Recovery (Durability)
+*Guarantees that committed data survives crashes and failures.*
+- Write-Ahead Logging (`WALManager`) implementation.
+- Checkpointing logic and crash recovery (`RecoveryManager`).
+- Clustering and node replication (`ReplicationManager`).
+
+### Priority 8: Security & Access Control
+*Protects the data from unauthorized access.*
+- User authentication and role-based access control (`SecurityManager`, `Role`).
+- Granular permission validation for DML/DDL operations.
+
+### Priority 9: Performance & Operations
+*Optimizes the system and provides administrative tools.*
+- Query cost estimation and `StatisticsManager`.
+- Performance metric collection (`MonitoringManager`).
+- Administrative and configuration operations.
+
+---
+
+## Installation & Running Tests
 
 Ensure you have Python 3.10+ installed.
 
