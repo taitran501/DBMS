@@ -674,8 +674,6 @@ The development roadmap aligns with the top-down architecture design, starting f
 
 ---
 
----
-
 ## Core Modules & Applied Design Patterns
 
 This section outlines the design patterns planned for the core modules, linking the sequence diagrams to the core classes and their unit tests. This ensures a structured development process.
@@ -705,9 +703,438 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` |
 | | Execution Operators | Iterator | `QueryExecutor`, `PhysicalPlan`, `Row` |
 
+### Design Patterns Deep Dive
+
+#### 1. Database Objects
+
+**Builder Pattern (Create Table)**
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant TableBuilder
+    participant Column
+    participant Table
+
+    Client->>TableBuilder: new TableBuilder("users")
+    Client->>TableBuilder: addColumn("id", INT)
+    TableBuilder->>Column: new Column("id", INT)
+    Client->>TableBuilder: addConstraint(PrimaryKey("id"))
+    Client->>TableBuilder: build()
+    TableBuilder->>Table: new Table(name, columns, constraints)
+    Table-->>TableBuilder: tableInstance
+    TableBuilder-->>Client: tableInstance
+```
+
+* **Description**: Separates the construction of a complex object from its representation, allowing the same construction process to create various representations.
+* **Use Case**: Creating a `Table` with multiple attributes (columns, data types, constraints).
+* **Advantages**:
+  * **Prevents Parameter Confusion:** Avoids forcing callers to pass an overwhelming list of parameters or `None`/`null` values when building tables with varying complexity.
+  * **Flexible Step-by-Step Construction:** Allows parsing SQL statements incrementally and attaching columns or constraints one by one before final object instantiation.
+  * **Ensures Validity Before Instantiation:** Validates table definitions before calling `.build()`, preventing invalid or partially formed table objects from being created.
+* **Reason**: Test cases require creating tables flexibly (e.g., with or without primary keys/default values). A `TableBuilder` allows chaining methods logically rather than using a constructor with too many parameters.
+
+**Strategy Pattern (Constraint Validation)**
+
+```mermaid
+sequenceDiagram
+    participant Table
+    participant ConstraintValidator
+    participant PKStrategy
+    participant FKStrategy
+
+    Table->>ConstraintValidator: validate(row)
+    ConstraintValidator->>PKStrategy: check(row)
+    PKStrategy-->>ConstraintValidator: true
+    ConstraintValidator->>FKStrategy: check(row)
+    FKStrategy-->>ConstraintValidator: true
+    ConstraintValidator-->>Table: true (Valid)
+```
+
+* **Description**: Defines a family of algorithms, encapsulates each one, and makes them interchangeable.
+* **Use Case**: Validating rows against constraints (`PrimaryKey`, `ForeignKey`, `NotNull`) upon insert/update.
+* **Advantages**:
+  * **Eliminates Complex `if-else` Blocks:** Keeps the `Table` class clean by removing monolithic branching logic for different constraint types.
+  * **Easy to Extend:** Adding new constraint rules (e.g., `UniqueConstraint`) only requires introducing a new strategy class without touching existing `Table` code.
+  * **Isolated Unit Testing:** Enables testing each validation rule independently (e.g., verifying Primary Key rules separately from Foreign Key rules).
+* **Reason**: Prevents the `Table` class from becoming bloated with an "if-else" of conditional logic for every constraint type. By injecting constraint strategies, testing and extending validation rules become highly isolated, strictly adhering to the Open-Closed Principle.
+
+**Factory Method (Index & DataType Creation)**
+
+```mermaid
+sequenceDiagram
+    participant CatalogManager
+    participant IndexFactory
+    participant BTreeIndex
+    participant Table
+
+    CatalogManager->>IndexFactory: createIndex("BTree", columns)
+    IndexFactory->>BTreeIndex: new BTreeIndex(columns)
+    BTreeIndex-->>IndexFactory: indexInstance
+    IndexFactory-->>CatalogManager: indexInstance
+    CatalogManager->>Table: addIndex(indexInstance)
+```
+
+* **Description**: Defines an interface for creating an object, but lets subclasses alter the type of objects that will be created.
+* **Use Case**: `CatalogManager` creating specific `Index` structures (BTree, Hash) or `DataType` instances.
+* **Advantages**:
+  * **Encapsulates Instantiation Details:** Callers (like `CatalogManager`) simply specify the index type name (e.g., `"BTree"`), leaving object instantiation details to the factory.
+  * **Decouples Callers from Concrete Classes (Loose Coupling):** `CatalogManager` works with the generic `Index` interface without depending on specific class implementations (`BTreeIndex`, `HashIndex`).
+  * **Simplifies Adding New Index Types:** Introducing new index types (e.g., spatial GIS indexes) requires registering them with the factory without modifying catalog management logic.
+* **Reason**: Encapsulates the instantiation logic. The caller doesn't need to know the specific class of the index or data type, just the interface.
+
+**Composite (Database Hierarchy)**
+
+```mermaid
+sequenceDiagram
+    participant Database
+    participant Schema
+    participant Table
+
+    Database->>Schema: drop()
+    Schema->>Table: drop()
+    Table-->>Schema: true
+    Schema-->>Database: true
+```
+
+* **Description**: Composes objects into tree structures to represent part-whole hierarchies.
+* **Use Case**: The hierarchy of `Database` -> `Schema` -> `Table`.
+* **Advantages**:
+  * **Uniform Hierarchical Handling:** Simplifies operating on tree-structured objects (`Database` contains `Schema`, `Schema` contains `Table`).
+  * **Automatic Operation Cascading:** Invoking a method on a parent component (e.g., `Schema.drop()`) automatically cascades down to all child components (`Table.drop()`) without requiring manual iteration loops outside.
+* **Reason**: Allows uniform operations across the hierarchy. For example, dropping a Schema automatically calls drop on all its Tables.
+
+**Repository (Metadata Management)**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant CatalogManager
+    participant MetadataCache
+
+    Client->>CatalogManager: get_table("users")
+    CatalogManager->>MetadataCache: lookup("users")
+    MetadataCache-->>CatalogManager: Table Object
+    CatalogManager-->>Client: Table Object
+```
+
+* **Description**: Mediates between the domain and data mapping layers using a collection-like interface.
+* **Use Case**: `CatalogManager` acting as the single source of truth for metadata objects.
+* **Advantages**:
+  * **Decouples Storage Mechanism from Domain Logic:** Allows query and engine logic to fetch metadata without worrying about whether it resides in RAM, cache, or disk storage.
+  * **Flexible Backend Swapping:** Enables switching the underlying storage implementation (e.g., in-memory to persistent disk) without impacting core database management code.
+* **Reason**: Abstracts the underlying storage of metadata (whether in-memory or persisted to disk) from the core database logic.
+
+**Builder (View Creation)**
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant ViewBuilder
+    participant AST
+    participant View
+
+    Client->>ViewBuilder: new ViewBuilder("active_users", sql)
+    Client->>ViewBuilder: parse_query()
+    ViewBuilder->>AST: construct()
+    Client->>ViewBuilder: build()
+    ViewBuilder->>View: new View(name, ast)
+    View-->>Client: viewInstance
+```
+
+* **Description**: Separates the construction of a complex object from its representation.
+* **Use Case**: Constructing a `View` from an `AST` and dependencies.
+* **Advantages**:
+  * **Manages Multi-Step Construction:** Encapsulates multi-step creation workflows (SQL parsing, AST construction, dependency validation) cleanly.
+  * **Prevents Invalid View Creation:** Guarantees that query parsing and dependency resolution succeed before generating the final `View` instance.
+* **Reason**: View creation involves multiple steps (parsing query, resolving dependencies, storing metadata).
+
+#### 2. Storage Engine
+
+**Strategy Pattern (Buffer Replacement)**
+* **Description**: Allows flexible swapping of victim-page selection algorithms.
+* **Use Case**: The `BufferPool` choosing which page to evict when RAM is full.
+* **Reason**: Different workloads benefit from different caching policies (LRU, MRU, Clock). `BufferPool` can call `strategy.getVictimPage()` without knowing the internal selection logic, eliminating complex if-else branching for policy selection and fulfilling the Strategy pattern perfectly.
+
+```mermaid
+sequenceDiagram
+    participant BufferPool
+    participant LRUStrategy
+    participant FileManager
+    participant Page
+
+    BufferPool->>LRUStrategy: getVictimPage()
+    LRUStrategy-->>BufferPool: victim_page_id
+    opt if victim_page is "dirty" (modified)
+        BufferPool->>FileManager: flushPage(victim_page_id, data)
+    end
+    BufferPool->>FileManager: readPage(new_page_id)
+    FileManager-->>BufferPool: new_page_data
+    BufferPool->>Page: updateContent(new_page_data)
+```
+
+**Proxy Pattern (Page Loading & Buffer Pool)**
+* **Description**: Provides a surrogate or placeholder for another object to control access to it.
+* **Use Case**: `BufferPool` acts as a cache proxy between the `StorageEngine` and `FileManager` (Disk).
+* **Reason**: Directly reading from disk is slow. `BufferPool` intercepts requests (Lazy Loading). It serves pages from RAM if present, and only triggers an expensive disk read on a Page Fault.
+
+```mermaid
+sequenceDiagram
+    participant StorageEngine
+    participant BufferPool (Proxy)
+    participant Memory (Cache)
+    participant FileManager (Disk)
+
+    StorageEngine->>BufferPool: getPage(page_id=5)
+    BufferPool->>Memory: check_exists(page_id=5)
+    alt Page is in Memory
+        Memory-->>BufferPool: page_data
+    else Page is NOT in Memory (Page Fault)
+        BufferPool->>FileManager: read_from_disk(page_id=5)
+        FileManager-->>BufferPool: page_data
+        BufferPool->>Memory: cache_page(page_id=5, page_data)
+    end
+    BufferPool-->>StorageEngine: Page(page_data)
+```
+
+**Factory Method (Page Allocation)**
+* **Description**: Defers object instantiation to subclasses.
+* **Use Case**: `StorageEngine` requesting new `Page` objects from `FileManager`.
+* **Reason**: Different page types (Data, Index, Log) can be created without tightly coupling the engine to specific page constructors.
+
+```mermaid
+sequenceDiagram
+    participant StorageEngine
+    participant FileManager
+    participant DataPage
+
+    StorageEngine->>FileManager: allocate_page(DATA_TYPE)
+    FileManager->>DataPage: new DataPage(id)
+    DataPage-->>FileManager: pageInstance
+    FileManager-->>StorageEngine: pageInstance
+```
+
+**Adapter (File Access)**
+* **Description**: Allows classes with incompatible interfaces to work together.
+* **Use Case**: `FileManager` interfacing with OS-specific file systems.
+* **Reason**: Shields the `StorageEngine` from low-level OS file handling APIs (POSIX, Windows API), providing a unified interface.
+
+```mermaid
+sequenceDiagram
+    participant StorageEngine
+    participant FileManager (Adapter)
+    participant OS_FileSystem
+
+    StorageEngine->>FileManager: read_block(path, offset)
+    FileManager->>OS_FileSystem: pread(fd, buffer, size, offset)
+    OS_FileSystem-->>FileManager: bytes
+    FileManager-->>StorageEngine: data
+```
+
+**Singleton (Buffer Pool Management)**
+* **Description**: Ensures a class has only one instance and provides a global point of access.
+* **Use Case**: `BufferPool` instance management.
+* **Reason**: RAM is a shared global resource. Having multiple buffer pools could lead to uncoordinated memory usage and contention.
+
+```mermaid
+sequenceDiagram
+    participant Client1
+    participant BufferPool
+    participant Client2
+
+    Client1->>BufferPool: get_instance()
+    BufferPool-->>Client1: instance
+    Client2->>BufferPool: get_instance()
+    BufferPool-->>Client2: instance
+```
+
+**Data Mapper (Record Read/Write)**
+* **Description**: Moves data between objects and a database while keeping them independent.
+* **Use Case**: Translating raw bytes in a `Page` to a `Row` object.
+* **Reason**: Keeps the in-memory object model (`Row`) independent of the physical storage format (bytes in a `Page`).
+
+```mermaid
+sequenceDiagram
+    participant StorageEngine
+    participant DataMapper
+    participant Page
+    participant Row
+
+    StorageEngine->>DataMapper: read_row(page, slot_id)
+    DataMapper->>Page: get_bytes(slot_id)
+    Page-->>DataMapper: byte_array
+    DataMapper->>Row: deserialize(byte_array)
+    Row-->>DataMapper: rowInstance
+    DataMapper-->>StorageEngine: rowInstance
+```
+
+**Strategy (Storage Allocation)**
+* **Description**: Encapsulates interchangeable algorithms.
+* **Use Case**: `FileManager` allocating space for a `Partition` (extent-based vs. page-based).
+* **Reason**: Allows changing how disk space is allocated without modifying the core storage engine.
+
+```mermaid
+sequenceDiagram
+    participant FileManager
+    participant ExtentAllocationStrategy
+    participant Partition
+
+    FileManager->>ExtentAllocationStrategy: allocate(partition)
+    ExtentAllocationStrategy->>Partition: reserve_blocks(8)
+    Partition-->>ExtentAllocationStrategy: true
+    ExtentAllocationStrategy-->>FileManager: true
+```
+
+#### 3. Query Processing
+
+**Visitor Pattern (AST Traversal)**
+* **Description**: Separates an algorithm from an object structure on which it operates.
+* **Use Case**: Analyzing, validating, and optimizing the Abstract Syntax Tree (AST).
+* **Reason**: The AST contains dozens of node types (`SelectNode`, `JoinNode`, etc.). Adding methods for type checking and optimization directly to nodes would violate the Single Responsibility Principle. A Visitor object can traverse the tree and execute operations based on node type cleanly.
+
+```mermaid
+sequenceDiagram
+    participant QueryOptimizer
+    participant SelectNode (AST)
+    participant JoinNode (AST)
+    participant OptimizationVisitor
+
+    QueryOptimizer->>SelectNode: accept(OptimizationVisitor)
+    SelectNode->>OptimizationVisitor: visitSelectNode(this)
+    OptimizationVisitor->>JoinNode: accept(OptimizationVisitor) 
+    JoinNode->>OptimizationVisitor: visitJoinNode(this)
+    OptimizationVisitor-->>JoinNode: Optimized Join Node
+    OptimizationVisitor-->>SelectNode: Optimized Select Node
+```
+
+**Iterator Pattern / Volcano Model (Execution Operators)**
+* **Description**: Provides a way to access elements of an aggregate object sequentially.
+* **Use Case**: The query execution pipeline (`PhysicalPlan` and operators).
+* **Reason**: A DBMS processes data sequentially rather than loading entire tables into RAM. The standard Volcano Processing Model uses the Iterator pattern (`open()`, `next()`, `close()`) where each operator pulls rows from its children, allowing efficient, pipelined data flow.
+
+```mermaid
+sequenceDiagram
+    participant QueryExecutor
+    participant LimitOperator
+    participant FilterOperator
+    participant SeqScanOperator
+
+    QueryExecutor->>LimitOperator: open()
+    LimitOperator->>FilterOperator: open()
+    FilterOperator->>SeqScanOperator: open()
+
+    loop Fetch Rows Pipeline
+        QueryExecutor->>LimitOperator: next()
+        LimitOperator->>FilterOperator: next()
+        FilterOperator->>SeqScanOperator: next()
+        SeqScanOperator-->>FilterOperator: Row(Data)
+        opt If Row matches condition
+            FilterOperator-->>LimitOperator: Row(Data)
+            LimitOperator-->>QueryExecutor: Row(Data)
+        end
+    end
+```
+
+**Interpreter (SQL Parsing)**
+* **Description**: Given a language, define a representation for its grammar along with an interpreter.
+* **Use Case**: `SQLParser` mapping syntax to `AST` nodes.
+* **Reason**: Provides a structured way to evaluate or represent SQL grammar rules.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SQLParser
+    participant Lexer
+    participant AST
+
+    Client->>SQLParser: parse("SELECT * FROM users")
+    SQLParser->>Lexer: tokenize()
+    Lexer-->>SQLParser: tokens
+    SQLParser->>AST: build_from(tokens)
+    AST-->>SQLParser: astInstance
+    SQLParser-->>Client: astInstance
+```
+
+**Builder (AST Construction)**
+* **Description**: Separates construction from representation.
+* **Use Case**: Step-by-step building of the `AST` during parsing.
+* **Reason**: The AST is a complex tree structure built incrementally as tokens are consumed by the parser.
+
+```mermaid
+sequenceDiagram
+    participant SQLParser
+    participant ASTBuilder
+    participant AST
+
+    SQLParser->>ASTBuilder: new ASTBuilder()
+    SQLParser->>ASTBuilder: addSelectNode(columns)
+    SQLParser->>ASTBuilder: addFromNode(table)
+    SQLParser->>ASTBuilder: build()
+    ASTBuilder->>AST: construct
+    AST-->>ASTBuilder: astInstance
+    ASTBuilder-->>SQLParser: astInstance
+```
+
+**Chain of Responsibility (Query Validation & Execution Pipeline)**
+* **Description**: Passes a request along a chain of handlers.
+* **Use Case**: Validating an `AST` (Syntax -> Semantics -> Permissions).
+* **Reason**: Decouples validation steps. Allows dynamic addition or removal of checks without affecting the core execution flow.
+
+```mermaid
+sequenceDiagram
+    participant QueryProcessor
+    participant SyntaxValidator
+    participant SemanticValidator
+    participant PermissionValidator
+
+    QueryProcessor->>SyntaxValidator: validate(ast)
+    SyntaxValidator->>SemanticValidator: next(ast)
+    SemanticValidator->>PermissionValidator: next(ast)
+    PermissionValidator-->>SemanticValidator: true
+    SemanticValidator-->>SyntaxValidator: true
+    SyntaxValidator-->>QueryProcessor: true
+```
+
+**Strategy (Query Optimization)**
+* **Description**: Encapsulates interchangeable algorithms.
+* **Use Case**: `QueryOptimizer` applying different optimization rules (Cost-based vs. Heuristic).
+* **Reason**: Optimizer can switch or combine strategies based on query complexity and available statistics.
+
+```mermaid
+sequenceDiagram
+    participant QueryOptimizer
+    participant HeuristicStrategy
+    participant CostBasedStrategy
+
+    QueryOptimizer->>HeuristicStrategy: optimize(logical_plan)
+    HeuristicStrategy-->>QueryOptimizer: optimized_plan
+    opt If query is complex
+        QueryOptimizer->>CostBasedStrategy: optimize(optimized_plan)
+        CostBasedStrategy-->>QueryOptimizer: final_plan
+    end
+```
+
+**Factory Method (Execution Plan Creation)**
+* **Description**: Defers instantiation to subclasses.
+* **Use Case**: Converting `LogicalPlan` nodes to `PhysicalPlan` operators.
+* **Reason**: Decouples logical operations from their physical implementations (e.g., converting a LogicalJoin into a HashJoin or MergeJoin operator based on cost).
+
+```mermaid
+sequenceDiagram
+    participant QueryOptimizer
+    participant PhysicalPlanFactory
+    participant HashJoinOperator
+
+    QueryOptimizer->>PhysicalPlanFactory: createJoin(LogicalJoin, statistics)
+    PhysicalPlanFactory->>HashJoinOperator: new HashJoinOperator()
+    HashJoinOperator-->>PhysicalPlanFactory: opInstance
+    PhysicalPlanFactory-->>QueryOptimizer: opInstance
+```
+
 ---
 
 ## Installation & Running Tests
+
 
 Ensure you have Python 3.10+ installed.
 
