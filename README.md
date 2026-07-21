@@ -674,6 +674,39 @@ The development roadmap aligns with the top-down architecture design, starting f
 
 ---
 
+---
+
+## Core Modules & Applied Design Patterns
+
+This section outlines the design patterns planned for the core modules, linking the sequence diagrams to the core classes and their unit tests. This ensures a structured development process.
+
+| Module | Core Feature | Pattern | Target Classes |
+| :--- | :--- | :--- | :--- |
+| **Database Objects** | Create Table | Builder | `Table`, `Column`, `Constraint`, `CatalogManager` |
+| | Constraint Validation | Strategy | `Constraint`, `ForeignKey`, `Table`, `Column` |
+| | Index Creation | Factory Method | `Index`, `Table`, `CatalogManager` |
+| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` |
+| | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` |
+| | Data Type Creation | Factory Method | `DataType`, `Column` |
+| | View Creation | Builder | `View`, `AST`, `CatalogManager` |
+| **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` |
+| | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` |
+| | File Access | Adapter | `FileManager`, `StorageEngine` |
+| | Buffer Pool Management | Singleton | `BufferPool` |
+| | Record Read/Write | Data Mapper | `StorageEngine`, `Page`, `Row` |
+| | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` |
+| | Page Loading | Proxy | `BufferPool`, `Page`, `FileManager` |
+| **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` |
+| | AST Construction | Builder | `SQLParser`, `AST` |
+| | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` |
+| | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` |
+| | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` |
+| | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` |
+| | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` |
+| | Execution Operators | Iterator | `QueryExecutor`, `PhysicalPlan`, `Row` |
+
+---
+
 ## Installation & Running Tests
 
 Ensure you have Python 3.10+ installed.
