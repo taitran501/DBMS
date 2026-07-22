@@ -5,6 +5,7 @@ Class diagrams for the design patterns currently implemented in the **Database O
 - Builder Pattern for creating `Table` objects.
 - Strategy Pattern for validating constraints.
 - Factory Method for creating `Index` and `DataType` objects.
+- Composite Pattern for managing the `Database` and `Schema` hierarchy.
 
 ---
 
@@ -203,3 +204,56 @@ classDiagram
 ```
 
 Each concrete factory chooses the product it creates: `BTreeIndexFactory` creates `BTreeIndex`, `HashIndexFactory` creates `HashIndex`, and each data-type factory creates one configured `DataType`.
+
+---
+
+## 4. Composite Pattern (Database Hierarchy)
+
+Organizes `Database`, `Schema`, `Table`, `View`, and `StoredProcedure` into a composite structure for hierarchical catalog management.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Database {
+        +database_id: str
+        +name: str
+        +default_schema: str
+        +schemas: dict
+        +open() bool
+        +close() bool
+        +create_schema(schema: Schema) bool
+        +get_schema(name: str) Schema
+        +rename_schema(old_name: str, new_name: str) bool
+        +drop_schema(name: str) bool
+    }
+
+    class Schema {
+        +schema_id: str
+        +name: str
+        +tables: dict
+        +views: dict
+        +stored_procedures: dict
+        +create_table(table: Table) bool
+        +get_table(name: str) Table
+        +rename_table(old_name: str, new_name: str) bool
+        +drop_table(name: str) bool
+        +create_view(view: View) bool
+        +get_view(name: str) View
+        +drop_view(name: str) bool
+        +create_stored_procedure(procedure: StoredProcedure) bool
+        +get_stored_procedure(name: str) StoredProcedure
+        +drop_stored_procedure(name: str) bool
+    }
+
+    class Table
+    class View
+    class StoredProcedure
+
+    Database *-- Schema : contains
+    Schema *-- Table : contains
+    Schema *-- View : contains
+    Schema *-- StoredProcedure : contains
+```
+
+`Database` manages its `Schema` collection, and each `Schema` manages its `Table`, `View`, and `StoredProcedure` collections.

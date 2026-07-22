@@ -119,21 +119,19 @@ sequenceDiagram
 
 ## 4. Composite Pattern (Database Hierarchy)
 
-Organizes `Database`, `Schema`, and `Table` objects into a tree structure, allowing operations on parent objects to automatically apply to their children.
+Organizes `Database`, `Schema`, and child objects into a hierarchical structure for schema and component lookup and management.
 
 ```mermaid
 sequenceDiagram
     autonumber
+    actor Client
     participant Database
     participant Schema
-    participant Table
 
-    Database->>Schema: drop_schema("public")
-    loop For each table in schema
-        Schema->>Table: drop()
-        Table-->>Schema: True
-    end
-    Schema-->>Database: True
+    Client->>Database: drop_schema("application")
+    Database->>Database: verify name is not default_schema
+    Database->>Database: remove schema from schemas dict
+    Database-->>Client: True
 ```
 
 ---

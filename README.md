@@ -787,7 +787,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` | Implemented |
 | | Constraint Validation | Strategy | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
 | | Index Creation | Factory Method | `IndexFactory`, `BTreeIndexFactory`, `HashIndexFactory`, `Index`, `BTreeIndex`, `HashIndex` | Implemented |
-| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` | Planned |
+| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View`, `StoredProcedure` | Implemented |
 | | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` | Planned |
 | | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
@@ -918,22 +918,23 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    actor Client
     participant Database
     participant Schema
-    participant Table
 
-    Database->>Schema: drop()
-    Schema->>Table: drop()
-    Table-->>Schema: true
-    Schema-->>Database: true
+    Client->>Database: drop_schema("application")
+    Database->>Database: verify name is not default_schema
+    Database->>Database: remove schema from schemas dict
+    Database-->>Client: true
 ```
 
-* **Description**: Composes objects into tree structures to represent part-whole hierarchies.
-* **Use Case**: The hierarchy of `Database` -> `Schema` -> `Table`.
+* **Description**: Organizes `Database`, `Schema`, and child objects into a hierarchy for schema and component management.
+* **Use Case**: `Database` manages `Schema` objects; each `Schema` manages its `Table`, `View`, and `StoredProcedure` collections.
 * **Advantages**:
-  * **Uniform Hierarchical Handling:** Simplifies operating on tree-structured objects (`Database` contains `Schema`, `Schema` contains `Table`).
-  * **Automatic Operation Cascading:** Invoking a method on a parent component (e.g., `Schema.drop()`) automatically cascades down to all child components (`Table.drop()`) without requiring manual iteration loops outside.
-* **Reason**: Allows uniform operations across the hierarchy. For example, dropping a Schema automatically calls drop on all its Tables.
+  * **Clear Ownership:** Each level owns only its direct child collection and exposes typed create, lookup, rename, and drop operations.
+  * **Consistent Lookup Rules:** `Database` uses domain-specific schema exceptions; `Schema` uses the same duplicate and missing-name rules for its leaf collections.
+  * **Safe Default Schema:** Renaming the default schema updates its name, while dropping it is rejected.
+* **Reason**: The hierarchy keeps catalog ownership local: `Database` manages schemas, while each schema manages its own table, view, and stored-procedure metadata. Dropping a schema removes that direct association; leaf lifecycle cascade is not implemented.
 
 **Repository (Metadata Management)**
 
