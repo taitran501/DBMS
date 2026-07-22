@@ -1,119 +1,184 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Set
+
 from dbms.database_object.row import Row
 
 
-class ConstraintStrategy:
-    """Abstract Strategy interface for constraint validation."""
+class ConstraintStrategy(ABC):
+    """Common Strategy contract for validating a row."""
 
-    def validate(self, row: Row, **kwargs: Any) -> bool:
-        return True
+    @abstractmethod
+    def validate(self, row: Row, *, existing_rows: Iterable[Row] = ()) -> bool:
+        """Return whether the candidate row satisfies this strategy."""
 
 
 class CheckStrategy(ConstraintStrategy):
-    """Strategy for evaluating custom row validation rules (CHECK constraints)."""
+    """Evaluate a custom CHECK rule."""
 
-    def validate(self, row: Row, validation_rule: Callable[[Row], bool] | None = None) -> bool:
-        if callable(validation_rule):
-            return bool(validation_rule(row))
-        return True
+    def __init__(self, validation_rule: Callable[[Row], bool]) -> None:
+        self.validation_rule = validation_rule
+
+    def validate(self, row: Row, *, existing_rows: Iterable[Row] = ()) -> bool:
+        return bool(self.validation_rule(row))
 
 
 class PrimaryKeyStrategy(ConstraintStrategy):
-    """Strategy for validating Primary Key constraints (non-NULL requirement)."""
+    """Require every primary-key column to contain a non-NULL value."""
 
-    def validate_primary_key(self, row: Row, key_columns: tuple[str, ...]) -> bool:
-        for col in key_columns:
-            val = row.values.get(col)
-            if val is None:
-                return False
-        return True
+    def __init__(self, key_columns: tuple[str, ...]) -> None:
+        if not key_columns:
+            raise ValueError("Primary key requires at least one column")
+        self.key_columns = key_columns
+
+    def validate(self, row: Row, *, existing_rows: Iterable[Row] = ()) -> bool:
+        if any(row.values.get(column) is None for column in self.key_columns):
+            return False
+        return UniqueStrategy(self.key_columns).validate(
+            row, existing_rows=existing_rows
+        )
 
 
 class UniqueStrategy(ConstraintStrategy):
-    """Strategy for validating Unique constraints against stored rows."""
+    """Reject duplicate values across the configured key columns."""
 
-    def validate_unique(self, row: Row, key_columns: tuple[str, ...], existing_rows: list[Row]) -> bool:
-        candidate_vals = tuple(row.values.get(col) for col in key_columns)
-        for existing in existing_rows:
-            if existing.row_id == row.row_id:
-                continue
-            existing_vals = tuple(existing.values.get(col) for col in key_columns)
-            if candidate_vals == existing_vals:
-                return False
-        return True
+    def __init__(self, key_columns: tuple[str, ...]) -> None:
+        if not key_columns:
+            raise ValueError("Unique constraint requires at least one column")
+        self.key_columns = key_columns
+
+    def validate(self, row: Row, *, existing_rows: Iterable[Row] = ()) -> bool:
+        candidate_values = tuple(row.values.get(column) for column in self.key_columns)
+        return all(
+            existing.row_id == row.row_id
+            or tuple(existing.values.get(column) for column in self.key_columns)
+            != candidate_values
+            for existing in existing_rows
+        )
 
 
 class ForeignKeyStrategy(ConstraintStrategy):
-    """Strategy for validating Foreign Key constraints and handling cascading actions."""
+    """Require a local key value to exist in the referenced key set."""
 
-    def validate_foreign_key(self, row: Row, foreign_key_col: str, referenced_keys: set) -> bool:
-        val = row.values.get(foreign_key_col)
-        return val in referenced_keys
+    def __init__(
+        self,
+        foreign_key_column: str,
+        referenced_keys: Set[object] | Callable[[], Set[object]],
+    ) -> None:
+        if not foreign_key_column:
+            raise ValueError("Foreign key column cannot be empty")
+        self.foreign_key_column = foreign_key_column
+        self.referenced_keys = referenced_keys
+
+    def validate(self, row: Row, *, existing_rows: Iterable[Row] = ()) -> bool:
+        referenced_keys = (
+            self.referenced_keys()
+            if callable(self.referenced_keys)
+            else self.referenced_keys
+        )
+        return row.values.get(self.foreign_key_column) in referenced_keys
 
     def cascade_delete(
-        self, parent_key_value: object, child_rows: list[Row], foreign_key_col: str
+        self,
+        parent_key_value: object,
+        child_rows: list[Row],
+        foreign_key_column: str | None = None,
     ) -> list[str]:
+        column = foreign_key_column or self.foreign_key_column
         deleted_ids: list[str] = []
-        i = 0
-        while i < len(child_rows):
-            if child_rows[i].values.get(foreign_key_col) == parent_key_value:
-                deleted_row = child_rows.pop(i)
-                deleted_ids.append(deleted_row.row_id)
+        remaining_rows: list[Row] = []
+        for child in child_rows:
+            if child.values.get(column) == parent_key_value:
+                deleted_ids.append(child.row_id)
             else:
-                i += 1
+                remaining_rows.append(child)
+        child_rows[:] = remaining_rows
         return deleted_ids
 
     def cascade_update(
-        self, old_key_value: object, new_key_value: object, child_rows: list[Row], foreign_key_col: str
+        self,
+        old_key_value: object,
+        new_key_value: object,
+        child_rows: list[Row],
+        foreign_key_column: str | None = None,
     ) -> int:
+        column = foreign_key_column or self.foreign_key_column
         updated_count = 0
         for child in child_rows:
-            if child.values.get(foreign_key_col) == old_key_value:
-                child.values[foreign_key_col] = new_key_value
+            if child.values.get(column) == old_key_value:
+                child.values[column] = new_key_value
                 updated_count += 1
         return updated_count
 
 
 class Constraint:
-    """Context class for constraint validation delegating to strategy objects."""
+    """Context that delegates row validation to an interchangeable strategy."""
 
     def __init__(
-        self, constraint_id: str, name: str, constraint_type: str, validation_rule: object
+        self,
+        constraint_id: str,
+        name: str,
+        constraint_type: str,
+        validation_rule: object = None,
+        *,
+        strategy: ConstraintStrategy | None = None,
     ) -> None:
         self.constraint_id = constraint_id
         self.name = name
         self.constraint_type = constraint_type
         self.validation_rule = validation_rule
+        self.strategy = strategy
+        if self.strategy is None and callable(validation_rule):
+            self.strategy = CheckStrategy(validation_rule)
 
-        # Concrete Strategies
-        self._check_strategy = CheckStrategy()
-        self._pk_strategy = PrimaryKeyStrategy()
-        self._unique_strategy = UniqueStrategy()
-        self._fk_strategy = ForeignKeyStrategy()
+    def set_strategy(self, strategy: ConstraintStrategy) -> None:
+        self.strategy = strategy
 
-    def validate_row(self, row: Row) -> bool:
-        if callable(self.validation_rule):
-            return self._check_strategy.validate(row, self.validation_rule)
-        return True
+    def validate_row(
+        self, row: Row, *, existing_rows: Iterable[Row] = ()
+    ) -> bool:
+        if self.strategy is None:
+            raise RuntimeError(
+                f"Constraint '{self.name}' has no validation strategy"
+            )
+        return self.strategy.validate(row, existing_rows=existing_rows)
 
+    # Compatibility wrappers for the original public API.
     def validate_primary_key(self, row: Row, key_columns: tuple[str, ...]) -> bool:
-        return self._pk_strategy.validate_primary_key(row, key_columns)
+        return PrimaryKeyStrategy(key_columns).validate(row)
 
-    def validate_unique(self, row: Row, key_columns: tuple[str, ...], existing_rows: list[Row]) -> bool:
-        return self._unique_strategy.validate_unique(row, key_columns, existing_rows)
+    def validate_unique(
+        self,
+        row: Row,
+        key_columns: tuple[str, ...],
+        existing_rows: list[Row],
+    ) -> bool:
+        return UniqueStrategy(key_columns).validate(row, existing_rows=existing_rows)
 
-    def validate_foreign_key(self, row: Row, foreign_key_col: str, referenced_keys: set) -> bool:
-        return self._fk_strategy.validate_foreign_key(row, foreign_key_col, referenced_keys)
+    def validate_foreign_key(
+        self,
+        row: Row,
+        foreign_key_column: str,
+        referenced_keys: Set[object],
+    ) -> bool:
+        return ForeignKeyStrategy(foreign_key_column, referenced_keys).validate(row)
 
     def cascade_delete(
-        self, parent_key_value: object, child_rows: list[Row], foreign_key_col: str
+        self,
+        parent_key_value: object,
+        child_rows: list[Row],
+        foreign_key_column: str,
     ) -> list[str]:
-        return self._fk_strategy.cascade_delete(parent_key_value, child_rows, foreign_key_col)
+        strategy = ForeignKeyStrategy(foreign_key_column, set())
+        return strategy.cascade_delete(parent_key_value, child_rows)
 
     def cascade_update(
-        self, old_key_value: object, new_key_value: object, child_rows: list[Row], foreign_key_col: str
+        self,
+        old_key_value: object,
+        new_key_value: object,
+        child_rows: list[Row],
+        foreign_key_column: str,
     ) -> int:
-        return self._fk_strategy.cascade_update(old_key_value, new_key_value, child_rows, foreign_key_col)
-
+        strategy = ForeignKeyStrategy(foreign_key_column, set())
+        return strategy.cascade_update(old_key_value, new_key_value, child_rows)
