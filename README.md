@@ -138,7 +138,48 @@ classDiagram
         +name: str
         +constraint_type: str
         +validation_rule: object
-        +validate_row(row: Row) bool
+        +strategy: ConstraintStrategy
+        +set_strategy(strategy: ConstraintStrategy)
+        +validate_row(row: Row, existing_rows: Iterable) bool
+    }
+
+    class ConstraintStrategy {
+        <<abstract>>
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class CheckStrategy {
+        +validation_rule: Callable
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class PrimaryKeyStrategy {
+        +key_columns: tuple
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class UniqueStrategy {
+        +key_columns: tuple
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class ForeignKeyStrategy {
+        +foreign_key_column: str
+        +referenced_keys: Set or Callable
+        +validate(row: Row, existing_rows: Iterable) bool
+        +cascade_delete(parent_key_value, child_rows) list
+        +cascade_update(old_key_value, new_key_value, child_rows) int
+    }
+
+    class TableBuilder {
+        +name: str
+        +table_id: str
+        +set_table_id(table_id: str) TableBuilder
+        +add_column(name: str, data_type: DataType or str) TableBuilder
+        +add_column_object(column: Column) TableBuilder
+        +add_constraint(constraint: Constraint) TableBuilder
+        +add_index(index: Index) TableBuilder
+        +build() Table
     }
 
     class ForeignKey {
@@ -448,6 +489,15 @@ classDiagram
     DataTypeManager o-- DataType
     ForeignKey --|> Constraint
     ForeignKey --> Table
+    Constraint --> ConstraintStrategy
+    CheckStrategy --|> ConstraintStrategy
+    PrimaryKeyStrategy --|> ConstraintStrategy
+    UniqueStrategy --|> ConstraintStrategy
+    ForeignKeyStrategy --|> ConstraintStrategy
+    TableBuilder --> Table
+    TableBuilder o-- Column
+    TableBuilder o-- Constraint
+    TableBuilder o-- Index
     CatalogManager --> MetadataCacheProtocol
     Partition --> StorageAllocatorProtocol
     StoredProcedure --> QueryExecutorProtocol
@@ -678,30 +728,30 @@ The development roadmap aligns with the top-down architecture design, starting f
 
 This section outlines the design patterns planned for the core modules, linking the sequence diagrams to the core classes and their unit tests. This ensures a structured development process.
 
-| Module | Core Feature | Pattern | Target Classes |
-| :--- | :--- | :--- | :--- |
-| **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` |
-| | Constraint Validation | Strategy | `Constraint`, `ForeignKey`, `Table`, `Column` |
-| | Index Creation | Factory Method | `Index`, `Table`, `CatalogManager` |
-| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` |
-| | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` |
-| | Data Type Creation | Factory Method | `DataType`, `Column` |
-| | View Creation | Builder | `View`, `AST`, `CatalogManager` |
-| **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` |
-| | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` |
-| | File Access | Adapter | `FileManager`, `StorageEngine` |
-| | Buffer Pool Management | Singleton | `BufferPool` |
-| | Record Read/Write | Data Mapper | `StorageEngine`, `Page`, `Row` |
-| | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` |
-| | Page Loading | Proxy | `BufferPool`, `Page`, `FileManager` |
-| **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` |
-| | AST Construction | Builder | `SQLParser`, `AST` |
-| | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` |
-| | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` |
-| | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` |
-| | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` |
-| | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` |
-| | Execution Operators | Iterator | `QueryExecutor`, `PhysicalPlan`, `Row` |
+| Module | Core Feature | Pattern | Target Classes | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` | Implemented |
+| | Constraint Validation | Strategy | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
+| | Index Creation | Factory Method | `Index`, `Table`, `CatalogManager` | Planned |
+| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` | Planned |
+| | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` | Planned |
+| | Data Type Creation | Factory Method | `DataType`, `Column` | Planned |
+| | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
+| **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` | Planned |
+| | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
+| | File Access | Adapter | `FileManager`, `StorageEngine` | Planned |
+| | Buffer Pool Management | Singleton | `BufferPool` | Planned |
+| | Record Read/Write | Data Mapper | `StorageEngine`, `Page`, `Row` | Planned |
+| | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
+| | Page Loading | Proxy | `BufferPool`, `Page`, `FileManager` | Planned |
+| **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` | Planned |
+| | AST Construction | Builder | `SQLParser`, `AST` | Planned |
+| | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` | Planned |
+| | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` | Planned |
+| | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` | Planned |
+| | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` | Planned |
+| | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
+| | Execution Operators | Iterator | `QueryExecutor`, `PhysicalPlan`, `Row` | Planned |
 
 ### Design Patterns Deep Dive
 
@@ -713,12 +763,15 @@ This section outlines the design patterns planned for the core modules, linking 
 sequenceDiagram
     actor Client
     participant TableBuilder
+    participant DataType
     participant Column
     participant Table
 
     Client->>TableBuilder: TableBuilder("users")
     Client->>TableBuilder: add_column("id", "INT")
-    TableBuilder->>Column: new Column("id", INT)
+    TableBuilder->>DataType: DataType("INT", validator, int)
+    DataType-->>TableBuilder: dataType
+    TableBuilder->>Column: Column("col_1", "id", dataType)
     Client->>TableBuilder: add_constraint(constraint)
     Client->>TableBuilder: build()
     TableBuilder->>TableBuilder: validate component uniqueness
@@ -740,26 +793,39 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    actor Client
     participant Table
-    participant ConstraintValidator
-    participant PKStrategy
-    participant FKStrategy
+    participant Constraint
+    participant ConstraintStrategy
 
-    Table->>ConstraintValidator: validate(row)
-    ConstraintValidator->>PKStrategy: check(row)
-    PKStrategy-->>ConstraintValidator: true
-    ConstraintValidator->>FKStrategy: check(row)
-    FKStrategy-->>ConstraintValidator: true
-    ConstraintValidator-->>Table: true (Valid)
+    Client->>Constraint: Constraint(..., strategy=strategy)
+    Client->>Table: insert(row)
+    Table->>Table: collect existing_rows
+    loop Each constraint
+        Table->>Constraint: validate_row(row, existing_rows)
+        Constraint->>ConstraintStrategy: validate(row, existing_rows)
+        ConstraintStrategy-->>Constraint: true or false
+        Constraint-->>Table: validation result
+    end
+    alt A constraint rejects the row
+        Table-->>Client: ValueError
+        Note over Table: State remains unchanged
+    else All constraints accept the row
+        Table->>Table: store row and increment row_count
+        Table-->>Client: true
+    end
 ```
 
 * **Description**: Defines a family of algorithms, encapsulates each one, and makes them interchangeable.
-* **Use Case**: Validating rows against constraints (`PrimaryKey`, `ForeignKey`, `NotNull`) upon insert/update.
+* **Use Case**: Validating rows with injected `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, or `ForeignKeyStrategy` before insert/update mutation.
 * **Advantages**:
-  * **Eliminates Complex `if-else` Blocks:** Keeps the `Table` class clean by removing monolithic branching logic for different constraint types.
-  * **Easy to Extend:** Adding new constraint rules (e.g., `UniqueConstraint`) only requires introducing a new strategy class without touching existing `Table` code.
+  * **One Interchangeable Contract:** Every concrete strategy implements `validate(row, existing_rows=...)` through `ConstraintStrategy`.
+  * **Runtime Replacement:** `Constraint.set_strategy()` can replace the validation algorithm without changing `Table`.
+  * **Easy to Extend:** A new rule only needs another `ConstraintStrategy` implementation; `Table` continues calling the same context API.
   * **Isolated Unit Testing:** Enables testing each validation rule independently (e.g., verifying Primary Key rules separately from Foreign Key rules).
-* **Reason**: Prevents the `Table` class from becoming bloated with an "if-else" of conditional logic for every constraint type. By injecting constraint strategies, testing and extending validation rules become highly isolated, strictly adhering to the Open-Closed Principle.
+* **Reason**: `Table` owns when validation happens, `Constraint` acts as the Strategy context, and each concrete strategy owns one validation algorithm. Invalid rows are rejected before table state changes.
+
+Runtime replacement uses the same context contract: `Constraint.set_strategy(new_strategy)` changes the delegated algorithm, while `Table` continues to call `validate_row(row, existing_rows=...)`.
 
 **Factory Method (Index & DataType Creation)**
 

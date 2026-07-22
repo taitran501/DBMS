@@ -13,17 +13,25 @@ sequenceDiagram
     autonumber
     actor Client
     participant TableBuilder
+    participant DataType
     participant Column
     participant Table
 
-    Client->>TableBuilder: new TableBuilder("users")
-    Client->>TableBuilder: add_column("id", INT)
-    TableBuilder->>Column: new Column("col_1", "id", INT)
-    Client->>TableBuilder: add_constraint(PrimaryKey("id"))
+    Client->>TableBuilder: TableBuilder("users")
+    Client->>TableBuilder: add_column("id", "INT")
+    TableBuilder->>TableBuilder: normalize type name and select converter
+    TableBuilder->>DataType: DataType("INT", validator, int)
+    DataType-->>TableBuilder: dataType
+    TableBuilder->>Column: Column("col_1", "id", dataType)
+    Column-->>TableBuilder: column
+    Client->>TableBuilder: add_constraint(constraint)
     Client->>TableBuilder: build()
-    TableBuilder->>Table: new Table(table_id, name, columns, constraints, indexes)
+    TableBuilder->>TableBuilder: validate component uniqueness
+    TableBuilder->>Table: Table(table_id, name, copied collections)
     Table-->>TableBuilder: tableInstance
     TableBuilder-->>Client: tableInstance
+
+    Note over TableBuilder,Table: Built tables do not share builder collections
 ```
 
 ---
@@ -35,32 +43,50 @@ Encapsulates interchangeability for constraint validation rules (`PrimaryKeyStra
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Client
-    participant Constraint (Context)
-    participant CheckStrategy
-    participant PrimaryKeyStrategy
-    participant UniqueStrategy
-    participant ForeignKeyStrategy
+    actor Client
+    participant Table
+    participant Constraint
+    participant Strategy as ConstraintStrategy
 
-    alt CHECK Constraint Validation
-        Client->>Constraint: validate_row(row)
-        Constraint->>CheckStrategy: validate(row, validation_rule)
-        CheckStrategy-->>Constraint: True / False
-    else PRIMARY KEY Constraint Validation
-        Client->>Constraint: validate_primary_key(row, key_columns)
-        Constraint->>PrimaryKeyStrategy: validate_primary_key(row, key_columns)
-        PrimaryKeyStrategy-->>Constraint: True / False
-    else UNIQUE Constraint Validation
-        Client->>Constraint: validate_unique(row, key_columns, existing_rows)
-        Constraint->>UniqueStrategy: validate_unique(row, key_columns, existing_rows)
-        UniqueStrategy-->>Constraint: True / False
-    else FOREIGN KEY Cascade Actions
-        Client->>Constraint: cascade_delete(parent_key_value, child_rows, foreign_key_col)
-        Constraint->>ForeignKeyStrategy: cascade_delete(parent_key_value, child_rows, foreign_key_col)
-        ForeignKeyStrategy-->>Constraint: deleted_ids
+    Client->>Constraint: Constraint(..., strategy=strategy)
+    Client->>Table: insert(row)
+    Table->>Table: reject duplicate row_id
+    Table->>Table: collect existing_rows
+
+    loop Each constraint
+        Table->>Constraint: validate_row(row, existing_rows)
+        Constraint->>Strategy: validate(row, existing_rows)
+        Strategy-->>Constraint: true or false
+        Constraint-->>Table: validation result
     end
+
+    alt A constraint rejects the row
+        Table-->>Client: ValueError
+        Note over Table: rows and row_count remain unchanged
+    else All constraints accept the row
+        Table->>Table: rows[row_id] = row
+        Table->>Table: row_count += 1
+        Table-->>Client: true
+    end
+```
+
+The validation algorithm can also be replaced without changing `Table`:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Constraint
+    participant NewStrategy as ConstraintStrategy
+
+    Client->>Constraint: set_strategy(new_strategy)
+    Client->>Constraint: validate_row(row, existing_rows)
+    Constraint->>NewStrategy: validate(row, existing_rows)
+    NewStrategy-->>Constraint: result
     Constraint-->>Client: result
 ```
+
+`cascade_delete()` and `cascade_update()` remain separate foreign-key referential-action helpers. They are not part of the `Table.insert()` / `Table.update()` Strategy validation sequence above.
 
 ---
 
