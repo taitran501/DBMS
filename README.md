@@ -680,7 +680,7 @@ This section outlines the design patterns planned for the core modules, linking 
 
 | Module | Core Feature | Pattern | Target Classes |
 | :--- | :--- | :--- | :--- |
-| **Database Objects** | Create Table | Builder | `Table`, `Column`, `Constraint`, `CatalogManager` |
+| **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` |
 | | Constraint Validation | Strategy | `Constraint`, `ForeignKey`, `Table`, `Column` |
 | | Index Creation | Factory Method | `Index`, `Table`, `CatalogManager` |
 | | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` |
@@ -716,12 +716,13 @@ sequenceDiagram
     participant Column
     participant Table
 
-    Client->>TableBuilder: new TableBuilder("users")
-    Client->>TableBuilder: addColumn("id", INT)
+    Client->>TableBuilder: TableBuilder("users")
+    Client->>TableBuilder: add_column("id", "INT")
     TableBuilder->>Column: new Column("id", INT)
-    Client->>TableBuilder: addConstraint(PrimaryKey("id"))
+    Client->>TableBuilder: add_constraint(constraint)
     Client->>TableBuilder: build()
-    TableBuilder->>Table: new Table(name, columns, constraints)
+    TableBuilder->>TableBuilder: validate component uniqueness
+    TableBuilder->>Table: new Table(name, copied collections)
     Table-->>TableBuilder: tableInstance
     TableBuilder-->>Client: tableInstance
 ```
@@ -731,8 +732,9 @@ sequenceDiagram
 * **Advantages**:
   * **Prevents Parameter Confusion:** Avoids forcing callers to pass an overwhelming list of parameters or `None`/`null` values when building tables with varying complexity.
   * **Flexible Step-by-Step Construction:** Allows parsing SQL statements incrementally and attaching columns or constraints one by one before final object instantiation.
-  * **Ensures Validity Before Instantiation:** Validates table definitions before calling `.build()`, preventing invalid or partially formed table objects from being created.
-* **Reason**: Test cases require creating tables flexibly (e.g., with or without primary keys/default values). A `TableBuilder` allows chaining methods logically rather than using a constructor with too many parameters.
+  * **Validates Builder State:** Rejects empty names and duplicate columns, constraints, or indexes; `.build()` rechecks collection uniqueness before creating the table.
+  * **Keeps Built Tables Independent:** Copies builder collections so later builder changes, or changes to another built table, do not mutate an existing table.
+* **Reason**: A `TableBuilder` provides a fluent API for optional columns, constraints, and indexes without exposing the `Table` constructor's collection details.
 
 **Strategy Pattern (Constraint Validation)**
 

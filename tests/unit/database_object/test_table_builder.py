@@ -65,9 +65,64 @@ def test_table_builder_empty_name_raises_error():
     with pytest.raises(ValueError, match="Table name cannot be empty"):
         TableBuilder("")
 
+    with pytest.raises(ValueError, match="Table name cannot be empty"):
+        TableBuilder("   ")
+
 
 def test_table_builder_duplicate_column_raises_error():
     builder = TableBuilder("users").add_column("id", "INT")
 
     with pytest.raises(ValueError, match="Column 'id' already exists"):
         builder.add_column("id", "VARCHAR")
+
+
+def test_table_builder_rejects_empty_column_name():
+    with pytest.raises(ValueError, match="Column name cannot be empty"):
+        TableBuilder("users").add_column("", "INT")
+
+
+def test_table_builder_rejects_empty_data_type_name():
+    with pytest.raises(ValueError, match="Data type name cannot be empty"):
+        TableBuilder("users").add_column("id", "")
+
+
+def test_table_builder_maps_builtin_data_type_converter():
+    table = TableBuilder("users").add_column("id", "int").build()
+
+    assert table.columns[0].data_type.name == "INT"
+    assert table.columns[0].data_type.converter("42") == 42
+
+
+def test_table_builder_rejects_duplicate_constraint():
+    constraint = Constraint("c1", "pk_users", "PRIMARY KEY", object())
+    builder = TableBuilder("users").add_constraint(constraint)
+
+    with pytest.raises(ValueError, match="Constraint 'pk_users' already exists"):
+        builder.add_constraint(constraint)
+
+
+def test_table_builder_rejects_duplicate_index():
+    index = Index("idx_1", "idx_users_id", "BTree")
+    builder = TableBuilder("users").add_index(index)
+
+    with pytest.raises(ValueError, match="Index 'idx_users_id' already exists"):
+        builder.add_index(index)
+
+
+def test_built_table_does_not_share_builder_collections():
+    builder = TableBuilder("users").add_column("id", "INT")
+    table = builder.build()
+
+    builder.add_column("email", "VARCHAR")
+
+    assert [column.name for column in table.columns] == ["id"]
+
+
+def test_separately_built_tables_do_not_share_collections():
+    builder = TableBuilder("users").add_column("id", "INT")
+    first_table = builder.build()
+    second_table = builder.build()
+
+    first_table.columns.append(Column("extra", "email", DataType("VARCHAR", lambda v: True, str)))
+
+    assert [column.name for column in second_table.columns] == ["id"]
