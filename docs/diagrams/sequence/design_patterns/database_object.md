@@ -138,19 +138,34 @@ sequenceDiagram
 
 ## 5. Repository Pattern (Metadata Management)
 
-Provides a clean abstraction interface for accessing and managing catalog metadata.
+Provides a single API for storing, retrieving, and removing catalog metadata through an injected cache abstraction.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Client
+    actor Client
     participant CatalogManager (Repository)
     participant MetadataCache
 
-    Client->>CatalogManager: lookup_object("users")
-    CatalogManager->>MetadataCache: get("users")
-    MetadataCache-->>CatalogManager: Table Object / None
-    CatalogManager-->>Client: Table Object
+    Client->>CatalogManager: register_object("public.users", descriptor)
+    CatalogManager->>MetadataCache: set("public.users", descriptor)
+    MetadataCache-->>CatalogManager: stored
+    CatalogManager-->>Client: true
+
+    Client->>CatalogManager: lookup_object("public.users")
+    CatalogManager->>MetadataCache: get("public.users")
+    alt Metadata exists
+        MetadataCache-->>CatalogManager: descriptor
+        CatalogManager-->>Client: descriptor
+    else Metadata is missing
+        MetadataCache-->>CatalogManager: None
+        CatalogManager-->>Client: KeyError
+    end
+
+    Client->>CatalogManager: remove_object("public.users")
+    CatalogManager->>MetadataCache: remove("public.users")
+    MetadataCache-->>CatalogManager: removed
+    CatalogManager-->>Client: true
 ```
 
 ---
