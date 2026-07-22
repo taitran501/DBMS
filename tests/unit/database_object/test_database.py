@@ -148,15 +148,15 @@ def test_rename_schema():
 
 def test_drop_schema():
     # Arrange
-    schema = Schema("s1", "public", "admin")
-    database, _, _ = create_database({"public": schema})
+    schema = Schema("s1", "application", "admin")
+    database, _, _ = create_database({"application": schema})
 
     # Act
-    result = database.drop_schema("public")
+    result = database.drop_schema("application")
 
     # Assert
     assert result is True
-    assert "public" not in database.schemas
+    assert "application" not in database.schemas
 
 
 def test_reject_duplicate_schema():
@@ -197,3 +197,44 @@ def test_rename_schema_to_existing_name():
     # Act & Assert: Renaming s1 to existing name s2 should raise DuplicateSchemaError
     with pytest.raises(DuplicateSchemaError):
         database.rename_schema("s1", "s2")
+
+
+def test_database_rename_updates_default_schema():
+    schema = Schema("s1", "public", "admin")
+    database, _, _ = create_database({"public": schema})
+    database.default_schema = "public"
+
+    database.rename_schema("public", "app")
+
+    assert database.default_schema == "app"
+
+
+def test_database_drop_default_schema_raises_value_error():
+    schema = Schema("s1", "public", "admin")
+    database, _, _ = create_database({"public": schema})
+    database.default_schema = "public"
+
+    with pytest.raises(ValueError, match="Cannot drop default schema"):
+        database.drop_schema("public")
+
+
+def test_database_open_failure_preserves_status():
+    database, storage, _ = create_database()
+    database.status = "closed"
+    storage.load_schema_metadata.side_effect = RuntimeError("Storage error")
+
+    with pytest.raises(RuntimeError):
+        database.open()
+
+    assert database.status == "closed"
+
+
+def test_database_close_failure_preserves_status():
+    database, storage, _ = create_database()
+    database.status = "open"
+    storage.flush_dirty_pages.side_effect = RuntimeError("Flush error")
+
+    with pytest.raises(RuntimeError):
+        database.close()
+
+    assert database.status == "open"
