@@ -193,3 +193,49 @@ def test_rename_table_to_existing_name():
     # Act & Assert
     with pytest.raises(ValueError):
         schema.rename_table("users", "customers")
+
+
+def test_schema_duplicate_view_raises_value_error():
+    v1 = View("v1", "active_users", "SELECT * FROM users", object(), [])
+    schema = Schema("s1", "public", "admin", views={"active_users": v1})
+    v2 = View("v2", "active_users", "SELECT * FROM users", object(), [])
+
+    with pytest.raises(ValueError, match="already exists"):
+        schema.create_view(v2)
+
+
+def test_schema_get_unknown_view_raises_key_error():
+    schema = Schema("s1", "public", "admin")
+
+    with pytest.raises(KeyError, match="not found"):
+        schema.get_view("non_existent_view")
+
+
+def test_schema_drop_unknown_view_raises_key_error():
+    schema = Schema("s1", "public", "admin")
+
+    with pytest.raises(KeyError, match="not found"):
+        schema.drop_view("non_existent_view")
+
+
+def test_schema_duplicate_procedure_raises_value_error():
+    p1 = StoredProcedure("p1", "calc", object(), object())
+    schema = Schema("s1", "public", "admin", stored_procedures={"calc": p1})
+    p2 = StoredProcedure("p2", "calc", object(), object())
+
+    with pytest.raises(ValueError, match="already exists"):
+        schema.create_stored_procedure(p2)
+
+
+def test_schema_get_unknown_procedure_raises_key_error():
+    schema = Schema("s1", "public", "admin")
+
+    with pytest.raises(KeyError, match="not found"):
+        schema.get_stored_procedure("non_existent_proc")
+
+
+def test_schema_drop_unknown_procedure_raises_key_error():
+    schema = Schema("s1", "public", "admin")
+
+    with pytest.raises(KeyError, match="not found"):
+        schema.drop_stored_procedure("non_existent_proc")
