@@ -3,6 +3,7 @@ import pytest
 from dbms.database_object.column import Column
 from dbms.database_object.constraint import Constraint
 from dbms.database_object.data_type import DataType
+from dbms.database_object.data_type_factory import IntegerDataTypeFactory
 from dbms.database_object.index import Index
 from dbms.database_object.table import Table
 from dbms.database_object.table_builder import TableBuilder
@@ -91,6 +92,15 @@ def test_table_builder_maps_builtin_data_type_converter():
 
     assert table.columns[0].data_type.name == "INT"
     assert table.columns[0].data_type.converter("42") == 42
+
+
+def test_table_builder_uses_a_data_type_factory_for_a_column():
+    # Act
+    table = TableBuilder("users").add_column("age", IntegerDataTypeFactory()).build()
+
+    # Assert
+    assert table.columns[0].data_type.name == "INT"
+    assert table.columns[0].data_type.convert("42") == 42
 
 
 def test_table_builder_rejects_duplicate_constraint():

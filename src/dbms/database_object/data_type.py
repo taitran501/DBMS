@@ -13,7 +13,7 @@ class DataType:
         self.converter = converter
 
     def validate(self, value: object) -> bool:
-        return False
+        return bool(self.validator(value))
 
     def convert(self, value: object) -> object:
-        return None
+        return self.converter(value)
