@@ -6,7 +6,7 @@ This document contains the sequence diagrams detailing the Design Patterns appli
 
 ## 1. Builder Pattern (Table Creation)
 
-Separates the step-by-step construction of a complex `Table` object from its representation.
+Constructs a `Table` object step by step, separating the build process from the final `Table` object.
 
 ```mermaid
 sequenceDiagram
@@ -30,15 +30,13 @@ sequenceDiagram
     TableBuilder->>Table: Table(table_id, name, copied collections)
     Table-->>TableBuilder: tableInstance
     TableBuilder-->>Client: tableInstance
-
-    Note over TableBuilder,Table: Built tables do not share builder collections
 ```
 
 ---
 
 ## 2. Strategy Pattern (Constraint Validation)
 
-Encapsulates interchangeability for constraint validation rules (`PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `CheckStrategy`).
+Allows swapping constraint validation logic dynamically using interchangeable strategy classes (`PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `CheckStrategy`).
 
 ```mermaid
 sequenceDiagram
@@ -62,7 +60,6 @@ sequenceDiagram
 
     alt A constraint rejects the row
         Table-->>Client: ValueError
-        Note over Table: rows and row_count remain unchanged
     else All constraints accept the row
         Table->>Table: rows[row_id] = row
         Table->>Table: row_count += 1
@@ -70,7 +67,7 @@ sequenceDiagram
     end
 ```
 
-The validation algorithm can also be replaced without changing `Table`:
+The validation strategy can be dynamically replaced on a constraint without altering the `Table` implementation:
 
 ```mermaid
 sequenceDiagram
@@ -86,34 +83,43 @@ sequenceDiagram
     Constraint-->>Client: result
 ```
 
-`cascade_delete()` and `cascade_update()` remain separate foreign-key referential-action helpers. They are not part of the `Table.insert()` / `Table.update()` Strategy validation sequence above.
+Foreign key referential actions (`cascade_delete` and `cascade_update`) run separately from the row validation sequence above.
 
 ---
 
 ## 3. Factory Method (Index & Data Type Creation)
 
-Encapsulates object instantiation for Index types (`BTreeIndex`, `HashIndex`) and Data Types (`DataType`).
+Uses concrete factory methods to create an `Index` product or a configured `DataType` product.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CatalogManager
-    participant IndexFactory
+    actor Client
+    participant BTreeIndexFactory
     participant BTreeIndex
-    participant Table
+    participant IntegerDataTypeFactory
+    participant DataType
+    participant TableBuilder
+    participant Column
 
-    CatalogManager->>IndexFactory: create_index("BTree", name, columns)
-    IndexFactory->>BTreeIndex: new BTreeIndex(name, columns)
-    BTreeIndex-->>IndexFactory: indexInstance
-    IndexFactory-->>CatalogManager: indexInstance
-    CatalogManager->>Table: add_index(indexInstance)
+    Client->>BTreeIndexFactory: create_index(id, name, columns, unique)
+    BTreeIndexFactory->>BTreeIndex: BTreeIndex(id, name, columns, unique)
+    BTreeIndex-->>BTreeIndexFactory: index
+    BTreeIndexFactory-->>Client: index
+    Client->>TableBuilder: add_index(index)
+    Client->>IntegerDataTypeFactory: create_data_type()
+    IntegerDataTypeFactory->>DataType: DataType("INT", validator, int)
+    DataType-->>IntegerDataTypeFactory: dataType
+    IntegerDataTypeFactory-->>Client: dataType
+    Client->>TableBuilder: add_column("age", dataType)
+    TableBuilder->>Column: Column(..., dataType)
 ```
 
 ---
 
 ## 4. Composite Pattern (Database Hierarchy)
 
-Composes objects into tree structures to represent `Database` -> `Schema` -> `Table` part-whole hierarchies.
+Organizes `Database`, `Schema`, and `Table` objects into a tree structure, allowing operations on parent objects to automatically apply to their children.
 
 ```mermaid
 sequenceDiagram
@@ -134,7 +140,7 @@ sequenceDiagram
 
 ## 5. Repository Pattern (Metadata Management)
 
-Mediates between the domain and data mapping layers for catalog metadata.
+Provides a clean abstraction interface for accessing and managing catalog metadata.
 
 ```mermaid
 sequenceDiagram
@@ -153,7 +159,7 @@ sequenceDiagram
 
 ## 6. Builder Pattern (View Creation)
 
-Constructs `View` objects from SQL AST queries and dependency checks.
+Builds a `View` object step by step by parsing the SQL query, generating an AST, and verifying dependencies.
 
 ```mermaid
 sequenceDiagram
