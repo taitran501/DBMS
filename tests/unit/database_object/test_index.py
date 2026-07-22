@@ -50,3 +50,16 @@ def test_delete_key():
     # Assert
     assert result is True
     assert 25 not in index.entries
+
+
+def test_unique_index_rejects_a_second_row_for_the_same_key():
+    # Arrange
+    index = Index("idx1", "users_email", "B-Tree", unique=True)
+    index.insert_key("alice@example.com", "r1")
+
+    # Act
+    result = index.insert_key("alice@example.com", "r2")
+
+    # Assert
+    assert result is False
+    assert index.search("alice@example.com") == ["r1"]

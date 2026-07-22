@@ -3,6 +3,7 @@ from __future__ import annotations
 from dbms.database_object.column import Column
 from dbms.database_object.constraint import Constraint
 from dbms.database_object.data_type import DataType
+from dbms.database_object.data_type_factory import DataTypeFactory
 from dbms.database_object.index import Index
 from dbms.database_object.table import Table
 
@@ -35,7 +36,7 @@ class TableBuilder:
     def add_column(
         self,
         name: str,
-        data_type: DataType | str,
+        data_type: DataType | DataTypeFactory | str,
         column_id: str = "",
         nullable: bool = True,
     ) -> TableBuilder:
@@ -46,7 +47,9 @@ class TableBuilder:
         if any(col.name == name for col in self._columns):
             raise ValueError(f"Column '{name}' already exists in builder")
 
-        if isinstance(data_type, str):
+        if isinstance(data_type, DataTypeFactory):
+            dt = data_type.create_data_type()
+        elif isinstance(data_type, str):
             type_name = data_type.strip().upper()
             if not type_name:
                 raise ValueError("Data type name cannot be empty")
