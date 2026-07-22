@@ -1,6 +1,13 @@
-from dbms.database_object.constraint import Constraint
+from dbms.database_object.constraint import (
+    Constraint,
+    ConstraintStrategy,
+    ForeignKeyStrategy,
+    PrimaryKeyStrategy,
+    UniqueStrategy,
+)
 from dbms.database_object.row import Row
 from unittest.mock import Mock
+import pytest
 
 
 def test_constraint_can_be_created():
@@ -87,3 +94,54 @@ def test_cascade_update():
 
     assert updated_count == 1
     assert child_rows[0].values["customer_id"] == 10
+
+
+def test_constraint_delegates_to_injected_strategy():
+    strategy = Mock(spec=ConstraintStrategy)
+    strategy.validate.return_value = True
+    constraint = Constraint("c1", "custom", "CUSTOM", strategy=strategy)
+    row = Row("r1", {"value": 1}, "v1")
+    existing_rows = [Row("r0", {"value": 0}, "v1")]
+
+    assert constraint.validate_row(row, existing_rows=existing_rows) is True
+    strategy.validate.assert_called_once_with(row, existing_rows=existing_rows)
+
+
+def test_constraint_strategy_can_be_replaced():
+    first_strategy = Mock(spec=ConstraintStrategy)
+    second_strategy = Mock(spec=ConstraintStrategy)
+    second_strategy.validate.return_value = False
+    constraint = Constraint("c1", "custom", "CUSTOM", strategy=first_strategy)
+    constraint.set_strategy(second_strategy)
+    row = Row("r1", {"value": 1}, "v1")
+
+    assert constraint.validate_row(row) is False
+    second_strategy.validate.assert_called_once_with(row, existing_rows=())
+
+
+def test_unconfigured_constraint_fails_validation_explicitly():
+    constraint = Constraint("c1", "custom", "CUSTOM", object())
+
+    with pytest.raises(RuntimeError, match="Constraint 'custom' has no validation strategy"):
+        constraint.validate_row(Row("r1", {"value": 1}, "v1"))
+
+
+def test_concrete_strategies_share_validate_contract():
+    row = Row("r2", {"id": 1, "email": "new@example.com", "customer_id": 2}, "v1")
+    existing_rows = [Row("r1", {"email": "old@example.com"}, "v1")]
+
+    assert PrimaryKeyStrategy(("id",)).validate(row, existing_rows=existing_rows) is True
+    assert UniqueStrategy(("email",)).validate(row, existing_rows=existing_rows) is True
+    assert ForeignKeyStrategy("customer_id", {1, 2}).validate(
+        row, existing_rows=existing_rows
+    ) is True
+
+
+def test_primary_key_strategy_rejects_duplicate_key():
+    strategy = PrimaryKeyStrategy(("tenant_id", "id"))
+    existing_rows = [Row("r1", {"tenant_id": 1, "id": 10}, "v1")]
+
+    assert strategy.validate(
+        Row("r2", {"tenant_id": 1, "id": 10}, "v1"),
+        existing_rows=existing_rows,
+    ) is False

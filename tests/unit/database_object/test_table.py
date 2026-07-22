@@ -3,7 +3,7 @@ import pytest
 
 from dbms.database_object.table import Table
 from dbms.database_object.column import Column
-from dbms.database_object.constraint import Constraint
+from dbms.database_object.constraint import Constraint, PrimaryKeyStrategy
 from dbms.database_object.data_type import DataType
 from dbms.database_object.index import Index
 from dbms.database_object.partition import Partition
@@ -311,3 +311,57 @@ def test_drop_unknown_column():
     # Act & Assert: Dropping a non-existent column should raise KeyError
     with pytest.raises(KeyError):
         table.drop_column("non_existent_column")
+
+
+def test_insert_validates_constraints_before_storing_row():
+    constraint = Constraint(
+        "pk1",
+        "pk_users",
+        "PRIMARY_KEY",
+        strategy=PrimaryKeyStrategy(("id",)),
+    )
+    table = Table("t1", "users", constraints=[constraint])
+
+    with pytest.raises(ValueError, match="Constraint 'pk_users' rejected row 'r1'"):
+        table.insert(Row("r1", {"id": None}, "v1"))
+
+    assert table.rows == {}
+    assert table.row_count == 0
+
+
+def test_update_validates_constraints_before_mutating_row():
+    constraint = Constraint(
+        "pk1",
+        "pk_users",
+        "PRIMARY_KEY",
+        strategy=PrimaryKeyStrategy(("id",)),
+    )
+    stored_row = Row("r1", {"id": 1}, "v1")
+    table = Table(
+        "t1",
+        "users",
+        rows={"r1": stored_row},
+        row_count=1,
+        constraints=[constraint],
+    )
+
+    with pytest.raises(ValueError, match="Constraint 'pk_users' rejected row 'r1'"):
+        table.update("r1", {"id": None})
+
+    assert stored_row.values == {"id": 1}
+
+
+def test_insert_passes_existing_rows_to_constraint_strategy():
+    constraint = Constraint(
+        "pk1",
+        "pk_users",
+        "PRIMARY_KEY",
+        strategy=PrimaryKeyStrategy(("id",)),
+    )
+    table = Table("t1", "users", constraints=[constraint])
+    table.insert(Row("r1", {"id": 1}, "v1"))
+
+    with pytest.raises(ValueError, match="Constraint 'pk_users' rejected row 'r2'"):
+        table.insert(Row("r2", {"id": 1}, "v1"))
+
+    assert list(table.rows) == ["r1"]
