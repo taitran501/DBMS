@@ -18,4 +18,6 @@ class ForeignKey(Constraint):
         self.on_update = on_update
 
     def validate_reference(self, value: object) -> bool:
+        if self.reference_table is not None and hasattr(self.reference_table, "check_key_exists"):
+            return bool(self.reference_table.check_key_exists(value))
         return True
