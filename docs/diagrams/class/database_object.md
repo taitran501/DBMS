@@ -6,6 +6,7 @@ Class diagrams for the design patterns currently implemented in the **Database O
 - Strategy Pattern for validating constraints.
 - Factory Method for creating `Index` and `DataType` objects.
 - Composite Pattern for managing the `Database` and `Schema` hierarchy.
+- Repository Pattern for catalog metadata management.
 
 ---
 
@@ -257,3 +258,32 @@ classDiagram
 ```
 
 `Database` manages its `Schema` collection, and each `Schema` manages its `Table`, `View`, and `StoredProcedure` collections.
+
+---
+
+## 5. Repository Pattern (Metadata Management)
+
+`CatalogManager` exposes one repository API while `MetadataCacheProtocol` supplies the storage implementation.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class CatalogManager {
+        +metadata_cache: MetadataCacheProtocol
+        +register_object(name: str, descriptor: object) bool
+        +remove_object(name: str) bool
+        +lookup_object(name: str) object
+    }
+
+    class MetadataCacheProtocol {
+        <<Protocol>>
+        +set(name: str, descriptor: object) None
+        +remove(name: str) None
+        +get(name: str) object | None
+    }
+
+    CatalogManager --> MetadataCacheProtocol : uses
+```
+
+`lookup_object()` turns a missing cache value into `KeyError`; duplicate registration and missing-removal errors continue to come from the configured cache.

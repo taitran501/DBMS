@@ -788,7 +788,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Constraint Validation | Strategy | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
 | | Index Creation | Factory Method | `IndexFactory`, `BTreeIndexFactory`, `HashIndexFactory`, `Index`, `BTreeIndex`, `HashIndex` | Implemented |
 | | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View`, `StoredProcedure` | Implemented |
-| | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` | Planned |
+| | Metadata Management | Repository | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
 | | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
 | **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` | Planned |
@@ -940,22 +940,37 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
+    actor Client
     participant CatalogManager
     participant MetadataCache
 
-    Client->>CatalogManager: get_table("users")
-    CatalogManager->>MetadataCache: lookup("users")
-    MetadataCache-->>CatalogManager: Table Object
-    CatalogManager-->>Client: Table Object
+    Client->>CatalogManager: register_object("public.users", descriptor)
+    CatalogManager->>MetadataCache: set("public.users", descriptor)
+    MetadataCache-->>CatalogManager: stored
+    CatalogManager-->>Client: true
+
+    Client->>CatalogManager: lookup_object("public.users")
+    CatalogManager->>MetadataCache: get("public.users")
+    alt Metadata exists
+        MetadataCache-->>CatalogManager: descriptor
+        CatalogManager-->>Client: descriptor
+    else Metadata is missing
+        MetadataCache-->>CatalogManager: None
+        CatalogManager-->>Client: KeyError
+    end
+
+    Client->>CatalogManager: remove_object("public.users")
+    CatalogManager->>MetadataCache: remove("public.users")
+    MetadataCache-->>CatalogManager: removed
+    CatalogManager-->>Client: true
 ```
 
-* **Description**: Mediates between the domain and data mapping layers using a collection-like interface.
-* **Use Case**: `CatalogManager` acting as the single source of truth for metadata objects.
+* **Description**: Provides a single API for storing, retrieving, and removing catalog metadata through an injected cache abstraction.
+* **Use Case**: Callers manage a descriptor such as `"public.users"` without depending on the cache implementation.
 * **Advantages**:
-  * **Decouples Storage Mechanism from Domain Logic:** Allows query and engine logic to fetch metadata without worrying about whether it resides in RAM, cache, or disk storage.
-  * **Flexible Backend Swapping:** Enables switching the underlying storage implementation (e.g., in-memory to persistent disk) without impacting core database management code.
-* **Reason**: Abstracts the underlying storage of metadata (whether in-memory or persisted to disk) from the core database logic.
+  * **Decouples Storage:** `CatalogManager` calls only the `MetadataCacheProtocol` contract.
+  * **Keeps Lookup Semantics Clear:** A missing descriptor becomes `KeyError`, while backend duplicate or missing-remove errors are propagated.
+* **Reason**: `CatalogManager` acts as the Repository facade; the cache remains replaceable behind the protocol.
 
 **Builder (View Creation)**
 
