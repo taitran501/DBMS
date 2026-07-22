@@ -175,7 +175,7 @@ classDiagram
         +name: str
         +table_id: str
         +set_table_id(table_id: str) TableBuilder
-        +add_column(name: str, data_type: DataType or str) TableBuilder
+        +add_column(name: str, data_type: DataType or DataTypeFactory or str) TableBuilder
         +add_column_object(column: Column) TableBuilder
         +add_constraint(constraint: Constraint) TableBuilder
         +add_index(index: Index) TableBuilder
@@ -197,9 +197,26 @@ classDiagram
         +type: str
         +unique: bool
         +entries: dict
+        +columns: tuple
         +search(key: object) list
         +insert_key(key: object, rid: str) bool
         +delete_key(key: object, rid: str) bool
+    }
+
+    class BTreeIndex
+    class HashIndex
+
+    class IndexFactory {
+        <<abstract>>
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) Index
+    }
+
+    class BTreeIndexFactory {
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) BTreeIndex
+    }
+
+    class HashIndexFactory {
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) HashIndex
     }
 
     class Partition {
@@ -234,6 +251,23 @@ classDiagram
         +converter: Callable
         +validate(value: object) bool
         +convert(value: object) object
+    }
+
+    class DataTypeFactory {
+        <<abstract>>
+        +create_data_type() DataType
+    }
+
+    class IntegerDataTypeFactory {
+        +create_data_type() DataType
+    }
+
+    class FloatDataTypeFactory {
+        +create_data_type() DataType
+    }
+
+    class TextDataTypeFactory {
+        +create_data_type() DataType
     }
 
     class DataTypeManager {
@@ -486,6 +520,17 @@ classDiagram
     Table *-- Index
     Table *-- Partition
     Column --> DataType
+    BTreeIndex --|> Index
+    HashIndex --|> Index
+    BTreeIndexFactory --|> IndexFactory
+    HashIndexFactory --|> IndexFactory
+    IndexFactory --> Index
+    BTreeIndexFactory --> BTreeIndex
+    HashIndexFactory --> HashIndex
+    IntegerDataTypeFactory --|> DataTypeFactory
+    FloatDataTypeFactory --|> DataTypeFactory
+    TextDataTypeFactory --|> DataTypeFactory
+    DataTypeFactory --> DataType
     DataTypeManager o-- DataType
     ForeignKey --|> Constraint
     ForeignKey --> Table
@@ -498,6 +543,7 @@ classDiagram
     TableBuilder o-- Column
     TableBuilder o-- Constraint
     TableBuilder o-- Index
+    TableBuilder --> DataTypeFactory
     CatalogManager --> MetadataCacheProtocol
     Partition --> StorageAllocatorProtocol
     StoredProcedure --> QueryExecutorProtocol
@@ -530,7 +576,15 @@ classDiagram
 
 ---
 
-### 3. Core Classes
+### 3. Implemented Database Object Class Diagrams
+
+The diagrams for implemented Builder, Strategy, and Factory Method classes are maintained separately from this system overview:
+
+- [Open the implemented Database Object class diagrams](docs/diagrams/class/database_object.md)
+
+Only classes with executable behavior and unit tests appear in that document; planned components and method stubs remain out of scope.
+
+### 4. Core Classes
 
 Below is the list of the main core classes designed for this system:
 
@@ -544,7 +598,7 @@ Below is the list of the main core classes designed for this system:
 *   **Security & Access Control**: `SecurityManager`, `User`, `Role`, `Permission`
 *   **Performance & Operations**: `StatisticsManager`, `MonitoringManager`
 
-### 4. Architecture Boundary Rules
+### 5. Architecture Boundary Rules
 
 *   An **entity** stores its own state and implements behavior local to that object.
     For example, `Database` owns `open()`, `close()`, `backup()`, and `restore()`.
@@ -732,10 +786,10 @@ This section outlines the design patterns planned for the core modules, linking 
 | :--- | :--- | :--- | :--- | :--- |
 | **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` | Implemented |
 | | Constraint Validation | Strategy | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
-| | Index Creation | Factory Method | `Index`, `Table`, `CatalogManager` | Planned |
+| | Index Creation | Factory Method | `IndexFactory`, `BTreeIndexFactory`, `HashIndexFactory`, `Index`, `BTreeIndex`, `HashIndex` | Implemented |
 | | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View` | Planned |
 | | Metadata Management | Repository | `CatalogManager`, `Database`, `Schema`, `Table` | Planned |
-| | Data Type Creation | Factory Method | `DataType`, `Column` | Planned |
+| | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
 | **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` | Planned |
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
@@ -831,25 +885,34 @@ Runtime replacement uses the same context contract: `Constraint.set_strategy(new
 
 ```mermaid
 sequenceDiagram
-    participant CatalogManager
-    participant IndexFactory
+    actor Client
+    participant BTreeIndexFactory
     participant BTreeIndex
-    participant Table
+    participant IntegerDataTypeFactory
+    participant DataType
+    participant TableBuilder
+    participant Column
 
-    CatalogManager->>IndexFactory: createIndex("BTree", columns)
-    IndexFactory->>BTreeIndex: new BTreeIndex(columns)
-    BTreeIndex-->>IndexFactory: indexInstance
-    IndexFactory-->>CatalogManager: indexInstance
-    CatalogManager->>Table: addIndex(indexInstance)
+    Client->>BTreeIndexFactory: create_index(id, name, columns, unique)
+    BTreeIndexFactory->>BTreeIndex: BTreeIndex(id, name, columns, unique)
+    BTreeIndex-->>BTreeIndexFactory: index
+    BTreeIndexFactory-->>Client: index
+    Client->>TableBuilder: add_index(index)
+    Client->>IntegerDataTypeFactory: create_data_type()
+    IntegerDataTypeFactory->>DataType: DataType("INT", validator, int)
+    DataType-->>IntegerDataTypeFactory: dataType
+    IntegerDataTypeFactory-->>Client: dataType
+    Client->>TableBuilder: add_column("age", dataType)
+    TableBuilder->>Column: Column(..., dataType)
 ```
 
-* **Description**: Defines an interface for creating an object, but lets subclasses alter the type of objects that will be created.
-* **Use Case**: `CatalogManager` creating specific `Index` structures (BTree, Hash) or `DataType` instances.
+* **Description**: Defines a creator interface while concrete factories decide which product class to instantiate.
+* **Use Case**: The client chooses `BTreeIndexFactory` or `HashIndexFactory` for an index, and a concrete data-type factory for a configured `DataType` used by `TableBuilder`.
 * **Advantages**:
-  * **Encapsulates Instantiation Details:** Callers (like `CatalogManager`) simply specify the index type name (e.g., `"BTree"`), leaving object instantiation details to the factory.
-  * **Decouples Callers from Concrete Classes (Loose Coupling):** `CatalogManager` works with the generic `Index` interface without depending on specific class implementations (`BTreeIndex`, `HashIndex`).
-  * **Simplifies Adding New Index Types:** Introducing new index types (e.g., spatial GIS indexes) requires registering them with the factory without modifying catalog management logic.
-* **Reason**: Encapsulates the instantiation logic. The caller doesn't need to know the specific class of the index or data type, just the interface.
+  * **Encapsulates Instantiation Details:** The caller calls one factory method and receives the common `Index` or `DataType` abstraction.
+  * **Supports Extension:** A new index or data type adds a product and its concrete factory without changing `TableBuilder`.
+  * **Preserves Product State:** Factory-created indexes copy the supplied column collection before exposing it as immutable tuple metadata.
+* **Reason**: `IndexFactory` and `DataTypeFactory` supply the common creation contract; their concrete subclasses choose the concrete product. `TableBuilder` accepts the resulting `Index` and `DataType` without knowing which concrete factory created them.
 
 **Composite (Database Hierarchy)**
 
