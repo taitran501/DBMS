@@ -46,4 +46,36 @@ sequenceDiagram
     Manager-->>Client: Row
 ```
 
-If a page or slot does not exist, `RecordManager` raises `RecordNotFoundError`. This implementation has no disk I/O yet; `FileManager` and `BufferPool` are separate planned work.
+If a page or slot does not exist, `RecordManager` raises `RecordNotFoundError`. `PageManager` still owns in-memory pages; it is not yet connected to the File Access adapter.
+
+---
+
+## 2. Adapter (File Access)
+
+`FileManager` wraps filesystem paths and binary file access behind root-relative DBMS methods. The same adapter implements `PageStoreProtocol` for storing complete serialized pages.
+
+### Write and load a page
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Adapter as FileManager
+    participant Page
+    participant FileSystem as Local filesystem
+
+    Client->>Adapter: write_page(page)
+    Adapter->>Page: serialize()
+    Page-->>Adapter: payload: bytes
+    Adapter->>FileSystem: write(root/pages/page_id.bin, payload)
+    FileSystem-->>Adapter: success
+    Adapter-->>Client: True
+
+    Client->>Adapter: load_page(page_id)
+    Adapter->>FileSystem: read(root/pages/page_id.bin)
+    FileSystem-->>Adapter: payload: bytes
+    Adapter->>Page: deserialize(payload)
+    Page-->>Adapter: Page
+    Adapter-->>Client: Page
+```
+
+Paths that resolve outside `root_path` raise `StoragePathError`. Buffer Pool and Storage Engine will consume this `PageStoreProtocol` in later patterns.

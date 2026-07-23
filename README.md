@@ -793,7 +793,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
 | **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` | Planned |
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
-| | File Access | Adapter | `FileManager`, `StorageEngine` | Planned |
+| | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
 | | Buffer Pool Management | Singleton | `BufferPool` | Planned |
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
 | | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
@@ -1062,20 +1062,32 @@ sequenceDiagram
 ```
 
 **Adapter (File Access)**
-* **Description**: Allows classes with incompatible interfaces to work together.
-* **Use Case**: `FileManager` interfacing with OS-specific file systems.
-* **Reason**: Shields the `StorageEngine` from low-level OS file handling APIs (POSIX, Windows API), providing a unified interface.
+* **Description**: `FileManager` adapts root-relative DBMS file operations to Python's local filesystem API and implements `PageStoreProtocol`.
+* **Use Case**: It reads/writes byte ranges and persists a serialized `Page` through `load_page()` and `write_page()`.
+* **Reason**: Storage clients use one safe API without handling paths, offsets, binary modes, or page-file names directly. Buffer Pool integration remains planned.
+
+See the [class diagram](docs/diagrams/class/storage_engine.md#2-adapter-file-access) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access).
 
 ```mermaid
 sequenceDiagram
-    participant StorageEngine
-    participant FileManager (Adapter)
-    participant OS_FileSystem
+    participant Client
+    participant FileManager
+    participant Page
+    participant FileSystem as Local filesystem
 
-    StorageEngine->>FileManager: read_block(path, offset)
-    FileManager->>OS_FileSystem: pread(fd, buffer, size, offset)
-    OS_FileSystem-->>FileManager: bytes
-    FileManager-->>StorageEngine: data
+    Client->>FileManager: write_page(page)
+    FileManager->>Page: serialize()
+    Page-->>FileManager: payload: bytes
+    FileManager->>FileSystem: write("pages/page_id.bin", payload)
+    FileSystem-->>FileManager: success
+    FileManager-->>Client: True
+
+    Client->>FileManager: load_page(page_id)
+    FileManager->>FileSystem: read("pages/page_id.bin")
+    FileSystem-->>FileManager: payload: bytes
+    FileManager->>Page: deserialize(payload)
+    Page-->>FileManager: Page
+    FileManager-->>Client: Page
 ```
 
 **Singleton (Buffer Pool Management)**

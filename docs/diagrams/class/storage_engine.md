@@ -66,3 +66,47 @@ classDiagram
 ```
 
 `PageManager` currently owns in-memory pages. File persistence and buffer-pool behavior are intentionally outside this pattern implementation.
+
+---
+
+## 2. Adapter (File Access)
+
+`FileManager` adapts root-relative storage operations to the local filesystem. It also implements `PageStoreProtocol`, so a future buffer pool can load and flush `Page` objects without depending on filesystem details.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class FileManager {
+        +root_path: str
+        +create_file(path: str) bool
+        +read(path: str, offset: int, length: int | None) bytes
+        +write(path: str, offset: int, data: bytes) bool
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class PageStoreProtocol {
+        <<Protocol>>
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class Page {
+        +page_id: int
+        +serialize() bytes
+        +deserialize(payload: bytes) Page
+    }
+
+    class Path {
+        <<standard library>>
+        +open(mode: str)
+        +resolve() Path
+    }
+
+    FileManager ..|> PageStoreProtocol : implements
+    FileManager ..> Page : serializes
+    FileManager --> Path : adapts to
+```
+
+`FileManager` rejects paths outside `root_path`. It is not yet injected into `PageManager`, `BufferPool`, or `StorageEngine`.
