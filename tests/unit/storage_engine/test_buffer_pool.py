@@ -4,6 +4,7 @@ import pytest
 
 from dbms.storage_engine.buffer_pool import BufferPool
 from dbms.storage_engine.exceptions import BufferPoolFullError
+from dbms.storage_engine.file_manager import FileManager
 from dbms.storage_engine.page import Page
 
 
@@ -97,6 +98,20 @@ def test_load_missing_page():
     assert result is page
     assert pool.get_cached_page(5) is page
     page_store.load_page.assert_called_once_with(5)
+
+
+def test_pin_page_loads_from_the_configured_page_store(tmp_path):
+    page_store = FileManager(str(tmp_path))
+    stored_page = Page(5)
+    stored_page.write_tuple(0, b"customer-row")
+    page_store.write_page(stored_page)
+    pool = BufferPool(10, page_store)
+
+    page = pool.pin_page(5)
+
+    assert page is not None
+    assert page.read_tuple(0) == b"customer-row"
+    assert pool.pin_counts[5] == 1
 
 
 def test_enforce_capacity():
