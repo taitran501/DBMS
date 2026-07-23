@@ -2,6 +2,7 @@ import pytest
 
 from dbms.storage_engine.exceptions import StoragePathError
 from dbms.storage_engine.file_manager import FileManager
+from dbms.storage_engine.page import Page
 
 
 def test_file_manager_can_be_created(tmp_path):
@@ -74,3 +75,23 @@ def test_create_file_rejects_path_outside_root(tmp_path):
         manager.create_file(f"../{outside_name}")
 
     assert not (tmp_path.parent / outside_name).exists()
+
+
+def test_write_and_load_page_through_page_store_adapter(tmp_path):
+    manager = FileManager(str(tmp_path))
+    page = Page(5, b"header")
+    page.write_tuple(2, b"customer-row")
+
+    assert manager.write_page(page) is True
+    restored_page = manager.load_page(5)
+
+    assert restored_page is not None
+    assert restored_page.page_id == 5
+    assert restored_page.data == b"header"
+    assert restored_page.read_tuple(2) == b"customer-row"
+
+
+def test_load_missing_page_returns_none(tmp_path):
+    manager = FileManager(str(tmp_path))
+
+    assert manager.load_page(99) is None
