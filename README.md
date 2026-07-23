@@ -791,13 +791,13 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Metadata Management | Repository | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
 | | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
-| **Storage Engine** | Buffer Replacement | Strategy | `BufferPool`, `Page` | Planned |
+| **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
 | | Buffer Pool Management | Singleton | `BufferPool` | Planned |
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
 | | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
-| | Page Loading | Proxy | `BufferPool`, `Page`, `FileManager` | Planned |
+| | Page Loading | [Proxy](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading) | `BufferPool`, `PageStoreProtocol`, `FileManager`, `Page` | Implemented |
 | **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` | Planned |
 | | AST Construction | Builder | `SQLParser`, `AST` | Planned |
 | | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` | Planned |
@@ -999,49 +999,51 @@ sequenceDiagram
 #### 2. Storage Engine
 
 **Strategy Pattern (Buffer Replacement)**
-* **Description**: Allows flexible swapping of victim-page selection algorithms.
-* **Use Case**: The `BufferPool` choosing which page to evict when RAM is full.
-* **Reason**: Different workloads benefit from different caching policies (LRU, MRU, Clock). `BufferPool` can call `strategy.getVictimPage()` without knowing the internal selection logic, eliminating complex if-else branching for policy selection and fulfilling the Strategy pattern perfectly.
+* **Description**: `BufferPool` passes the unpinned page ids to a `BufferReplacementStrategy`, which selects one victim.
+* **Use Case**: FIFO is the default strategy; callers can inject LRU without changing cache, pin, dirty-page, or flush logic.
+* **Reason**: Page replacement policy is isolated from the cache proxy. More policies can be added without editing `BufferPool`.
+
+See the [class diagram](docs/diagrams/class/storage_engine.md#4-strategy-buffer-replacement) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement).
 
 ```mermaid
 sequenceDiagram
+    participant Client
     participant BufferPool
-    participant LRUStrategy
-    participant FileManager
-    participant Page
+    participant Strategy as BufferReplacementStrategy
+    participant Store as PageStoreProtocol
 
-    BufferPool->>LRUStrategy: getVictimPage()
-    LRUStrategy-->>BufferPool: victim_page_id
-    opt if victim_page is "dirty" (modified)
-        BufferPool->>FileManager: flushPage(victim_page_id, data)
+    Client->>BufferPool: cache_page(new_page)
+    BufferPool->>Strategy: select_victim(unpinned_page_ids)
+    Strategy-->>BufferPool: victim_page_id
+    opt victim page is dirty
+        BufferPool->>Store: write_page(victim_page)
+        Store-->>BufferPool: True
     end
-    BufferPool->>FileManager: readPage(new_page_id)
-    FileManager-->>BufferPool: new_page_data
-    BufferPool->>Page: updateContent(new_page_data)
+    BufferPool->>BufferPool: remove victim and cache new_page
 ```
 
 **Proxy Pattern (Page Loading & Buffer Pool)**
-* **Description**: Provides a surrogate or placeholder for another object to control access to it.
-* **Use Case**: `BufferPool` acts as a cache proxy between the `StorageEngine` and `FileManager` (Disk).
-* **Reason**: Directly reading from disk is slow. `BufferPool` intercepts requests (Lazy Loading). It serves pages from RAM if present, and only triggers an expensive disk read on a Page Fault.
+* **Description**: `BufferPool` is a cache proxy in front of a `PageStoreProtocol` implementation such as `FileManager`.
+* **Use Case**: `pin_page()` returns a cached page when possible; on a miss it loads the page through the store and caches it before returning.
+* **Reason**: Callers use one page-access API and do not manage cache state, pin counts, or filesystem reads directly.
+
+See the [class diagram](docs/diagrams/class/storage_engine.md#3-proxy-page-loading) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading).
 
 ```mermaid
 sequenceDiagram
-    participant StorageEngine
-    participant BufferPool (Proxy)
-    participant Memory (Cache)
-    participant FileManager (Disk)
+    participant Client
+    participant BufferPool
+    participant Store as PageStoreProtocol
 
-    StorageEngine->>BufferPool: getPage(page_id=5)
-    BufferPool->>Memory: check_exists(page_id=5)
-    alt Page is in Memory
-        Memory-->>BufferPool: page_data
-    else Page is NOT in Memory (Page Fault)
-        BufferPool->>FileManager: read_from_disk(page_id=5)
-        FileManager-->>BufferPool: page_data
-        BufferPool->>Memory: cache_page(page_id=5, page_data)
+    Client->>BufferPool: pin_page(page_id)
+    alt page is cached
+        BufferPool->>BufferPool: increment pin count
+    else page is not cached
+        BufferPool->>Store: load_page(page_id)
+        Store-->>BufferPool: Page
+        BufferPool->>BufferPool: cache_page(Page) and increment pin count
     end
-    BufferPool-->>StorageEngine: Page(page_data)
+    BufferPool-->>Client: Page
 ```
 
 **Factory Method (Page Allocation)**

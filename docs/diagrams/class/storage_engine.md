@@ -109,4 +109,87 @@ classDiagram
     FileManager --> Path : adapts to
 ```
 
-`FileManager` rejects paths outside `root_path`. It is not yet injected into `PageManager`, `BufferPool`, or `StorageEngine`.
+`FileManager` rejects paths outside `root_path`. It is used by `BufferPool` through `PageStoreProtocol`; `PageManager` and `StorageEngine` are not yet connected to it.
+
+---
+
+## 3. Proxy (Page Loading)
+
+`BufferPool` is a cache proxy for `PageStoreProtocol`. It returns an in-memory page when one is cached; otherwise it loads the page through the store, caches it, and pins it for the caller.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class BufferPool {
+        +capacity: int
+        +page_store: PageStoreProtocol
+        +pages: dict[int, Page]
+        +pin_counts: dict[int, int]
+        +dirty_page_ids: set[int]
+        +pin_page(page_id: int) Page | None
+        +unpin_page(page_id: int) bool
+        +cache_page(page: Page) bool
+        +flush_page(page_id: int) bool
+        +flush_all_pages() bool
+    }
+
+    class PageStoreProtocol {
+        <<Protocol>>
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class FileManager {
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class Page
+
+    BufferPool --> PageStoreProtocol : loads and flushes
+    FileManager ..|> PageStoreProtocol : implements
+    BufferPool o-- Page : caches
+```
+
+`pin_page()` returns `None` when the store has no page with the requested id. Buffer-pool state remains in memory; `FileManager` owns persisted page bytes.
+
+---
+
+## 4. Strategy (Buffer Replacement)
+
+`BufferPool` delegates victim selection to an injected `BufferReplacementStrategy`. It still decides which pages are eligible: only unpinned pages can be evicted.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class BufferPool {
+        +replacement_strategy: BufferReplacementStrategy
+        +cache_page(page: Page) bool
+        +evict_page() bool
+    }
+
+    class BufferReplacementStrategy {
+        <<abstract>>
+        +record_page(page_id: int) None
+        +record_access(page_id: int) None
+        +remove_page(page_id: int) None
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    class FifoReplacementStrategy {
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    class LruReplacementStrategy {
+        +record_access(page_id: int) None
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    BufferPool --> BufferReplacementStrategy : delegates selection to
+    FifoReplacementStrategy --|> BufferReplacementStrategy
+    LruReplacementStrategy --|> BufferReplacementStrategy
+```
+
+FIFO is the default. LRU demonstrates that callers can replace the algorithm without changing `BufferPool`.

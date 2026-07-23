@@ -79,3 +79,62 @@ sequenceDiagram
 ```
 
 Paths that resolve outside `root_path` raise `StoragePathError`. Buffer Pool and Storage Engine will consume this `PageStoreProtocol` in later patterns.
+
+---
+
+## 3. Proxy (Page Loading)
+
+`BufferPool` controls access to a `PageStoreProtocol`. A cached page is returned directly; a cache miss calls the store and adds the loaded page to the pool before returning it.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Proxy as BufferPool
+    participant Store as PageStoreProtocol
+
+    Client->>Proxy: pin_page(page_id)
+    alt page is already cached
+        Proxy->>Proxy: increment pin count
+        Proxy-->>Client: Page
+    else cache miss
+        Proxy->>Store: load_page(page_id)
+        Store-->>Proxy: Page | None
+        alt page was found
+            Proxy->>Proxy: cache_page(Page)
+            Proxy->>Proxy: increment pin count
+            Proxy-->>Client: Page
+        else page was not found
+            Proxy-->>Client: None
+        end
+    end
+```
+
+`FileManager` is one implementation of `PageStoreProtocol`. A page must be unpinned before the pool can select it for eviction.
+
+---
+
+## 4. Strategy (Buffer Replacement)
+
+`BufferPool` supplies only unpinned page ids to `BufferReplacementStrategy`. FIFO is the default; LRU can be injected to use access order instead.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Pool as BufferPool
+    participant Strategy as BufferReplacementStrategy
+    participant Store as PageStoreProtocol
+
+    Client->>Pool: cache_page(new_page)
+    Pool->>Pool: check capacity
+    Pool->>Strategy: select_victim(unpinned_page_ids)
+    Strategy-->>Pool: victim_page_id
+    opt victim page is dirty
+        Pool->>Store: write_page(victim_page)
+        Store-->>Pool: True
+    end
+    Pool->>Pool: remove victim page
+    Pool->>Pool: cache new_page
+    Pool-->>Client: True
+```
+
+If every cached page is pinned, `cache_page()` raises `BufferPoolFullError`. If writing a dirty victim fails, the victim remains cached and the new page is not added.
