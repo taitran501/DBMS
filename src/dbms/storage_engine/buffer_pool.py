@@ -1,16 +1,26 @@
-from dbms.storage_engine.page import Page
+from dbms.storage_engine.buffer_replacement_strategy import (
+    BufferReplacementStrategy,
+    FifoReplacementStrategy,
+)
 from dbms.storage_engine.dependencies import PageStoreProtocol
 from dbms.storage_engine.exceptions import BufferPoolFullError
+from dbms.storage_engine.page import Page
 
 
 class BufferPool:
     """Cache proxy that controls page access to a PageStoreProtocol."""
 
-    def __init__(self, capacity: int, page_store: PageStoreProtocol | None = None) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        page_store: PageStoreProtocol | None = None,
+        replacement_strategy: BufferReplacementStrategy | None = None,
+    ) -> None:
         if capacity <= 0:
             raise ValueError("Buffer pool capacity must be positive")
         self.capacity = capacity
         self.page_store = page_store
+        self.replacement_strategy = replacement_strategy or FifoReplacementStrategy()
         self.pages: dict[int, Page] = {}
         self.pin_counts: dict[int, int] = {}
         self.dirty_page_ids: set[int] = set()
@@ -25,6 +35,7 @@ class BufferPool:
                 return None
 
         self.pin_counts[page_id] += 1
+        self.replacement_strategy.record_access(page_id)
         return page
 
     def unpin_page(self, page_id: int) -> bool:
@@ -43,6 +54,7 @@ class BufferPool:
 
         self.pages[page.page_id] = page
         self.pin_counts.setdefault(page.page_id, 0)
+        self.replacement_strategy.record_page(page.page_id)
         return True
 
     def get_cached_page(self, page_id: int) -> Page | None:
@@ -58,6 +70,7 @@ class BufferPool:
         del self.pages[page_id]
         del self.pin_counts[page_id]
         self.dirty_page_ids.discard(page_id)
+        self.replacement_strategy.remove_page(page_id)
         return True
 
     def mark_dirty(self, page_id: int) -> bool:
@@ -82,11 +95,9 @@ class BufferPool:
         return all(self.flush_page(page_id) for page_id in list(self.dirty_page_ids))
 
     def _select_victim(self) -> int | None:
-        return next(
-            (
-                page_id
-                for page_id in self.pages
-                if self.pin_counts.get(page_id, 0) == 0
-            ),
-            None,
-        )
+        candidates = [
+            page_id
+            for page_id in self.pages
+            if self.pin_counts.get(page_id, 0) == 0
+        ]
+        return self.replacement_strategy.select_victim(candidates)
