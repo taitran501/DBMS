@@ -795,7 +795,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
 | | File Access | Adapter | `FileManager`, `StorageEngine` | Planned |
 | | Buffer Pool Management | Singleton | `BufferPool` | Planned |
-| | Record Read/Write | Data Mapper | `StorageEngine`, `Page`, `Row` | Planned |
+| | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
 | | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
 | | Page Loading | Proxy | `BufferPool`, `Page`, `FileManager` | Planned |
 | **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` | Planned |
@@ -1096,23 +1096,33 @@ sequenceDiagram
 ```
 
 **Data Mapper (Record Read/Write)**
-* **Description**: Moves data between objects and a database while keeping them independent.
-* **Use Case**: Translating raw bytes in a `Page` to a `Row` object.
-* **Reason**: Keeps the in-memory object model (`Row`) independent of the physical storage format (bytes in a `Page`).
+* **Description**: `RecordMapper` converts a database-object `Row` to a storage `Record` and its byte payload; it performs the reverse conversion when the row is read.
+* **Use Case**: `RecordManager` stores that payload in a `Page` slot and returns a `page_id:slot_id` location.
+* **Reason**: `Row` does not need to know the page-slot or byte format. The current implementation is in-memory only; buffer-pool and file persistence remain planned.
+
+See the [class diagram](docs/diagrams/class/storage_engine.md#1-data-mapper-record-readwrite) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite).
 
 ```mermaid
 sequenceDiagram
-    participant StorageEngine
-    participant DataMapper
+    participant Client
+    participant RecordManager
+    participant RecordMapper
+    participant PageManager
     participant Page
-    participant Row
+    participant Record
 
-    StorageEngine->>DataMapper: read_row(page, slot_id)
-    DataMapper->>Page: get_bytes(slot_id)
-    Page-->>DataMapper: byte_array
-    DataMapper->>Row: deserialize(byte_array)
-    Row-->>DataMapper: rowInstance
-    DataMapper-->>StorageEngine: rowInstance
+    Client->>RecordManager: insert_row(row)
+    RecordManager->>RecordMapper: serialize(row)
+    RecordMapper->>Record: Record(row_id, values, version)
+    Record->>Record: serialize()
+    Record-->>RecordMapper: payload: bytes
+    RecordMapper-->>RecordManager: payload
+    RecordManager->>PageManager: get_page_with_free_space(size)
+    PageManager-->>RecordManager: Page
+    RecordManager->>Page: insert_tuple(payload)
+    Page-->>RecordManager: slot_id
+    RecordManager->>PageManager: release_page(page_id)
+    RecordManager-->>Client: "page_id:slot_id"
 ```
 
 **Strategy (Storage Allocation)**

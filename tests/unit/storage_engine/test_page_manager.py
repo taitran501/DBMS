@@ -1,98 +1,53 @@
 import pytest
-from unittest.mock import Mock
 
-from dbms.storage_engine.buffer_pool import BufferPool
-from dbms.storage_engine.page import Page
 from dbms.storage_engine.page_manager import PageManager
 
 
 def test_page_manager_can_be_created():
-    # Arrange
-    buffer_pool = Mock(spec=BufferPool)
+    manager = PageManager()
 
-    # Act
-    manager = PageManager(buffer_pool)
-
-    # Assert
-    assert manager.buffer_pool is buffer_pool
+    assert manager.pages == {}
     assert callable(manager.allocate_page)
     assert callable(manager.get_page)
     assert callable(manager.release_page)
     assert callable(manager.get_page_with_free_space)
 
 
-def test_allocate_page():
-    # Arrange
-    manager = PageManager(Mock(spec=BufferPool))
+def test_allocate_page_creates_the_first_page():
+    manager = PageManager()
 
-    # Act
     page_id = manager.allocate_page()
 
-    # Assert
     assert page_id == 1
+    assert manager.get_page(page_id).page_id == page_id
 
 
-def test_get_page():
-    # Arrange
-    page = Page(2)
-    buffer_pool = Mock(spec=BufferPool)
-    buffer_pool.pin_page.return_value = page
-    manager = PageManager(buffer_pool)
+def test_release_page_keeps_the_page_available_when_not_deallocated():
+    manager = PageManager()
+    page_id = manager.allocate_page()
 
-    # Act
-    result = manager.get_page(2)
-
-    # Assert
-    assert result is page
-    buffer_pool.pin_page.assert_called_once_with(2)
+    assert manager.release_page(page_id) is True
+    assert manager.get_page(page_id) is not None
 
 
-def test_release_page():
-    # Arrange
-    buffer_pool = Mock()
-    buffer_pool.unpin_page.return_value = True
-    manager = PageManager(buffer_pool)
+def test_deallocated_page_id_is_reused():
+    manager = PageManager()
+    page_id = manager.allocate_page()
 
-    # Act
-    result = manager.release_page(2)
-
-    # Assert
-    assert result is True
-    buffer_pool.unpin_page.assert_called_once_with(2)
+    assert manager.release_page(page_id, deallocate=True) is True
+    assert manager.allocate_page() == page_id
 
 
-def test_reuse_page():
-    # Arrange
-    buffer_pool = Mock()
-    buffer_pool.unpin_page.return_value = True
-    manager = PageManager(buffer_pool)
+def test_track_page_free_space_uses_page_slots():
+    manager = PageManager()
+    page_id = manager.allocate_page()
+    manager.get_page(page_id).insert_tuple(b"x" * 1024)
 
-    # Act
-    released = manager.release_page(2, deallocate=True)
-    reused_page_id = manager.allocate_page()
-
-    # Assert
-    assert released is True
-    assert reused_page_id == 2
+    assert manager.track_page_free_space(page_id) == 3072
 
 
-def test_track_page_free_space():
-    # Arrange
-    manager = PageManager(Mock(spec=BufferPool))
-    manager.page_free_space[2] = 1024
+def test_reject_request_larger_than_a_page():
+    manager = PageManager()
 
-    # Act
-    result = manager.track_page_free_space(2)
-
-    # Assert
-    assert result == 1024
-
-
-def test_reject_full_page():
-    # Arrange
-    manager = PageManager(Mock(spec=BufferPool))
-    manager.page_free_space = {1: 1024}
-
-    # Act / Assert
-    with pytest.raises(Exception, match="space"):
-        manager.get_page_with_free_space(required_bytes=2048)
+    with pytest.raises(ValueError, match="size"):
+        manager.get_page_with_free_space(required_bytes=4097)
