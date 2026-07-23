@@ -46,3 +46,16 @@ def test_reject_tuple_larger_than_page_capacity():
 
     with pytest.raises(ValueError, match="size"):
         page.insert_tuple(b"x" * (Page.PAGE_SIZE + 1))
+
+
+def test_serialize_and_deserialize_preserve_page_slots():
+    page = Page(7, b"header")
+    page.write_tuple(3, b"first")
+    page.insert_tuple(b"second")
+
+    restored_page = Page.deserialize(page.serialize())
+
+    assert restored_page.page_id == 7
+    assert restored_page.data == b"header"
+    assert restored_page.read_tuple(3) == b"first"
+    assert restored_page.read_tuple(4) == b"second"

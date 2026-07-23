@@ -1,3 +1,7 @@
+import base64
+import json
+
+
 class Page:
     PAGE_SIZE = 4096
 
@@ -35,3 +39,27 @@ class Page:
 
         del self._slots[slot_id]
         return True
+
+    def serialize(self) -> bytes:
+        payload = {
+            "page_id": self.page_id,
+            "data": base64.b64encode(self.data).decode("ascii"),
+            "slots": {
+                str(slot_id): base64.b64encode(value).decode("ascii")
+                for slot_id, value in self._slots.items()
+            },
+        }
+        return json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+    @classmethod
+    def deserialize(cls, payload: bytes) -> "Page":
+        data = json.loads(payload.decode("utf-8"))
+        page = cls(
+            page_id=data["page_id"],
+            data=base64.b64decode(data["data"]),
+        )
+        page._slots = {
+            int(slot_id): base64.b64decode(value)
+            for slot_id, value in data["slots"].items()
+        }
+        return page
