@@ -144,7 +144,7 @@ Provides a single API for storing, retrieving, and removing catalog metadata thr
 sequenceDiagram
     autonumber
     actor Client
-    participant CatalogManager (Repository)
+    participant CatalogManager
     participant MetadataCache
 
     Client->>CatalogManager: register_object("public.users", descriptor)
@@ -165,6 +165,8 @@ sequenceDiagram
     Client->>CatalogManager: remove_object("public.users")
     CatalogManager->>MetadataCache: remove("public.users")
     MetadataCache-->>CatalogManager: removed
+    CatalogManager-->>Client: true
+```
 
 ---
 
@@ -189,7 +191,7 @@ sequenceDiagram
     Client->>ViewBuilder: set_query_executor(executor)
     Client->>ViewBuilder: set_cached_results(cached_data)
     Client->>ViewBuilder: build()
-    ViewBuilder->>ViewBuilder: validate name & query_definition non-empty
+    ViewBuilder->>ViewBuilder: validate name and query_definition non-empty
     ViewBuilder->>ViewBuilder: resolve view_id ("v_001" or default "view_active_users")
     ViewBuilder->>View: View("v_001", "active_users", query_definition, executor, cached_data)
     View-->>ViewBuilder: viewInstance
