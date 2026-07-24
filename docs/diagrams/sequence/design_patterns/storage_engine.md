@@ -159,3 +159,34 @@ sequenceDiagram
 ```
 
 The first creation establishes the configuration. A later call with conflicting explicit capacity, page store, or replacement strategy raises `ValueError`. `reset_instance()` resets `_instance` only for clean unit-test isolation.
+
+---
+
+## 6. Factory Method (Page Allocation)
+
+`PageFactory` abstracts concrete page instantiation. Callers invoke `create_page(page_id)` on concrete factory implementations.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Factory as PageFactory
+    participant DataFactory as DataPageFactory
+    participant IndexFactory as IndexPageFactory
+    participant DataPage
+    participant IndexPage
+
+    alt Allocate Data Page
+        Client->>DataFactory: create_page(page_id, data)
+        DataFactory->>DataPage: DataPage(page_id, data)
+        DataPage-->>DataFactory: dataPageInstance
+        DataFactory-->>Client: dataPageInstance
+    else Allocate Index Page
+        Client->>IndexFactory: create_page(page_id, data)
+        IndexFactory->>IndexPage: IndexPage(page_id, data)
+        IndexPage-->>IndexFactory: indexPageInstance
+        IndexFactory-->>Client: indexPageInstance
+    end
+```
+
+The concrete factory handles creation while callers interact only with the created `Page` abstraction.

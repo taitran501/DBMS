@@ -661,6 +661,7 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_file_manager.py`
 - `test_log_file_manager.py`
 - `test_page.py`
+- `test_page_factory.py`
 - `test_page_manager.py`
 - `test_record.py`
 - `test_record_manager.py`
@@ -799,7 +800,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | Builder | `ViewBuilder`, `View`, `AST`, `CatalogManager` | Implemented |
 | **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
-| | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
+| | Page Allocation | [Factory Method](docs/diagrams/sequence/design_patterns/storage_engine.md#6-factory-method-page-allocation) | `PageFactory`, `DataPageFactory`, `IndexPageFactory`, `Page`, `DataPage`, `IndexPage` | Implemented |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
 | | Buffer Pool Management | [Singleton](docs/diagrams/sequence/design_patterns/storage_engine.md#5-singleton-pattern-buffer-pool-management) | `BufferPool` | Implemented |
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
@@ -1615,6 +1616,86 @@ sequenceDiagram
   * **Controlled Configuration:** The first creation sets capacity, page store, and replacement strategy; later conflicting explicit configuration raises `ValueError`.
   * **Controlled Lifetime:** A lock protects creation/reset, while `reset_instance()` exists only for isolated unit testing.
 * **Reason**: Memory buffer caching requires centralized state management; Singleton guarantees one cache state for the process.
+
+**Factory Method Pattern (Page Allocation)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class Page {
+        +PAGE_SIZE: int
+        +page_id: int
+        +data: bytes
+        +free_space: int
+        +read_tuple(slot_id: int) bytes | None
+        +insert_tuple(payload: bytes) int
+        +write_tuple(slot_id: int, payload: bytes) bool
+        +delete_tuple(slot_id: int) bool
+        +serialize() bytes
+        +deserialize(payload: bytes) Page$
+    }
+
+    class DataPage {
+        +page_type: str = "DATA"
+    }
+
+    class IndexPage {
+        +page_type: str = "INDEX"
+    }
+
+    class PageFactory {
+        <<abstract>>
+        +create_page(page_id: int, data: bytes) Page
+    }
+
+    class DataPageFactory {
+        +create_page(page_id: int, data: bytes) DataPage
+    }
+
+    class IndexPageFactory {
+        +create_page(page_id: int, data: bytes) IndexPage
+    }
+
+    DataPage --|> Page
+    IndexPage --|> Page
+    DataPageFactory --|> PageFactory
+    IndexPageFactory --|> PageFactory
+    DataPageFactory ..> DataPage : creates
+    IndexPageFactory ..> IndexPage : creates
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Factory as PageFactory
+    participant DataFactory as DataPageFactory
+    participant IndexFactory as IndexPageFactory
+    participant DataPage
+    participant IndexPage
+
+    alt Allocate Data Page
+        Client->>DataFactory: create_page(page_id, data)
+        DataFactory->>DataPage: DataPage(page_id, data)
+        DataPage-->>DataFactory: dataPageInstance
+        DataFactory-->>Client: dataPageInstance
+    else Allocate Index Page
+        Client->>IndexFactory: create_page(page_id, data)
+        IndexFactory->>IndexPage: IndexPage(page_id, data)
+        IndexPage-->>IndexFactory: indexPageInstance
+        IndexFactory-->>Client: indexPageInstance
+    end
+```
+
+* **Description**: Encapsulates concrete `Page` subclass instantiation behind factory methods (`DataPageFactory`, `IndexPageFactory`).
+* **Use Case**: Allocating specialized page types (`DataPage` for tuple records, `IndexPage` for B-Tree index nodes) without coupling callers to concrete constructors.
+* **Advantages**:
+  * **Loose Coupling:** Higher-level storage and query operators depend only on abstract `PageFactory` and `Page` abstractions.
+  * **Extensibility:** New page types (e.g., `OverflowPage`, `HeaderPage`) can be added by creating a new `Page` subclass and corresponding factory without modifying existing code.
+* **Reason**: Different storage subsystems require distinct page layouts and behaviors while sharing the underlying `Page` byte payload contract.
 
 ---
 
