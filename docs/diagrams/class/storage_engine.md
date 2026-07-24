@@ -224,3 +224,57 @@ classDiagram
 ```
 
 The first creation sets capacity, page store, and replacement strategy. Later conflicting explicit configuration raises `ValueError`; `reset_instance()` exists for test isolation only.
+
+---
+
+## 6. Factory Method (Page Allocation)
+
+Uses concrete factory methods (`DataPageFactory`, `IndexPageFactory`) to allocate concrete `Page` instances (`DataPage`, `IndexPage`) without coupling callers to concrete page constructors.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Page {
+        +PAGE_SIZE: int
+        +page_id: int
+        +data: bytes
+        +free_space: int
+        +read_tuple(slot_id: int) bytes | None
+        +insert_tuple(payload: bytes) int
+        +write_tuple(slot_id: int, payload: bytes) bool
+        +delete_tuple(slot_id: int) bool
+        +serialize() bytes
+        +deserialize(payload: bytes) Page$
+    }
+
+    class DataPage {
+        +page_type: str = "DATA"
+    }
+
+    class IndexPage {
+        +page_type: str = "INDEX"
+    }
+
+    class PageFactory {
+        <<abstract>>
+        +create_page(page_id: int, data: bytes) Page
+    }
+
+    class DataPageFactory {
+        +create_page(page_id: int, data: bytes) DataPage
+    }
+
+    class IndexPageFactory {
+        +create_page(page_id: int, data: bytes) IndexPage
+    }
+
+    DataPage --|> Page
+    IndexPage --|> Page
+    DataPageFactory --|> PageFactory
+    IndexPageFactory --|> PageFactory
+    DataPageFactory ..> DataPage : creates
+    IndexPageFactory ..> IndexPage : creates
+```
+
+`DataPageFactory` creates tuple data pages, while `IndexPageFactory` creates index node pages. Callers depend only on the abstract `PageFactory` contract.
