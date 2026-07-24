@@ -658,6 +658,201 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_buffer_pool_singleton.py`
 - `test_buffer_replacement_strategy.py`
 - `test_dependencies.py`
+        +resource: str
+        +action: str
+        +matches(other_resource: str, other_action: str) bool
+    }
+
+    class ReplicationManager {
+        +replication_mode: str
+        +replicas: list
+        +replicate() bool
+        +synchronize() bool
+    }
+
+    class ClusterNode {
+        +node_id: str
+        +address: str
+        +ping() bool
+    }
+
+    class BackupManager {
+        +backup_jobs: list
+        +full_backup() bool
+    }
+
+    class MonitoringManager {
+        +metrics: dict
+        +collect_metrics() object
+    }
+
+    %% Relationships
+    DatabaseServer *-- DatabaseManager
+    DatabaseServer *-- TransactionManager
+    DatabaseServer *-- StorageEngine
+    DatabaseServer *-- CatalogManager
+    DatabaseServer *-- SecurityManager
+    DatabaseServer *-- SQLParser
+    DatabaseServer *-- QueryOptimizer
+    DatabaseServer *-- QueryExecutor
+    DatabaseServer *-- RecoveryManager
+    DatabaseServer *-- ReplicationManager
+    DatabaseServer *-- BackupManager
+    DatabaseServer *-- StatisticsManager
+    DatabaseServer *-- MonitoringManager
+
+    DatabaseManager o-- Database
+    DatabaseManager --> DatabaseFactoryProtocol
+    DatabaseManager --> DatabaseStorageProtocol
+    Database --> DatabaseStorageProtocol
+    Database --> DatabaseBackupProtocol
+    Database *-- Schema
+    Schema *-- Table
+    Schema *-- View
+    Schema *-- StoredProcedure
+    Table *-- Column
+    Table *-- Constraint
+    Table *-- Index
+    Table *-- Partition
+    Column --> DataType
+    BTreeIndex --|> Index
+    HashIndex --|> Index
+    BTreeIndexFactory --|> IndexFactory
+    HashIndexFactory --|> IndexFactory
+    IndexFactory --> Index
+    BTreeIndexFactory --> BTreeIndex
+    HashIndexFactory --> HashIndex
+    IntegerDataTypeFactory --|> DataTypeFactory
+    FloatDataTypeFactory --|> DataTypeFactory
+    TextDataTypeFactory --|> DataTypeFactory
+    DataTypeFactory --> DataType
+    DataTypeManager o-- DataType
+    ForeignKey --|> Constraint
+    ForeignKey --> Table
+    Constraint --> ConstraintStrategy
+    CheckStrategy --|> ConstraintStrategy
+    PrimaryKeyStrategy --|> ConstraintStrategy
+    UniqueStrategy --|> ConstraintStrategy
+    ForeignKeyStrategy --|> ConstraintStrategy
+    TableBuilder --> Table
+    TableBuilder o-- Column
+    TableBuilder o-- Constraint
+    TableBuilder o-- Index
+    TableBuilder --> DataTypeFactory
+    CatalogManager --> MetadataCacheProtocol
+    Partition --> StorageAllocatorProtocol
+    StoredProcedure --> QueryExecutorProtocol
+    View --> QueryExecutorProtocol
+    TriggerManager o-- Trigger
+
+    StorageEngine *-- BufferPool
+    StorageEngine *-- FileManager
+    BufferPool o-- Page
+    
+    TransactionManager *-- LockManager
+    TransactionManager *-- MVCCManager
+    TransactionManager *-- WALManager
+    TransactionManager o-- Transaction
+    WALManager <-- RecoveryManager
+
+    SQLParser --> Lexer
+    SQLParser --> AST
+    AST --> LogicalPlan
+    QueryOptimizer --> LogicalPlan
+    QueryOptimizer --> PhysicalPlan
+    QueryExecutor --> PhysicalPlan
+
+    SecurityManager o-- User
+    SecurityManager o-- Role
+    Role o-- Permission
+
+    ReplicationManager o-- ClusterNode
+```
+
+---
+
+### 3. Implemented Database Object Class Diagrams
+
+The diagrams for implemented Builder, Strategy, and Factory Method classes are maintained separately from this system overview:
+
+- [Open the implemented Database Object class diagrams](docs/diagrams/class/database_object.md)
+
+Only classes with executable behavior and unit tests appear in that document; planned components and method stubs remain out of scope.
+
+### 4. Core Classes
+
+Below is the list of the main core classes designed for this system:
+
+*   **Database Management**: `DatabaseServer`, `DatabaseManager`, `Database`
+*   **Schema, Table & Column Metadata**: `CatalogManager`, `Schema`, `Table`, `Column`, `Row`, `Partition`, `View`, `StoredProcedure`, `DataType`, `Trigger`
+*   **Constraints & Indexes**: `Constraint`, `ForeignKey`, `Index`
+*   **Storage Engine**: `StorageEngine`, `FileManager`, `Page`, `BufferPool`
+*   **Query Processing**: `SQLParser`, `Lexer`, `AST`, `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan`, `QueryExecutor`
+*   **Transactions & Concurrency (ACID)**: `TransactionManager`, `Transaction`, `LockManager`, `MVCCManager`
+*   **Logging & Recovery (Durability)**: `WALManager`, `RecoveryManager`, `ReplicationManager`, `ClusterNode`, `BackupManager`
+*   **Security & Access Control**: `SecurityManager`, `User`, `Role`, `Permission`
+*   **Performance & Operations**: `StatisticsManager`, `MonitoringManager`
+
+### 5. Architecture Boundary Rules
+
+*   An **entity** stores its own state and implements behavior local to that object.
+    For example, `Database` owns `open()`, `close()`, `backup()`, and `restore()`.
+*   A **manager** owns a collection or coordinates the lifecycle of multiple objects.
+    For example, `DatabaseManager` owns `create_database()`, `get_database()`,
+    `rename_database()`, and `drop_database()`.
+*   A manager must not repeat the local behavior of its entity. Entity/manager pairs
+    from the previous Database Object architecture were removed when the core entity
+    already owns that responsibility.
+*   Lower-level helpers are retained only when they represent a separate layer, such
+    as `PageManager` managing page allocation while `Page` represents one page.
+
+Supporting classes used by the core architecture:
+
+*   **Database Object**: `DataTypeManager`, `TriggerManager`
+*   **Database Object dependency contracts**: `MetadataCacheProtocol`, `DatabaseStorageProtocol`, `DatabaseBackupProtocol`, `StorageAllocatorProtocol`, `QueryExecutorProtocol`, `DatabaseFactoryProtocol`
+*   **Database Object errors**: `DuplicateDatabaseError`, `UnknownDatabaseError`, `DuplicateSchemaError`, `UnknownSchemaError`, `DatabaseInUseError`, `TriggerError`, `DuplicateTriggerError`
+*   **Storage Engine**: `PageManager`, `Record`, `RecordManager`, `StorageAllocator`, `LogFileManager`
+*   **Query Processing**: `QueryProcessor`, `QueryValidator`, `ExecutionPlanner`, `Statement`, `SelectStatement`, `Token`, `TokenType`
+*   **Transactions**: `IsolationManager`, `DeadlockManager`, `TransactionStatus`
+*   **Durability**: `CheckpointManager`, `RestoreManager`, `LogRecord`
+*   **Security & Access Control**: `UserManager`, `RoleManager`, `AuthenticationService`, `AuthorizationService`, `EncryptionService`, `AuditLogger`
+*   **Administration & Operations**: `ConfigurationManager`, `ImportExportManager`, `OperationalLogger`
+
+---
+
+## Unit Tests by Core Component
+
+Our testing strategy organizes unit tests around the core capabilities of the DBMS. The following lists the comprehensive suite of unit tests implemented so far:
+
+### 1. Database Object (Schema, Metadata, & Management)
+- `test_catalog_manager.py`
+- `test_column.py`
+- `test_constraint.py`
+- `test_data_type.py`
+- `test_data_type_factory.py`
+- `test_data_type_manager.py`
+- `test_database.py`
+- `test_database_manager.py`
+- `test_database_server.py`
+- `test_foreign_key.py`
+- `test_index.py`
+- `test_index_factory.py`
+- `test_partition.py`
+- `test_row.py`
+- `test_schema.py`
+- `test_stored_procedure.py`
+- `test_table.py`
+- `test_table_builder.py`
+- `test_trigger.py`
+- `test_trigger_manager.py`
+- `test_view.py`
+- `test_view_builder.py`
+
+### 2. Storage Engine
+- `test_buffer_pool.py`
+- `test_buffer_pool_singleton.py`
+- `test_buffer_replacement_strategy.py`
+- `test_dependencies.py`
 - `test_file_manager.py`
 - `test_log_file_manager.py`
 - `test_page.py`
@@ -806,7 +1001,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
 | | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
 | | Page Loading | [Proxy](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading) | `BufferPool`, `PageStoreProtocol`, `FileManager`, `Page` | Implemented |
-| **Query Processing** | SQL Parsing | Interpreter | `SQLParser`, `Lexer`, `AST` | Planned |
+| **Query Processing** | SQL Parsing | [Interpreter](docs/diagrams/sequence/design_patterns/query_processing.md#1-interpreter-pattern-sql-parsing) | `SQLParser`, `Lexer`, `AST`, `ASTNode`, `SelectNode` | Implemented |
 | | AST Construction | Builder | `SQLParser`, `AST` | Planned |
 | | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` | Planned |
 | | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` | Planned |
@@ -1696,6 +1891,114 @@ sequenceDiagram
   * **Loose Coupling:** Higher-level storage and query operators depend only on abstract `PageFactory` and `Page` abstractions.
   * **Extensibility:** New page types (e.g., `OverflowPage`, `HeaderPage`) can be added by creating a new `Page` subclass and corresponding factory without modifying existing code.
 * **Reason**: Different storage subsystems require distinct page layouts and behaviors while sharing the underlying `Page` byte payload contract.
+
+#### 3. Query Processing
+
+**Interpreter Pattern (SQL Parsing)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class ASTNode {
+        <<abstract>>
+        +interpret(context: dict) Any
+    }
+
+    class LiteralNode {
+        +value: Any
+        +interpret(context: dict) Any
+    }
+
+    class IdentifierNode {
+        +name: str
+        +interpret(context: dict) Any
+    }
+
+    class BinaryOpNode {
+        +left: ASTNode
+        +operator: str
+        +right: ASTNode
+        +interpret(context: dict) Any
+    }
+
+    class SelectNode {
+        +table_name: str
+        +columns: list[str]
+        +where_clause: ASTNode | None
+        +interpret(context: dict) Any
+    }
+
+    class InsertNode {
+        +table_name: str
+        +values: list[Any]
+        +interpret(context: dict) Any
+    }
+
+    class CreateTableNode {
+        +table_name: str
+        +columns: list[tuple[str, str]]
+        +interpret(context: dict) Any
+    }
+
+    class AST {
+        +root_node: ASTNode
+        +interpret(context: dict) Any
+        +traverse() list[ASTNode]
+    }
+
+    class Lexer {
+        +tokenize(sql: str) list[Token]
+    }
+
+    class SQLParser {
+        +lexer: Lexer
+        +parse_sql(sql: str) AST
+        +parse(tokens: list[Token]) AST
+    }
+
+    LiteralNode --|> ASTNode
+    IdentifierNode --|> ASTNode
+    BinaryOpNode --|> ASTNode
+    SelectNode --|> ASTNode
+    InsertNode --|> ASTNode
+    CreateTableNode --|> ASTNode
+    AST *-- ASTNode : wraps root
+    SQLParser --> Lexer : uses
+    SQLParser ..> AST : constructs
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Parser as SQLParser
+    participant Lexer
+    participant AST
+    participant Node as SelectNode/BinaryOpNode
+
+    Client->>Parser: parse_sql("SELECT id, name FROM users WHERE age > 18")
+    Parser->>Lexer: tokenize(sql)
+    Lexer-->>Parser: tokens: list[Token]
+    Parser->>Parser: parse tokens recursively
+    Parser->>AST: AST(SelectNode)
+    AST-->>Parser: astInstance
+    Parser-->>Client: astInstance
+
+    Client->>AST: interpret(context={"age": 25})
+    AST->>Node: interpret(context)
+    Node-->>AST: True
+    AST-->>Client: True
+```
+
+* **Description**: Tokenizes raw SQL string input via `Lexer`, parses syntax into an `AST` via `SQLParser`, and evaluates expressions dynamically against row data using `interpret(context)` on `ASTNode`.
+* **Use Case**: Serving as the entrypoint parser for `SELECT`, `INSERT`, and `CREATE TABLE` SQL statements, allowing query condition evaluation without hardcoded logic.
+* **Advantages**:
+  * **Extensible Grammar:** New expressions and operators can be added by declaring a new `ASTNode` subclass implementing `interpret(context)`.
+  * **Separation of Concerns:** Tokenization (`Lexer`), grammar parsing (`SQLParser`), and expression evaluation (`ASTNode`) are completely decoupled.
+* **Reason**: SQL query parsing and condition evaluation require a grammatical representation that can be dynamically interpreted against table row data.
 
 ---
 
