@@ -193,3 +193,34 @@ classDiagram
 ```
 
 FIFO is the default. LRU demonstrates that callers can replace the algorithm without changing `BufferPool`.
+
+---
+
+## 5. Singleton Pattern (Buffer Pool Management)
+
+`BufferPool` returns one process-wide instance through either direct construction or `get_instance()`. A lock protects instance creation and reset.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class BufferPool {
+        -_instance: BufferPool | None$
+        -_instance_lock: RLock$
+        +capacity: int
+        +page_store: PageStoreProtocol
+        +pages: dict[int, Page]
+        +pin_counts: dict[int, int]
+        +dirty_page_ids: set[int]
+        +get_instance(capacity, page_store, replacement_strategy) BufferPool$
+        +reset_instance() None$
+        +pin_page(page_id: int) Page | None
+        +unpin_page(page_id: int) bool
+        +cache_page(page: Page) bool
+        +evict_page() bool
+        +flush_page(page_id: int) bool
+        +flush_all_pages() bool
+    }
+```
+
+The first creation sets capacity, page store, and replacement strategy. Later conflicting explicit configuration raises `ValueError`; `reset_instance()` exists for test isolation only.

@@ -655,6 +655,7 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 
 ### 2. Storage Engine
 - `test_buffer_pool.py`
+- `test_buffer_pool_singleton.py`
 - `test_buffer_replacement_strategy.py`
 - `test_dependencies.py`
 - `test_file_manager.py`
@@ -800,7 +801,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
-| | Buffer Pool Management | Singleton | `BufferPool` | Planned |
+| | Buffer Pool Management | [Singleton](docs/diagrams/sequence/design_patterns/storage_engine.md#5-singleton-pattern-buffer-pool-management) | `BufferPool` | Implemented |
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
 | | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
 | | Page Loading | [Proxy](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading) | `BufferPool`, `PageStoreProtocol`, `FileManager`, `Page` | Implemented |
@@ -1566,6 +1567,54 @@ sequenceDiagram
   * **Separation of Concerns:** `Row` remains a clean domain entity; binary serialization logic is encapsulated in `RecordMapper`.
   * **Format Independence:** Storage payload format can evolve without mutating `Row` or higher-level database code.
 * **Reason**: `Row` does not need to know the page-slot or byte format.
+
+**Singleton Pattern (Buffer Pool Management)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class BufferPool {
+        -_instance: BufferPool | None$
+        -_instance_lock: RLock$
+        +capacity: int
+        +page_store: PageStoreProtocol
+        +pages: dict[int, Page]
+        +pin_counts: dict[int, int]
+        +dirty_page_ids: set[int]
+        +get_instance(capacity, page_store, replacement_strategy) BufferPool$
+        +reset_instance() None$
+        +pin_page(page_id: int) Page | None
+        +unpin_page(page_id: int) bool
+        +cache_page(page: Page) bool
+        +evict_page() bool
+        +flush_page(page_id: int) bool
+        +flush_all_pages() bool
+    }
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant BufferPool
+
+    Client->>BufferPool: get_instance(capacity, page_store, replacement_strategy)
+    alt _instance is None
+        BufferPool->>BufferPool: initialize single _instance
+    end
+    BufferPool-->>Client: _instance
+```
+
+* **Description**: Both `BufferPool(...)` and `BufferPool.get_instance()` return the same process-wide cache instance, coordinating memory caching across the database engine.
+* **Use Case**: Storage components access one shared buffer pool instead of creating independent caches.
+* **Advantages**:
+  * **Global Cache Consistency:** Prevents duplicate buffer pool instances from polluting RAM or creating dirty page conflicts.
+  * **Controlled Configuration:** The first creation sets capacity, page store, and replacement strategy; later conflicting explicit configuration raises `ValueError`.
+  * **Controlled Lifetime:** A lock protects creation/reset, while `reset_instance()` exists only for isolated unit testing.
+* **Reason**: Memory buffer caching requires centralized state management; Singleton guarantees one cache state for the process.
 
 ---
 
