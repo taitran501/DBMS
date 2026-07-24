@@ -863,7 +863,6 @@ sequenceDiagram
     end
     alt A constraint rejects the row
         Table-->>Client: ValueError
-        Note over Table: State remains unchanged
     else All constraints accept the row
         Table->>Table: store row and increment row_count
         Table-->>Client: true
@@ -972,29 +971,6 @@ sequenceDiagram
   * **Keeps Lookup Semantics Clear:** A missing descriptor becomes `KeyError`, while backend duplicate or missing-remove errors are propagated.
 * **Reason**: `CatalogManager` acts as the Repository facade; the cache remains replaceable behind the protocol.
 
-**Builder (View Creation)**
-
-```mermaid
-sequenceDiagram
-    actor Client
-    participant ViewBuilder
-    participant AST
-    participant View
-
-    Client->>ViewBuilder: new ViewBuilder("active_users", sql)
-    Client->>ViewBuilder: parse_query()
-    ViewBuilder->>AST: construct()
-    Client->>ViewBuilder: build()
-    ViewBuilder->>View: new View(name, ast)
-    View-->>Client: viewInstance
-```
-
-* **Description**: Separates the construction of a complex object from its representation.
-* **Use Case**: Constructing a `View` from an `AST` and dependencies.
-* **Advantages**:
-  * **Manages Multi-Step Construction:** Encapsulates multi-step creation workflows (SQL parsing, AST construction, dependency validation) cleanly.
-  * **Prevents Invalid View Creation:** Guarantees that query parsing and dependency resolution succeed before generating the final `View` instance.
-* **Reason**: View creation involves multiple steps (parsing query, resolving dependencies, storing metadata).
 
 #### 2. Storage Engine
 
@@ -1046,22 +1022,6 @@ sequenceDiagram
     BufferPool-->>Client: Page
 ```
 
-**Factory Method (Page Allocation)**
-* **Description**: Defers object instantiation to subclasses.
-* **Use Case**: `StorageEngine` requesting new `Page` objects from `FileManager`.
-* **Reason**: Different page types (Data, Index, Log) can be created without tightly coupling the engine to specific page constructors.
-
-```mermaid
-sequenceDiagram
-    participant StorageEngine
-    participant FileManager
-    participant DataPage
-
-    StorageEngine->>FileManager: allocate_page(DATA_TYPE)
-    FileManager->>DataPage: new DataPage(id)
-    DataPage-->>FileManager: pageInstance
-    FileManager-->>StorageEngine: pageInstance
-```
 
 **Adapter (File Access)**
 * **Description**: `FileManager` adapts root-relative DBMS file operations to Python's local filesystem API and implements `PageStoreProtocol`.
@@ -1092,22 +1052,6 @@ sequenceDiagram
     FileManager-->>Client: Page
 ```
 
-**Singleton (Buffer Pool Management)**
-* **Description**: Ensures a class has only one instance and provides a global point of access.
-* **Use Case**: `BufferPool` instance management.
-* **Reason**: RAM is a shared global resource. Having multiple buffer pools could lead to uncoordinated memory usage and contention.
-
-```mermaid
-sequenceDiagram
-    participant Client1
-    participant BufferPool
-    participant Client2
-
-    Client1->>BufferPool: get_instance()
-    BufferPool-->>Client1: instance
-    Client2->>BufferPool: get_instance()
-    BufferPool-->>Client2: instance
-```
 
 **Data Mapper (Record Read/Write)**
 * **Description**: `RecordMapper` converts a database-object `Row` to a storage `Record` and its byte payload; it performs the reverse conversion when the row is read.
@@ -1139,173 +1083,7 @@ sequenceDiagram
     RecordManager-->>Client: "page_id:slot_id"
 ```
 
-**Strategy (Storage Allocation)**
-* **Description**: Encapsulates interchangeable algorithms.
-* **Use Case**: `FileManager` allocating space for a `Partition` (extent-based vs. page-based).
-* **Reason**: Allows changing how disk space is allocated without modifying the core storage engine.
-
-```mermaid
-sequenceDiagram
-    participant FileManager
-    participant ExtentAllocationStrategy
-    participant Partition
-
-    FileManager->>ExtentAllocationStrategy: allocate(partition)
-    ExtentAllocationStrategy->>Partition: reserve_blocks(8)
-    Partition-->>ExtentAllocationStrategy: true
-    ExtentAllocationStrategy-->>FileManager: true
-```
-
-#### 3. Query Processing
-
-**Visitor Pattern (AST Traversal)**
-* **Description**: Separates an algorithm from an object structure on which it operates.
-* **Use Case**: Analyzing, validating, and optimizing the Abstract Syntax Tree (AST).
-* **Reason**: The AST contains dozens of node types (`SelectNode`, `JoinNode`, etc.). Adding methods for type checking and optimization directly to nodes would violate the Single Responsibility Principle. A Visitor object can traverse the tree and execute operations based on node type cleanly.
-
-```mermaid
-sequenceDiagram
-    participant QueryOptimizer
-    participant SelectNode (AST)
-    participant JoinNode (AST)
-    participant OptimizationVisitor
-
-    QueryOptimizer->>SelectNode: accept(OptimizationVisitor)
-    SelectNode->>OptimizationVisitor: visitSelectNode(this)
-    OptimizationVisitor->>JoinNode: accept(OptimizationVisitor) 
-    JoinNode->>OptimizationVisitor: visitJoinNode(this)
-    OptimizationVisitor-->>JoinNode: Optimized Join Node
-    OptimizationVisitor-->>SelectNode: Optimized Select Node
-```
-
-**Iterator Pattern / Volcano Model (Execution Operators)**
-* **Description**: Provides a way to access elements of an aggregate object sequentially.
-* **Use Case**: The query execution pipeline (`PhysicalPlan` and operators).
-* **Reason**: A DBMS processes data sequentially rather than loading entire tables into RAM. The standard Volcano Processing Model uses the Iterator pattern (`open()`, `next()`, `close()`) where each operator pulls rows from its children, allowing efficient, pipelined data flow.
-
-```mermaid
-sequenceDiagram
-    participant QueryExecutor
-    participant LimitOperator
-    participant FilterOperator
-    participant SeqScanOperator
-
-    QueryExecutor->>LimitOperator: open()
-    LimitOperator->>FilterOperator: open()
-    FilterOperator->>SeqScanOperator: open()
-
-    loop Fetch Rows Pipeline
-        QueryExecutor->>LimitOperator: next()
-        LimitOperator->>FilterOperator: next()
-        FilterOperator->>SeqScanOperator: next()
-        SeqScanOperator-->>FilterOperator: Row(Data)
-        opt If Row matches condition
-            FilterOperator-->>LimitOperator: Row(Data)
-            LimitOperator-->>QueryExecutor: Row(Data)
-        end
-    end
-```
-
-**Interpreter (SQL Parsing)**
-* **Description**: Given a language, define a representation for its grammar along with an interpreter.
-* **Use Case**: `SQLParser` mapping syntax to `AST` nodes.
-* **Reason**: Provides a structured way to evaluate or represent SQL grammar rules.
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant SQLParser
-    participant Lexer
-    participant AST
-
-    Client->>SQLParser: parse("SELECT * FROM users")
-    SQLParser->>Lexer: tokenize()
-    Lexer-->>SQLParser: tokens
-    SQLParser->>AST: build_from(tokens)
-    AST-->>SQLParser: astInstance
-    SQLParser-->>Client: astInstance
-```
-
-**Builder (AST Construction)**
-* **Description**: Separates construction from representation.
-* **Use Case**: Step-by-step building of the `AST` during parsing.
-* **Reason**: The AST is a complex tree structure built incrementally as tokens are consumed by the parser.
-
-```mermaid
-sequenceDiagram
-    participant SQLParser
-    participant ASTBuilder
-    participant AST
-
-    SQLParser->>ASTBuilder: new ASTBuilder()
-    SQLParser->>ASTBuilder: addSelectNode(columns)
-    SQLParser->>ASTBuilder: addFromNode(table)
-    SQLParser->>ASTBuilder: build()
-    ASTBuilder->>AST: construct
-    AST-->>ASTBuilder: astInstance
-    ASTBuilder-->>SQLParser: astInstance
-```
-
-**Chain of Responsibility (Query Validation & Execution Pipeline)**
-* **Description**: Passes a request along a chain of handlers.
-* **Use Case**: Validating an `AST` (Syntax -> Semantics -> Permissions).
-* **Reason**: Decouples validation steps. Allows dynamic addition or removal of checks without affecting the core execution flow.
-
-```mermaid
-sequenceDiagram
-    participant QueryProcessor
-    participant SyntaxValidator
-    participant SemanticValidator
-    participant PermissionValidator
-
-    QueryProcessor->>SyntaxValidator: validate(ast)
-    SyntaxValidator->>SemanticValidator: next(ast)
-    SemanticValidator->>PermissionValidator: next(ast)
-    PermissionValidator-->>SemanticValidator: true
-    SemanticValidator-->>SyntaxValidator: true
-    SyntaxValidator-->>QueryProcessor: true
-```
-
-**Strategy (Query Optimization)**
-* **Description**: Encapsulates interchangeable algorithms.
-* **Use Case**: `QueryOptimizer` applying different optimization rules (Cost-based vs. Heuristic).
-* **Reason**: Optimizer can switch or combine strategies based on query complexity and available statistics.
-
-```mermaid
-sequenceDiagram
-    participant QueryOptimizer
-    participant HeuristicStrategy
-    participant CostBasedStrategy
-
-    QueryOptimizer->>HeuristicStrategy: optimize(logical_plan)
-    HeuristicStrategy-->>QueryOptimizer: optimized_plan
-    opt If query is complex
-        QueryOptimizer->>CostBasedStrategy: optimize(optimized_plan)
-        CostBasedStrategy-->>QueryOptimizer: final_plan
-    end
-```
-
-**Factory Method (Execution Plan Creation)**
-* **Description**: Defers instantiation to subclasses.
-* **Use Case**: Converting `LogicalPlan` nodes to `PhysicalPlan` operators.
-* **Reason**: Decouples logical operations from their physical implementations (e.g., converting a LogicalJoin into a HashJoin or MergeJoin operator based on cost).
-
-```mermaid
-sequenceDiagram
-    participant QueryOptimizer
-    participant PhysicalPlanFactory
-    participant HashJoinOperator
-
-    QueryOptimizer->>PhysicalPlanFactory: createJoin(LogicalJoin, statistics)
-    PhysicalPlanFactory->>HashJoinOperator: new HashJoinOperator()
-    HashJoinOperator-->>PhysicalPlanFactory: opInstance
-    PhysicalPlanFactory-->>QueryOptimizer: opInstance
-```
-
 ---
-
-## Installation & Running Tests
-
 
 Ensure you have Python 3.10+ installed.
 

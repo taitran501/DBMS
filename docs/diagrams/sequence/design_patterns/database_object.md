@@ -168,24 +168,3 @@ sequenceDiagram
     CatalogManager-->>Client: true
 ```
 
----
-
-## 6. Builder Pattern (View Creation)
-
-Builds a `View` object step by step by parsing the SQL query, generating an AST, and verifying dependencies.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client
-    participant ViewBuilder
-    participant AST
-    participant View
-
-    Client->>ViewBuilder: new ViewBuilder("active_users", sql)
-    Client->>ViewBuilder: parse_query()
-    ViewBuilder->>AST: construct()
-    Client->>ViewBuilder: build()
-    ViewBuilder->>View: new View(name, ast)
-    View-->>Client: viewInstance
-```
