@@ -819,6 +819,59 @@ This section outlines the design patterns planned for the core modules, linking 
 
 **Builder Pattern (Create Table)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class TableBuilder {
+        +set_table_id(table_id: str) TableBuilder
+        +add_column(name: str, data_type: DataType | str) TableBuilder
+        +add_column_object(column: Column) TableBuilder
+        +add_constraint(constraint: Constraint) TableBuilder
+        +add_index(index: Index) TableBuilder
+        +build() Table
+    }
+
+    class Table {
+        +table_id: str
+        +name: str
+        +columns: list
+        +constraints: list
+        +indexes: list
+        +insert(row: Row) bool
+        +update(row_id: str, new_values: dict) bool
+    }
+
+    class Column {
+        +column_id: str
+        +name: str
+        +data_type: DataType
+        +nullable: bool
+    }
+
+    class Constraint {
+        +constraint_id: str
+        +name: str
+        +constraint_type: str
+    }
+
+    class Index {
+        +index_id: str
+        +name: str
+        +type: str
+    }
+
+    TableBuilder ..> Table : builds
+    TableBuilder o-- Column : collects
+    TableBuilder o-- Constraint : collects
+    TableBuilder o-- Index : collects
+    Table *-- Column : contains
+    Table *-- Constraint : contains
+    Table *-- Index : contains
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -851,6 +904,63 @@ sequenceDiagram
 
 **Strategy Pattern (Constraint Validation)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class Table {
+        +constraints: list
+        +insert(row: Row) bool
+        +update(row_id: str, new_values: dict) bool
+    }
+
+    class Constraint {
+        +constraint_id: str
+        +name: str
+        +constraint_type: str
+        +strategy: ConstraintStrategy
+        +set_strategy(strategy: ConstraintStrategy) None
+        +validate_row(row: Row, existing_rows: Iterable) bool
+        +validate_primary_key(row: Row, key_columns: tuple) bool
+        +validate_unique(row: Row, key_columns: tuple, existing_rows: list) bool
+        +validate_foreign_key(row: Row, foreign_key_col: str, referenced_keys: set) bool
+        +cascade_delete(parent_key_value, child_rows, foreign_key_col) list
+        +cascade_update(old_key_value, new_key_value, child_rows, foreign_key_col) int
+    }
+
+    class ConstraintStrategy {
+        <<abstract>>
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class CheckStrategy {
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class PrimaryKeyStrategy {
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class UniqueStrategy {
+        +validate(row: Row, existing_rows: Iterable) bool
+    }
+
+    class ForeignKeyStrategy {
+        +validate(row: Row, existing_rows: Iterable) bool
+        +cascade_delete(parent_key_value, child_rows, foreign_key_col) list
+        +cascade_update(old_key_value, new_key_value, child_rows, foreign_key_col) int
+    }
+
+    Table o-- Constraint : validates before mutation
+    Constraint --> ConstraintStrategy : delegates validation to
+    CheckStrategy --|> ConstraintStrategy
+    PrimaryKeyStrategy --|> ConstraintStrategy
+    UniqueStrategy --|> ConstraintStrategy
+    ForeignKeyStrategy --|> ConstraintStrategy
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -884,10 +994,78 @@ sequenceDiagram
   * **Isolated Unit Testing:** Enables testing each validation rule independently (e.g., verifying Primary Key rules separately from Foreign Key rules).
 * **Reason**: `Table` owns when validation happens, `Constraint` acts as the Strategy context, and each concrete strategy owns one validation algorithm. Invalid rows are rejected before table state changes.
 
-Runtime replacement uses the same context contract: `Constraint.set_strategy(new_strategy)` changes the delegated algorithm, while `Table` continues to call `validate_row(row, existing_rows=...)`.
-
 **Factory Method (Index & DataType Creation)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class Index {
+        +index_id: str
+        +name: str
+        +type: str
+        +columns: tuple
+        +unique: bool
+        +search(key: object) list
+        +insert_key(key: object, row_id: str) bool
+        +delete_key(key: object, row_id: str) bool
+    }
+
+    class BTreeIndex
+    class HashIndex
+
+    class IndexFactory {
+        <<abstract>>
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) Index
+    }
+
+    class BTreeIndexFactory {
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) BTreeIndex
+    }
+
+    class HashIndexFactory {
+        +create_index(index_id: str, name: str, columns: Sequence, unique: bool) HashIndex
+    }
+
+    class DataType {
+        +name: str
+        +validate(value: object) bool
+        +convert(value: object) object
+    }
+
+    class DataTypeFactory {
+        <<abstract>>
+        +create_data_type() DataType
+    }
+
+    class IntegerDataTypeFactory {
+        +create_data_type() DataType
+    }
+
+    class FloatDataTypeFactory {
+        +create_data_type() DataType
+    }
+
+    class TextDataTypeFactory {
+        +create_data_type() DataType
+    }
+
+    BTreeIndex --|> Index
+    HashIndex --|> Index
+    BTreeIndexFactory --|> IndexFactory
+    HashIndexFactory --|> IndexFactory
+    BTreeIndexFactory ..> BTreeIndex : creates
+    HashIndexFactory ..> HashIndex : creates
+    IntegerDataTypeFactory --|> DataTypeFactory
+    FloatDataTypeFactory --|> DataTypeFactory
+    TextDataTypeFactory --|> DataTypeFactory
+    IntegerDataTypeFactory ..> DataType : creates
+    FloatDataTypeFactory ..> DataType : creates
+    TextDataTypeFactory ..> DataType : creates
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -919,8 +1097,55 @@ sequenceDiagram
   * **Preserves Product State:** Factory-created indexes copy the supplied column collection before exposing it as immutable tuple metadata.
 * **Reason**: `IndexFactory` and `DataTypeFactory` supply the common creation contract; their concrete subclasses choose the concrete product. `TableBuilder` accepts the resulting `Index` and `DataType` without knowing which concrete factory created them.
 
-**Composite (Database Hierarchy)**
+**Composite Pattern (Database Hierarchy)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class Database {
+        +database_id: str
+        +name: str
+        +default_schema: str
+        +schemas: dict
+        +open() bool
+        +close() bool
+        +create_schema(schema: Schema) bool
+        +get_schema(name: str) Schema
+        +rename_schema(old_name: str, new_name: str) bool
+        +drop_schema(name: str) bool
+    }
+
+    class Schema {
+        +schema_id: str
+        +name: str
+        +tables: dict
+        +views: dict
+        +stored_procedures: dict
+        +create_table(table: Table) bool
+        +get_table(name: str) Table
+        +rename_table(old_name: str, new_name: str) bool
+        +drop_table(name: str) bool
+        +create_view(view: View) bool
+        +get_view(name: str) View
+        +drop_view(name: str) bool
+        +create_stored_procedure(procedure: StoredProcedure) bool
+        +get_stored_procedure(name: str) StoredProcedure
+        +drop_stored_procedure(name: str) bool
+    }
+
+    class Table
+    class View
+    class StoredProcedure
+
+    Database *-- Schema : contains
+    Schema *-- Table : contains
+    Schema *-- View : contains
+    Schema *-- StoredProcedure : contains
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -941,8 +1166,31 @@ sequenceDiagram
   * **Safe Default Schema:** Renaming the default schema updates its name, while dropping it is rejected.
 * **Reason**: The hierarchy keeps catalog ownership local: `Database` manages schemas, while each schema manages its own table, view, and stored-procedure metadata. Dropping a schema removes that direct association; leaf lifecycle cascade is not implemented.
 
-**Repository (Metadata Management)**
+**Repository Pattern (Metadata Management)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class CatalogManager {
+        +metadata_cache: MetadataCacheProtocol
+        +register_object(name: str, descriptor: object) bool
+        +remove_object(name: str) bool
+        +lookup_object(name: str) object
+    }
+
+    class MetadataCacheProtocol {
+        <<Protocol>>
+        +set(name: str, descriptor: object) None
+        +remove(name: str) None
+        +get(name: str) object | None
+    }
+
+    CatalogManager --> MetadataCacheProtocol : uses
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -979,6 +1227,33 @@ sequenceDiagram
 
 **Builder Pattern (View Creation)**
 
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class ViewBuilder {
+        +set_view_id(view_id: str) ViewBuilder
+        +set_name(name: str) ViewBuilder
+        +set_query_definition(query_definition: str) ViewBuilder
+        +set_query_executor(query_executor: QueryExecutorProtocol) ViewBuilder
+        +set_cached_results(cached_results: object) ViewBuilder
+        +build() View
+    }
+
+    class View {
+        +view_id: str
+        +name: str
+        +query_definition: str
+        +query_executor: QueryExecutorProtocol
+        +cached_results: object
+        +refresh() bool
+    }
+
+    ViewBuilder ..> View : builds
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     actor Client
@@ -1006,12 +1281,41 @@ sequenceDiagram
 #### 2. Storage Engine
 
 **Strategy Pattern (Buffer Replacement)**
-* **Description**: `BufferPool` passes the unpinned page ids to a `BufferReplacementStrategy`, which selects one victim.
-* **Use Case**: FIFO is the default strategy; callers can inject LRU without changing cache, pin, dirty-page, or flush logic.
-* **Reason**: Page replacement policy is isolated from the cache proxy. More policies can be added without editing `BufferPool`.
 
-See the [class diagram](docs/diagrams/class/storage_engine.md#4-strategy-buffer-replacement) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement).
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
 
+    class BufferPool {
+        +replacement_strategy: BufferReplacementStrategy
+        +cache_page(page: Page) bool
+        +evict_page() bool
+    }
+
+    class BufferReplacementStrategy {
+        <<abstract>>
+        +record_page(page_id: int) None
+        +record_access(page_id: int) None
+        +remove_page(page_id: int) None
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    class FifoReplacementStrategy {
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    class LruReplacementStrategy {
+        +record_access(page_id: int) None
+        +select_victim(candidate_page_ids: Collection) int | None
+    }
+
+    BufferPool --> BufferReplacementStrategy : delegates selection to
+    FifoReplacementStrategy --|> BufferReplacementStrategy
+    LruReplacementStrategy --|> BufferReplacementStrategy
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     participant Client
@@ -1029,13 +1333,52 @@ sequenceDiagram
     BufferPool->>BufferPool: remove victim and cache new_page
 ```
 
+* **Description**: `BufferPool` passes the unpinned page ids to a `BufferReplacementStrategy`, which selects one victim.
+* **Use Case**: FIFO is the default strategy; callers can inject LRU without changing cache, pin, dirty-page, or flush logic.
+* **Advantages**:
+  * **Algorithm Pluggability:** Easily switch between FIFO, LRU, or custom eviction strategies.
+  * **Decoupled Eviction Logic:** `BufferPool` maintains cache pins while strategy handles selection logic.
+* **Reason**: Page replacement policy is isolated from the cache proxy. More policies can be added without editing `BufferPool`.
+
 **Proxy Pattern (Page Loading & Buffer Pool)**
-* **Description**: `BufferPool` is a cache proxy in front of a `PageStoreProtocol` implementation such as `FileManager`.
-* **Use Case**: `pin_page()` returns a cached page when possible; on a miss it loads the page through the store and caches it before returning.
-* **Reason**: Callers use one page-access API and do not manage cache state, pin counts, or filesystem reads directly.
 
-See the [class diagram](docs/diagrams/class/storage_engine.md#3-proxy-page-loading) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading).
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
 
+    class BufferPool {
+        +capacity: int
+        +page_store: PageStoreProtocol
+        +pages: dict[int, Page]
+        +pin_counts: dict[int, int]
+        +dirty_page_ids: set[int]
+        +pin_page(page_id: int) Page | None
+        +unpin_page(page_id: int) bool
+        +cache_page(page: Page) bool
+        +flush_page(page_id: int) bool
+        +flush_all_pages() bool
+    }
+
+    class PageStoreProtocol {
+        <<Protocol>>
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class FileManager {
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class Page
+
+    BufferPool --> PageStoreProtocol : loads and flushes
+    FileManager ..|> PageStoreProtocol : implements
+    BufferPool o-- Page : caches
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     participant Client
@@ -1053,14 +1396,53 @@ sequenceDiagram
     BufferPool-->>Client: Page
 ```
 
+* **Description**: `BufferPool` is a cache proxy in front of a `PageStoreProtocol` implementation such as `FileManager`.
+* **Use Case**: `pin_page()` returns a cached page when possible; on a miss it loads the page through the store and caches it before returning.
+* **Advantages**:
+  * **Transparent Caching:** Intercepts page requests to manage in-memory caching automatically.
+  * **Pin/Unpin Protection:** Prevents in-use pages from being evicted during active transactions.
+* **Reason**: Callers use one page-access API and do not manage cache state, pin counts, or filesystem reads directly.
 
-**Adapter (File Access)**
-* **Description**: `FileManager` adapts root-relative DBMS file operations to Python's local filesystem API and implements `PageStoreProtocol`.
-* **Use Case**: It reads/writes byte ranges and persists a serialized `Page` through `load_page()` and `write_page()`.
-* **Reason**: Storage clients use one safe API without handling paths, offsets, binary modes, or page-file names directly. Buffer Pool integration remains planned.
+**Adapter Pattern (File Access)**
 
-See the [class diagram](docs/diagrams/class/storage_engine.md#2-adapter-file-access) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access).
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
 
+    class FileManager {
+        +root_path: str
+        +create_file(path: str) bool
+        +read(path: str, offset: int, length: int | None) bytes
+        +write(path: str, offset: int, data: bytes) bool
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class PageStoreProtocol {
+        <<Protocol>>
+        +load_page(page_id: int) Page | None
+        +write_page(page: Page) bool
+    }
+
+    class Page {
+        +page_id: int
+        +serialize() bytes
+        +deserialize(payload: bytes) Page
+    }
+
+    class Path {
+        <<standard library>>
+        +open(mode: str)
+        +resolve() Path
+    }
+
+    FileManager ..|> PageStoreProtocol : implements
+    FileManager ..> Page : serializes
+    FileManager --> Path : adapts to
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     participant Client
@@ -1083,14 +1465,78 @@ sequenceDiagram
     FileManager-->>Client: Page
 ```
 
+* **Description**: `FileManager` adapts root-relative DBMS file operations to Python's local filesystem API and implements `PageStoreProtocol`.
+* **Use Case**: It reads/writes byte ranges and persists a serialized `Page` through `load_page()` and `write_page()`.
+* **Advantages**:
+  * **Abstraction of I/O:** Isolates low-level file I/O operations from upper database layers.
+  * **Protocol Compliance:** Fulfills `PageStoreProtocol` so `BufferPool` can read/write without knowing filesystem details.
+* **Reason**: Storage clients use one safe API without handling paths, offsets, binary modes, or page-file names directly.
 
-**Data Mapper (Record Read/Write)**
-* **Description**: `RecordMapper` converts a database-object `Row` to a storage `Record` and its byte payload; it performs the reverse conversion when the row is read.
-* **Use Case**: `RecordManager` stores that payload in a `Page` slot and returns a `page_id:slot_id` location.
-* **Reason**: `Row` does not need to know the page-slot or byte format. The current implementation is in-memory only; buffer-pool and file persistence remain planned.
+**Data Mapper Pattern (Record Read/Write)**
 
-See the [class diagram](docs/diagrams/class/storage_engine.md#1-data-mapper-record-readwrite) and [sequence diagrams](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite).
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
 
+    class Row {
+        +row_id: str
+        +values: list | dict
+        +version: str
+        +read() list | dict
+        +update(new_values: list | dict) bool
+    }
+
+    class Record {
+        +record_id: str | int
+        +values: list | dict
+        +version: str
+        +serialize() bytes
+        +deserialize(payload: bytes) Record
+    }
+
+    class RecordMapper {
+        +to_record(row: Row) Record
+        +to_row(record: Record) Row
+        +serialize(row: Row) bytes
+        +deserialize(payload: bytes) Row
+    }
+
+    class RecordManager {
+        +page_manager: PageManager
+        +mapper: RecordMapper
+        +insert_row(row: Row) str
+        +read_row(location: str) Row
+        +update_row(location: str, row: Row) bool
+        +delete_row(location: str) bool
+    }
+
+    class PageManager {
+        +pages: dict[int, Page]
+        +allocate_page() int
+        +get_page(page_id: int) Page | None
+        +release_page(page_id: int, deallocate: bool) bool
+        +get_page_with_free_space(required_bytes: int) Page
+    }
+
+    class Page {
+        +PAGE_SIZE: int
+        +page_id: int
+        +free_space: int
+        +read_tuple(slot_id: int) bytes | None
+        +insert_tuple(payload: bytes) int
+        +write_tuple(slot_id: int, payload: bytes) bool
+        +delete_tuple(slot_id: int) bool
+    }
+
+    RecordMapper ..> Row : maps to/from
+    RecordMapper ..> Record : serializes
+    RecordManager --> RecordMapper : uses
+    RecordManager --> PageManager : uses
+    PageManager *-- Page : owns
+```
+
+##### Sequence Diagram
 ```mermaid
 sequenceDiagram
     participant Client
@@ -1113,6 +1559,13 @@ sequenceDiagram
     RecordManager->>PageManager: release_page(page_id)
     RecordManager-->>Client: "page_id:slot_id"
 ```
+
+* **Description**: `RecordMapper` converts a database-object `Row` to a storage `Record` and its byte payload; it performs the reverse conversion when the row is read.
+* **Use Case**: `RecordManager` stores that payload in a `Page` slot and returns a `page_id:slot_id` location.
+* **Advantages**:
+  * **Separation of Concerns:** `Row` remains a clean domain entity; binary serialization logic is encapsulated in `RecordMapper`.
+  * **Format Independence:** Storage payload format can evolve without mutating `Row` or higher-level database code.
+* **Reason**: `Row` does not need to know the page-slot or byte format.
 
 ---
 

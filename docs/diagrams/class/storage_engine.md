@@ -6,7 +6,7 @@
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class Row {
         +row_id: str
@@ -75,7 +75,7 @@ classDiagram
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class FileManager {
         +root_path: str
@@ -119,7 +119,7 @@ classDiagram
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class BufferPool {
         +capacity: int
@@ -162,7 +162,7 @@ classDiagram
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class BufferPool {
         +replacement_strategy: BufferReplacementStrategy

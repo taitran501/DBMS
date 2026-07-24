@@ -16,7 +16,7 @@ Constructs a `Table` object step by step, separating the build process from the 
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class TableBuilder {
         +set_table_id(table_id: str) TableBuilder
@@ -75,7 +75,7 @@ Allows swapping constraint validation logic dynamically using interchangeable st
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class Table {
         +constraints: list
@@ -267,7 +267,7 @@ classDiagram
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class CatalogManager {
         +metadata_cache: MetadataCacheProtocol
@@ -296,7 +296,7 @@ Constructs a `View` object step by step, validating query parameters before obje
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class ViewBuilder {
         +set_view_id(view_id: str) ViewBuilder
