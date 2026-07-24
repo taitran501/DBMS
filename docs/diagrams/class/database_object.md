@@ -2,7 +2,7 @@
 
 Class diagrams for the design patterns currently implemented in the **Database Objects** core module:
 
-- Builder Pattern for creating `Table` objects.
+- Builder Pattern for creating `Table` and `View` objects.
 - Strategy Pattern for validating constraints.
 - Factory Method for creating `Index` and `DataType` objects.
 - Composite Pattern for managing the `Database` and `Schema` hierarchy.
@@ -287,3 +287,36 @@ classDiagram
 ```
 
 `lookup_object()` turns a missing cache value into `KeyError`; duplicate registration and missing-removal errors continue to come from the configured cache.
+
+---
+
+## 6. Builder Pattern (View Creation)
+
+Constructs a `View` object step by step, validating query parameters before object instantiation.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class ViewBuilder {
+        +set_view_id(view_id: str) ViewBuilder
+        +set_name(name: str) ViewBuilder
+        +set_query_definition(query_definition: str) ViewBuilder
+        +set_query_executor(query_executor: QueryExecutorProtocol) ViewBuilder
+        +set_cached_results(cached_results: object) ViewBuilder
+        +build() View
+    }
+
+    class View {
+        +view_id: str
+        +name: str
+        +query_definition: str
+        +query_executor: QueryExecutorProtocol
+        +cached_results: object
+        +refresh() bool
+    }
+
+    ViewBuilder ..> View : builds
+```
+
+`ViewBuilder` validates that both `name` and `query_definition` are provided and non-empty during `build()`.
