@@ -138,3 +138,24 @@ sequenceDiagram
 ```
 
 If every cached page is pinned, `cache_page()` raises `BufferPoolFullError`. If writing a dirty victim fails, the victim remains cached and the new page is not added.
+
+---
+
+## 5. Singleton Pattern (Buffer Pool Management)
+
+`BufferPool` has one process-wide instance. `get_instance()` returns the existing singleton or initializes it under a lock if it is missing.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant BufferPool
+
+    Client->>BufferPool: get_instance(capacity, page_store, replacement_strategy)
+    alt _instance is None
+        BufferPool->>BufferPool: initialize single _instance
+    end
+    BufferPool-->>Client: _instance
+```
+
+The first creation establishes the configuration. A later call with conflicting explicit capacity, page store, or replacement strategy raises `ValueError`. `reset_instance()` resets `_instance` only for clean unit-test isolation.

@@ -1,3 +1,5 @@
+from threading import RLock
+
 from dbms.storage_engine.buffer_replacement_strategy import (
     BufferReplacementStrategy,
     FifoReplacementStrategy,
@@ -7,8 +9,26 @@ from dbms.storage_engine.exceptions import BufferPoolFullError
 from dbms.storage_engine.page import Page
 
 
+_UNSET = object()
+
+
 class BufferPool:
     """Cache proxy that controls page access to a PageStoreProtocol."""
+
+    _instance: "BufferPool | None" = None
+    _instance_lock = RLock()
+
+    def __new__(
+        cls,
+        capacity: int,
+        page_store: PageStoreProtocol | None = None,
+        replacement_strategy: BufferReplacementStrategy | None = None,
+    ) -> "BufferPool":
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._is_initialized = False
+            return cls._instance
 
     def __init__(
         self,
@@ -16,14 +36,55 @@ class BufferPool:
         page_store: PageStoreProtocol | None = None,
         replacement_strategy: BufferReplacementStrategy | None = None,
     ) -> None:
-        if capacity <= 0:
-            raise ValueError("Buffer pool capacity must be positive")
-        self.capacity = capacity
-        self.page_store = page_store
-        self.replacement_strategy = replacement_strategy or FifoReplacementStrategy()
-        self.pages: dict[int, Page] = {}
-        self.pin_counts: dict[int, int] = {}
-        self.dirty_page_ids: set[int] = set()
+        with type(self)._instance_lock:
+            if self._is_initialized:
+                self._validate_configuration(
+                    capacity,
+                    page_store,
+                    replacement_strategy,
+                )
+                return
+            if capacity <= 0:
+                type(self)._instance = None
+                raise ValueError("Buffer pool capacity must be positive")
+            self.capacity = capacity
+            self.page_store = page_store
+            self.replacement_strategy = replacement_strategy or FifoReplacementStrategy()
+            self.pages: dict[int, Page] = {}
+            self.pin_counts: dict[int, int] = {}
+            self.dirty_page_ids: set[int] = set()
+            self._is_initialized = True
+
+    @classmethod
+    def get_instance(
+        cls,
+        capacity: int | None = None,
+        page_store: PageStoreProtocol | None | object = _UNSET,
+        replacement_strategy: BufferReplacementStrategy | None | object = _UNSET,
+    ) -> "BufferPool":
+        """Get or create the singleton BufferPool instance."""
+        with cls._instance_lock:
+            if cls._instance is None:
+                return cls(
+                    capacity=capacity if capacity is not None else 10,
+                    page_store=None if page_store is _UNSET else page_store,
+                    replacement_strategy=(
+                        None if replacement_strategy is _UNSET else replacement_strategy
+                    ),
+                )
+
+            cls._instance._validate_requested_configuration(
+                capacity,
+                page_store,
+                replacement_strategy,
+            )
+            return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset the singleton instance (primarily for testing isolation)."""
+        with cls._instance_lock:
+            cls._instance = None
 
     def pin_page(self, page_id: int) -> Page | None:
         page = self.get_cached_page(page_id)
@@ -101,3 +162,35 @@ class BufferPool:
             if self.pin_counts.get(page_id, 0) == 0
         ]
         return self.replacement_strategy.select_victim(candidates)
+
+    def _validate_configuration(
+        self,
+        capacity: int,
+        page_store: PageStoreProtocol | None,
+        replacement_strategy: BufferReplacementStrategy | None,
+    ) -> None:
+        if (
+            capacity != self.capacity
+            or page_store is not self.page_store
+            or (
+                replacement_strategy is not None
+                and replacement_strategy is not self.replacement_strategy
+            )
+        ):
+            raise ValueError("BufferPool singleton is already configured differently")
+
+    def _validate_requested_configuration(
+        self,
+        capacity: int | None,
+        page_store: PageStoreProtocol | None | object,
+        replacement_strategy: BufferReplacementStrategy | None | object,
+    ) -> None:
+        if capacity is not None and capacity != self.capacity:
+            raise ValueError("BufferPool singleton is already configured differently")
+        if page_store is not _UNSET and page_store is not self.page_store:
+            raise ValueError("BufferPool singleton is already configured differently")
+        if (
+            replacement_strategy is not _UNSET
+            and replacement_strategy is not self.replacement_strategy
+        ):
+            raise ValueError("BufferPool singleton is already configured differently")
