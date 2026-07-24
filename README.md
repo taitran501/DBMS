@@ -633,24 +633,29 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_catalog_manager.py`
 - `test_column.py`
 - `test_constraint.py`
+- `test_data_type.py`
+- `test_data_type_factory.py`
+- `test_data_type_manager.py`
 - `test_database.py`
 - `test_database_manager.py`
 - `test_database_server.py`
-- `test_data_type.py`
-- `test_data_type_manager.py`
 - `test_foreign_key.py`
 - `test_index.py`
+- `test_index_factory.py`
 - `test_partition.py`
 - `test_row.py`
 - `test_schema.py`
 - `test_stored_procedure.py`
 - `test_table.py`
+- `test_table_builder.py`
 - `test_trigger.py`
 - `test_trigger_manager.py`
 - `test_view.py`
+- `test_view_builder.py`
 
 ### 2. Storage Engine
 - `test_buffer_pool.py`
+- `test_buffer_replacement_strategy.py`
 - `test_dependencies.py`
 - `test_file_manager.py`
 - `test_log_file_manager.py`
@@ -658,6 +663,7 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_page_manager.py`
 - `test_record.py`
 - `test_record_manager.py`
+- `test_record_mapper.py`
 - `test_storage_allocator.py`
 - `test_storage_engine.py`
 
@@ -790,7 +796,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View`, `StoredProcedure` | Implemented |
 | | Metadata Management | Repository | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
 | | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
-| | View Creation | Builder | `View`, `AST`, `CatalogManager` | Planned |
+| | View Creation | Builder | `ViewBuilder`, `View`, `AST`, `CatalogManager` | Implemented |
 | **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
 | | Page Allocation | Factory Method | `StorageEngine`, `FileManager`, `Page` | Planned |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
@@ -971,6 +977,31 @@ sequenceDiagram
   * **Keeps Lookup Semantics Clear:** A missing descriptor becomes `KeyError`, while backend duplicate or missing-remove errors are propagated.
 * **Reason**: `CatalogManager` acts as the Repository facade; the cache remains replaceable behind the protocol.
 
+**Builder Pattern (View Creation)**
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant ViewBuilder
+    participant View
+
+    Client->>ViewBuilder: ViewBuilder("active_users", sql)
+    Client->>ViewBuilder: set_view_id("v_001")
+    Client->>ViewBuilder: set_query_executor(executor)
+    Client->>ViewBuilder: set_cached_results(cache)
+    Client->>ViewBuilder: build()
+    ViewBuilder->>ViewBuilder: validate name and query_definition non-empty
+    ViewBuilder->>View: new View(view_id, name, query_definition, executor, cache)
+    View-->>ViewBuilder: viewInstance
+    ViewBuilder-->>Client: viewInstance
+```
+
+* **Description**: Separates the multi-step construction of a `View` object from its representation, validating query parameters before object instantiation.
+* **Use Case**: Constructing a `View` with custom query definitions, executors, and cached results.
+* **Advantages**:
+  * **Flexible Construction:** Provides a fluent interface for configuring optional parameters (`view_id`, `query_executor`, `cached_results`).
+  * **Validation Before Creation:** Ensures view name and query definition are valid and non-empty prior to creating the `View` instance.
+* **Reason**: A `ViewBuilder` encapsulates view creation rules cleanly without polluting the `View` domain entity constructor.
 
 #### 2. Storage Engine
 

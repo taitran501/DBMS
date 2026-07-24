@@ -165,6 +165,35 @@ sequenceDiagram
     Client->>CatalogManager: remove_object("public.users")
     CatalogManager->>MetadataCache: remove("public.users")
     MetadataCache-->>CatalogManager: removed
-    CatalogManager-->>Client: true
+
+---
+
+## 6. Builder Pattern (View Creation)
+
+Constructs a `View` object step by step, separating complex view construction parameters (query definition, view ID, query executor contract, and cached query results) from the domain `View` entity.
+
+### Feature Workflow & Validation:
+1. **Step-by-Step Configuration**: The client instantiates `ViewBuilder` with a view name and SQL query definition, then chains optional configuration methods (`set_view_id()`, `set_query_executor()`, `set_cached_results()`).
+2. **Pre-Construction Validation**: Calling `.build()` validates that `name` and `query_definition` are non-empty strings, raising `ValueError` on invalid state.
+3. **View Instantiation**: Automatically resolves a default `view_id` (`view_<name>`) if unassigned, then instantiates and returns the immutable `View` object.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant ViewBuilder
+    participant View
+
+    Client->>ViewBuilder: ViewBuilder("active_users", "SELECT * FROM users WHERE active = 1")
+    Client->>ViewBuilder: set_view_id("v_001")
+    Client->>ViewBuilder: set_query_executor(executor)
+    Client->>ViewBuilder: set_cached_results(cached_data)
+    Client->>ViewBuilder: build()
+    ViewBuilder->>ViewBuilder: validate name & query_definition non-empty
+    ViewBuilder->>ViewBuilder: resolve view_id ("v_001" or default "view_active_users")
+    ViewBuilder->>View: View("v_001", "active_users", query_definition, executor, cached_data)
+    View-->>ViewBuilder: viewInstance
+    ViewBuilder-->>Client: viewInstance
 ```
+
 
