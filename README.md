@@ -866,6 +866,8 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 
 ### 3. Query Processing
 - `test_ast.py`
+- `test_ast_visitor.py`
+- `test_execution_operator.py`
 - `test_execution_planner.py`
 - `test_lexer.py`
 - `test_logical_plan.py`
@@ -2088,6 +2090,72 @@ sequenceDiagram
   * **Memory Efficiency (Streaming):** Tuples are fetched and processed one row at a time without loading entire result sets into RAM.
   * **Composability:** Operators implement a uniform iterator contract and can be composed into arbitrary query execution trees.
 * **Reason**: Execution engines require a pull-based interface to pipeline tuple processing across multiple operators efficiently.
+
+**Visitor Pattern (AST Traversal)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class ASTVisitor {
+        <<abstract>>
+        +visit_literal(node: LiteralNode) Any
+        +visit_identifier(node: IdentifierNode) Any
+        +visit_binary_op(node: BinaryOpNode) Any
+        +visit_select(node: SelectNode) Any
+        +visit_insert(node: InsertNode) Any
+        +visit_create_table(node: CreateTableNode) Any
+    }
+
+    class ValidationVisitor {
+        +schema_catalog: dict[str, list[str]]
+        +errors: list[str]
+        +visit_select(node: SelectNode) bool
+        +visit_identifier(node: IdentifierNode) bool
+    }
+
+    class PhysicalPlanGeneratorVisitor {
+        +data_sources: dict[str, list[dict]]
+        +visit_select(node: SelectNode) ExecutionOperator
+    }
+
+    class ASTNode {
+        <<abstract>>
+        +interpret(context: dict) Any
+        +accept(visitor: ASTVisitor) Any
+    }
+
+    ValidationVisitor --|> ASTVisitor
+    PhysicalPlanGeneratorVisitor --|> ASTVisitor
+    ASTNode ..> ASTVisitor : accepts
+    PhysicalPlanGeneratorVisitor ..> ExecutionOperator : generates
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant AST as SelectNode (AST)
+    participant Visitor as PhysicalPlanGeneratorVisitor
+    participant Pipeline as ProjectOperator
+
+    Client->>AST: accept(visitor)
+    AST->>Visitor: visit_select(SelectNode)
+    Visitor->>Visitor: create SeqScanOperator
+    Visitor->>Visitor: create FilterOperator (if WHERE exists)
+    Visitor->>Visitor: create ProjectOperator
+    Visitor-->>AST: ProjectOperator
+    AST-->>Client: ProjectOperator (pipeline)
+```
+
+* **Description**: Separates query compilation operations (schema validation, plan generation, optimization) from the AST syntax tree nodes using double-dispatch `accept(visitor)`.
+* **Use Case**: Traversing AST nodes via `ValidationVisitor` to check table/column permissions or `PhysicalPlanGeneratorVisitor` to construct physical `ExecutionOperator` pipelines.
+* **Advantages**:
+  * **Open/Closed Principle:** New compiler passes (e.g. type checking, cost estimation) can be added as new `ASTVisitor` subclasses without altering `ASTNode` classes.
+  * **Cohesion:** Validations and plan transformations are centralized inside specialized visitor classes.
+* **Reason**: AST representations require distinct processing passes (validation, optimization, code generation) that evolve independently from syntax node definitions.
 
 ---
 

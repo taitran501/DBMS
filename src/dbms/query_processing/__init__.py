@@ -1,5 +1,10 @@
 """Query Processing classes."""
 
+from dbms.query_processing.ast_visitor import (
+    ASTVisitor,
+    PhysicalPlanGeneratorVisitor,
+    ValidationVisitor,
+)
 from dbms.query_processing.execution_operator import (
     ExecutionOperator,
     FilterOperator,
@@ -12,4 +17,7 @@ __all__ = [
     "SeqScanOperator",
     "FilterOperator",
     "ProjectOperator",
+    "ASTVisitor",
+    "ValidationVisitor",
+    "PhysicalPlanGeneratorVisitor",
 ]

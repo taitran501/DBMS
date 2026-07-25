@@ -135,3 +135,49 @@ classDiagram
 ```
 
 `FilterOperator` uses `ASTNode.interpret(row)` to filter incoming tuple streams, while `ProjectOperator` extracts the requested target attributes.
+
+---
+
+## 3. Visitor Pattern (AST Traversal)
+
+`ASTVisitor` defines double-dispatch visit operations across `ASTNode` hierarchies. `ValidationVisitor` validates schema names, and `PhysicalPlanGeneratorVisitor` constructs physical `ExecutionOperator` pipelines from `SelectNode` AST roots.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class ASTVisitor {
+        <<abstract>>
+        +visit_literal(node: LiteralNode) Any
+        +visit_identifier(node: IdentifierNode) Any
+        +visit_binary_op(node: BinaryOpNode) Any
+        +visit_select(node: SelectNode) Any
+        +visit_insert(node: InsertNode) Any
+        +visit_create_table(node: CreateTableNode) Any
+    }
+
+    class ValidationVisitor {
+        +schema_catalog: dict[str, list[str]]
+        +errors: list[str]
+        +visit_select(node: SelectNode) bool
+        +visit_identifier(node: IdentifierNode) bool
+    }
+
+    class PhysicalPlanGeneratorVisitor {
+        +data_sources: dict[str, list[dict]]
+        +visit_select(node: SelectNode) ExecutionOperator
+    }
+
+    class ASTNode {
+        <<abstract>>
+        +interpret(context: dict) Any
+        +accept(visitor: ASTVisitor) Any
+    }
+
+    ValidationVisitor --|> ASTVisitor
+    PhysicalPlanGeneratorVisitor --|> ASTVisitor
+    ASTNode ..> ASTVisitor : accepts
+    PhysicalPlanGeneratorVisitor ..> ExecutionOperator : generates
+```
+
+Callers pass concrete visitors (`ValidationVisitor`, `PhysicalPlanGeneratorVisitor`) to `ASTNode.accept(visitor)` without altering the AST node hierarchy.

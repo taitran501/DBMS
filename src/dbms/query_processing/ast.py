@@ -1,13 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from dbms.query_processing.ast_visitor import ASTVisitor
 
 
 class ASTNode(ABC):
-    """Abstract base class for Abstract Syntax Tree (AST) nodes implementing the Interpreter pattern."""
+    """Abstract base class for Abstract Syntax Tree (AST) nodes implementing Interpreter & Visitor patterns."""
 
     @abstractmethod
     def interpret(self, context: dict[str, Any] | None = None) -> Any:
         """Evaluate / interpret the AST node within the provided data context."""
+        pass
+
+    @abstractmethod
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        """Accept a visitor for double-dispatch AST traversal."""
         pass
 
 
@@ -20,6 +28,9 @@ class LiteralNode(ASTNode):
     def interpret(self, context: dict[str, Any] | None = None) -> Any:
         return self.value
 
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_literal(self)
+
 
 class IdentifierNode(ASTNode):
     """AST node representing column or variable identifiers."""
@@ -31,6 +42,9 @@ class IdentifierNode(ASTNode):
         if context is None:
             return None
         return context.get(self.name)
+
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_identifier(self)
 
 
 class BinaryOpNode(ASTNode):
@@ -64,6 +78,9 @@ class BinaryOpNode(ASTNode):
         else:
             raise ValueError(f"Unsupported binary operator: {self.operator}")
 
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_binary_op(self)
+
 
 class SelectNode(ASTNode):
     """AST node representing a SELECT query."""
@@ -83,6 +100,9 @@ class SelectNode(ASTNode):
             return True
         return self.where_clause.interpret(context)
 
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_select(self)
+
 
 class InsertNode(ASTNode):
     """AST node representing an INSERT statement."""
@@ -93,6 +113,9 @@ class InsertNode(ASTNode):
 
     def interpret(self, context: dict[str, Any] | None = None) -> Any:
         return {"table_name": self.table_name, "values": self.values}
+
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_insert(self)
 
 
 class CreateTableNode(ASTNode):
@@ -105,6 +128,9 @@ class CreateTableNode(ASTNode):
     def interpret(self, context: dict[str, Any] | None = None) -> Any:
         return {"table_name": self.table_name, "columns": self.columns}
 
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        return visitor.visit_create_table(self)
+
 
 class AST:
     """Abstract Syntax Tree container holding the root ASTNode."""
@@ -114,6 +140,10 @@ class AST:
 
     def interpret(self, context: dict[str, Any] | None = None) -> Any:
         return self.root_node.interpret(context)
+
+    def accept(self, visitor: "ASTVisitor") -> Any:
+        """Accept a visitor at the root AST node."""
+        return self.root_node.accept(visitor)
 
     def traverse(self) -> list[ASTNode]:
         """Return a list of all AST nodes via pre-order traversal."""
