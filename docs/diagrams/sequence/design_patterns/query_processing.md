@@ -32,3 +32,43 @@ sequenceDiagram
 ```
 
 The Interpreter pattern separates syntax tokenization, AST construction, and context evaluation into distinct, testable layers.
+
+---
+
+## 2. Iterator Pattern (Execution Operators)
+
+Operators execute in a pull-based Volcano iterator chain (`ProjectOperator -> FilterOperator -> SeqScanOperator`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Project as ProjectOperator
+    participant Filter as FilterOperator
+    participant Scan as SeqScanOperator
+    participant AST as ASTNode (Predicate)
+
+    Client->>Project: open()
+    Project->>Filter: open()
+    Filter->>Scan: open()
+    
+    loop Stream rows until match
+        Client->>Project: next()
+        Project->>Filter: next()
+        Filter->>Scan: next()
+        Scan-->>Filter: row_dict
+        Filter->>AST: interpret(row_dict)
+        AST-->>Filter: bool (predicate match)
+        alt predicate matches
+            Filter-->>Project: row_dict
+            Project->>Project: extract requested columns
+            Project-->>Client: projected_row
+        end
+    end
+
+    Client->>Project: close()
+    Project->>Filter: close()
+    Filter->>Scan: close()
+```
+
+Each operator pulls tuples from its child on demand, avoiding buffering full result sets in memory.

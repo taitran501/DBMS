@@ -2000,6 +2000,95 @@ sequenceDiagram
   * **Separation of Concerns:** Tokenization (`Lexer`), grammar parsing (`SQLParser`), and expression evaluation (`ASTNode`) are completely decoupled.
 * **Reason**: SQL query parsing and condition evaluation require a grammatical representation that can be dynamically interpreted against table row data.
 
+**Iterator Pattern (Execution Operators)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class ExecutionOperator {
+        <<abstract>>
+        +open() None
+        +next() dict | None
+        +close() None
+        +__iter__() ExecutionOperator
+        +__next__() dict
+    }
+
+    class SeqScanOperator {
+        +records: list[dict]
+        +table_name: str
+        -_cursor: int
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    class FilterOperator {
+        +child: ExecutionOperator
+        +predicate: ASTNode | None
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    class ProjectOperator {
+        +child: ExecutionOperator
+        +columns: list[str]
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    SeqScanOperator --|> ExecutionOperator
+    FilterOperator --|> ExecutionOperator
+    ProjectOperator --|> ExecutionOperator
+    FilterOperator --> ExecutionOperator : wraps child
+    ProjectOperator --> ExecutionOperator : wraps child
+    FilterOperator ..> ASTNode : evaluates predicate via
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Project as ProjectOperator
+    participant Filter as FilterOperator
+    participant Scan as SeqScanOperator
+    participant AST as ASTNode (Predicate)
+
+    Client->>Project: open()
+    Project->>Filter: open()
+    Filter->>Scan: open()
+    
+    loop Stream rows until match
+        Client->>Project: next()
+        Project->>Filter: next()
+        Filter->>Scan: next()
+        Scan-->>Filter: row_dict
+        Filter->>AST: interpret(row_dict)
+        AST-->>Filter: bool (predicate match)
+        alt predicate matches
+            Filter-->>Project: row_dict
+            Project->>Project: extract requested columns
+            Project-->>Client: projected_row
+        end
+    end
+
+    Client->>Project: close()
+    Project->>Filter: close()
+    Filter->>Scan: close()
+```
+
+* **Description**: Implements the Volcano Iterator model (`open()`, `next()`, `close()`) allowing physical operators (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) to stream tuple results row-by-row.
+* **Use Case**: Chaining physical operators into a pull-based query execution pipeline for sequential scanning, filtering, and projecting result attributes.
+* **Advantages**:
+  * **Memory Efficiency (Streaming):** Tuples are fetched and processed one row at a time without loading entire result sets into RAM.
+  * **Composability:** Operators implement a uniform iterator contract and can be composed into arbitrary query execution trees.
+* **Reason**: Execution engines require a pull-based interface to pipeline tuple processing across multiple operators efficiently.
+
 ---
 
 Ensure you have Python 3.10+ installed.

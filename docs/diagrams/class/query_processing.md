@@ -81,3 +81,57 @@ classDiagram
 ```
 
 `SelectNode`, `BinaryOpNode`, `IdentifierNode`, and `LiteralNode` form the expression tree evaluated via `interpret()`.
+
+---
+
+## 2. Iterator Pattern (Execution Operators)
+
+`ExecutionOperator` implements the Volcano Iterator interface (`open()`, `next()`, `close()`) allowing physical operators (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) to be chained together into a streaming query execution pipeline.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class ExecutionOperator {
+        <<abstract>>
+        +open() None
+        +next() dict | None
+        +close() None
+        +__iter__() ExecutionOperator
+        +__next__() dict
+    }
+
+    class SeqScanOperator {
+        +records: list[dict]
+        +table_name: str
+        -_cursor: int
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    class FilterOperator {
+        +child: ExecutionOperator
+        +predicate: ASTNode | None
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    class ProjectOperator {
+        +child: ExecutionOperator
+        +columns: list[str]
+        +open() None
+        +next() dict | None
+        +close() None
+    }
+
+    SeqScanOperator --|> ExecutionOperator
+    FilterOperator --|> ExecutionOperator
+    ProjectOperator --|> ExecutionOperator
+    FilterOperator --> ExecutionOperator : wraps child
+    ProjectOperator --> ExecutionOperator : wraps child
+    FilterOperator ..> ASTNode : evaluates predicate via
+```
+
+`FilterOperator` uses `ASTNode.interpret(row)` to filter incoming tuple streams, while `ProjectOperator` extracts the requested target attributes.
