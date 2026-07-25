@@ -72,3 +72,28 @@ sequenceDiagram
 ```
 
 Each operator pulls tuples from its child on demand, avoiding buffering full result sets in memory.
+
+---
+
+## 3. Visitor Pattern (AST Traversal)
+
+`ASTNode.accept(visitor)` dispatches to `ASTVisitor.visit_*()` methods to validate syntax nodes or construct physical execution operator trees.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant AST as SelectNode (AST)
+    participant Visitor as PhysicalPlanGeneratorVisitor
+    participant Pipeline as ProjectOperator
+
+    Client->>AST: accept(visitor)
+    AST->>Visitor: visit_select(SelectNode)
+    Visitor->>Visitor: create SeqScanOperator
+    Visitor->>Visitor: create FilterOperator (if WHERE exists)
+    Visitor->>Visitor: create ProjectOperator
+    Visitor-->>AST: ProjectOperator
+    AST-->>Client: ProjectOperator (pipeline)
+```
+
+The double-dispatch mechanism enables new compiler passes (validation, plan generation, optimization) to be added as independent Visitors without altering AST node classes.
