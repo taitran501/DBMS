@@ -181,3 +181,49 @@ classDiagram
 ```
 
 Callers pass concrete visitors (`ValidationVisitor`, `PhysicalPlanGeneratorVisitor`) to `ASTNode.accept(visitor)` without altering the AST node hierarchy.
+
+---
+
+## 4. Chain of Responsibility Pattern (Query Validation)
+
+`QueryValidator` executes a sequential validation chain composed of linked `ValidationHandler` objects (`SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler`).
+
+```mermaid
+classDiagram
+    direction TB
+
+    class QueryValidator {
+        +handler: ValidationHandler
+        +errors: list[str]
+        +set_handler(handler: ValidationHandler) None
+        +validate(ast_or_statement, context: dict) bool
+    }
+
+    class ValidationHandler {
+        <<abstract>>
+        +next_handler: ValidationHandler | None
+        +set_next(handler: ValidationHandler) ValidationHandler
+        +validate(ast_node, context, errors) bool
+        #_validate_current(ast_node, context, errors)* bool
+    }
+
+    class SyntaxValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    class SchemaValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    class PermissionValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    QueryValidator --> ValidationHandler : executes chain via
+    SyntaxValidationHandler --|> ValidationHandler
+    SchemaValidationHandler --|> ValidationHandler
+    PermissionValidationHandler --|> ValidationHandler
+```
+
+Each handler processes its own validation concerns and passes control to `next_handler` unless a validation check fails.
+

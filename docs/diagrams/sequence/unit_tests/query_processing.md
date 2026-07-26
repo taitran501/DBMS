@@ -836,152 +836,105 @@ sequenceDiagram
 
 ## 9. test_query_validator.py
 
-### 9.1 test_validate_table()
+### 9.1 test_query_validator_can_be_created()
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Test as test_query_validator.py
     participant SUT as QueryValidator
-    participant Catalog as CatalogManager
-
-    Test->>SUT: validate_table("users")
-    activate SUT
-    SUT->>Catalog: lookup_object("users")
-    Catalog-->>SUT: table
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 9.2 test_validate_column()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-    participant Catalog as CatalogManager
-    participant table as table
-
-    Test->>SUT: validate_column("users", "age")
-    activate SUT
-    SUT->>Catalog: lookup_object("users")
-    Catalog-->>SUT: table
-    SUT->>table: has_column("age")
-    table-->>SUT: True
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 9.3 test_validate_data_type()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-    participant Catalog as CatalogManager
-
-    Test->>SUT: validate_data_type("age", 25)
-    activate SUT
-    SUT->>Catalog: lookup_column_type("age")
-    Catalog-->>SUT: INT
-    SUT->>SUT: check_compatibility(INT, 25)
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 9.4 test_validate_permission()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-
-    Test->>SUT: validate_permission(user, "users", "SELECT")
-    activate SUT
-    SUT->>SUT: check_acl(user, "users", "SELECT")
-    SUT-->>Test: True
-    deactivate SUT
-```
-
-### 9.5 test_reject_unknown_table()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-    participant Catalog as CatalogManager
-
-    Test->>SUT: validate_table("ghost")
-    activate SUT
-    SUT->>Catalog: lookup_object("ghost")
-    Catalog-->>SUT: None
-    SUT-->>Test: raises UnknownTableError
-    deactivate SUT
-```
-
-### 9.6 test_reject_unknown_column()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-    participant Catalog as CatalogManager
-    participant table as table
-
-    Test->>SUT: validate_column("users", "ghost_col")
-    activate SUT
-    SUT->>Catalog: lookup_object("users")
-    Catalog-->>SUT: table
-    SUT->>table: has_column("ghost_col")
-    table-->>SUT: False
-    SUT-->>Test: raises UnknownColumnError
-    deactivate SUT
-```
-
-### 9.7 test_reject_type_mismatch()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-
-    Test->>SUT: validate_data_type("age", "invalid_string")
-    activate SUT
-    SUT-->>Test: raises TypeMismatchError
-    deactivate SUT
-```
-
-### 9.8 test_reject_unauthorized_query()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
-
-    Test->>SUT: validate_permission(guest, "users", "DELETE")
-    activate SUT
-    SUT-->>Test: raises UnauthorizedQueryError
-    deactivate SUT
-```
-
-### 9.9 test_query_validator_can_be_created()
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Test as test_query_validator.py
-    participant SUT as QueryValidator
+    participant Syntax as SyntaxValidationHandler
 
     Test->>SUT: QueryValidator()
     SUT-->>Test: validator
-    Test->>Test: assert isinstance(validator, QueryValidator)
+    Test->>Test: assert isinstance(validator.handler, SyntaxValidationHandler)
+```
+
+### 9.2 test_query_validator_passes_valid_query()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_validator.py
+    participant SUT as QueryValidator
+    participant Syntax as SyntaxValidationHandler
+    participant Schema as SchemaValidationHandler
+    participant Perm as PermissionValidationHandler
+
+    Test->>SUT: validate(ast, context)
+    SUT->>Syntax: validate(ast, context, errors)
+    Syntax->>Schema: validate(ast, context, errors)
+    Schema->>Perm: validate(ast, context, errors)
+    Perm-->>SUT: True
+    SUT-->>Test: True
+    Test->>Test: assert validator.errors is empty
+```
+
+### 9.3 test_syntax_validation_handler_rejects_empty_ast()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_validator.py
+    participant SUT as QueryValidator
+    participant Syntax as SyntaxValidationHandler
+
+    Test->>SUT: validate(None)
+    SUT->>Syntax: validate(None, None, errors)
+    Syntax-->>SUT: False (Syntax error: AST statement is None)
+    SUT-->>Test: False
+```
+
+### 9.4 test_schema_validation_handler_rejects_unknown_table()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_validator.py
+    participant SUT as QueryValidator
+    participant Schema as SchemaValidationHandler
+
+    Test->>SUT: validate(ast, context_with_schema)
+    SUT->>Schema: validate(ast, context, errors)
+    Schema-->>SUT: False (Unknown table 'unknown_table')
+    SUT-->>Test: False
+```
+
+### 9.5 test_permission_validation_handler_rejects_unauthorized_user()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_validator.py
+    participant SUT as QueryValidator
+    participant Perm as PermissionValidationHandler
+
+    Test->>SUT: validate(ast, context_guest)
+    SUT->>Perm: validate(ast, context, errors)
+    Perm-->>SUT: False (Permission error: User 'guest' denied)
+    SUT-->>Test: False
+```
+
+### 9.6 test_custom_validation_chain()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_validator.py
+    participant Syntax as SyntaxValidationHandler
+    participant Schema as SchemaValidationHandler
+    participant Perm as PermissionValidationHandler
+    participant SUT as QueryValidator
+
+    Test->>Syntax: set_next(schema_h)
+    Syntax->>Schema: set_next(perm_h)
+    Test->>SUT: QueryValidator(handler=syntax_h)
+    Test->>SUT: validate(ast_valid, ctx_valid)
+    SUT->>Syntax: validate(ast_valid, ctx_valid, errors)
+    Syntax->>Schema: validate(...)
+    Schema->>Perm: validate(...)
+    Perm-->>SUT: True
+    SUT-->>Test: True
 ```
 
 ---
