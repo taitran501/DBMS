@@ -50,11 +50,12 @@ def test_refresh_failure():
 
 def test_validate_definition_valid():
     # Arrange
+    from dbms.query_processing.ast import SelectNode
     query_executor = Mock()
     sql_parser = Mock()
     ast = Mock()
-    ast.statement_type = "SELECT"
-    sql_parser.parse.return_value = ast
+    ast.root_node = SelectNode("users", [])
+    sql_parser.parse_sql.return_value = ast
     view = View("v1", "active_users", "SELECT * FROM users", query_executor, [])
 
     # Act
@@ -62,16 +63,17 @@ def test_validate_definition_valid():
 
     # Assert
     assert result is True
-    sql_parser.parse.assert_called_once_with("SELECT * FROM users")
+    sql_parser.parse_sql.assert_called_once_with("SELECT * FROM users")
 
 
 def test_validate_definition_invalid_type():
     # Arrange
+    from dbms.query_processing.ast import InsertNode
     query_executor = Mock()
     sql_parser = Mock()
     ast = Mock()
-    ast.statement_type = "INSERT" # A view cannot be an insert statement
-    sql_parser.parse.return_value = ast
+    ast.root_node = InsertNode("users", [])
+    sql_parser.parse_sql.return_value = ast
     view = View("v1", "active_users", "INSERT INTO users VALUES(1)", query_executor, [])
 
     # Act
@@ -79,14 +81,14 @@ def test_validate_definition_invalid_type():
 
     # Assert
     assert result is False
-    sql_parser.parse.assert_called_once_with("INSERT INTO users VALUES(1)")
+    sql_parser.parse_sql.assert_called_once_with("INSERT INTO users VALUES(1)")
 
 
 def test_validate_definition_parse_error():
     # Arrange
     query_executor = Mock()
     sql_parser = Mock()
-    sql_parser.parse.side_effect = Exception("Syntax error")
+    sql_parser.parse_sql.side_effect = Exception("Syntax error")
     view = View("v1", "active_users", "INVALID SQL", query_executor, [])
 
     # Act
@@ -94,7 +96,7 @@ def test_validate_definition_parse_error():
 
     # Assert
     assert result is False
-    sql_parser.parse.assert_called_once_with("INVALID SQL")
+    sql_parser.parse_sql.assert_called_once_with("INVALID SQL")
 
 
 def test_resolve_dependencies():
