@@ -25,7 +25,7 @@ class ValidationHandler(ABC):
 
     def validate(
         self,
-        ast_node: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None = None,
         errors: list[str] | None = None,
     ) -> bool:
@@ -33,18 +33,18 @@ class ValidationHandler(ABC):
         if errors is None:
             errors = []
 
-        if not self._validate_current(ast_node, context, errors):
+        if not self._validate_current(ast, context, errors):
             return False
 
         if self.next_handler is not None:
-            return self.next_handler.validate(ast_node, context, errors)
+            return self.next_handler.validate(ast, context, errors)
 
         return True
 
     @abstractmethod
     def _validate_current(
         self,
-        ast_node: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None,
         errors: list[str],
     ) -> bool:
@@ -57,15 +57,15 @@ class SyntaxValidationHandler(ValidationHandler):
 
     def _validate_current(
         self,
-        ast_node: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None,
         errors: list[str],
     ) -> bool:
-        if ast_node is None:
-            errors.append("Syntax error: AST statement is None")
+        if ast is None:
+            errors.append("Syntax error: AST is None")
             return False
 
-        root = ast_node.root_node if isinstance(ast_node, AST) else ast_node
+        root = ast.root_node
 
         if isinstance(root, SelectNode):
             if not root.table_name or not isinstance(root.table_name, str):
@@ -97,7 +97,7 @@ class SchemaValidationHandler(ValidationHandler):
 
     def _validate_current(
         self,
-        ast_node: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None,
         errors: list[str],
     ) -> bool:
@@ -105,7 +105,6 @@ class SchemaValidationHandler(ValidationHandler):
             return True
 
         schema_catalog = context["schema_catalog"]
-        ast = ast_node if isinstance(ast_node, AST) else AST(ast_node)
         visitor = ValidationVisitor(schema_catalog)
 
         is_valid = ast.accept(visitor)
@@ -121,7 +120,7 @@ class PermissionValidationHandler(ValidationHandler):
 
     def _validate_current(
         self,
-        ast_node: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None,
         errors: list[str],
     ) -> bool:
@@ -132,7 +131,7 @@ class PermissionValidationHandler(ValidationHandler):
         username = context.get("username", "guest")
         allowed_permissions = user_permissions.get(username, set())
 
-        root = ast_node.root_node if isinstance(ast_node, AST) else ast_node
+        root = ast.root_node
         required_action = "SELECT"
         target_table = getattr(root, "table_name", None)
 
@@ -182,9 +181,9 @@ class QueryValidator:
 
     def validate(
         self,
-        ast_or_statement: ASTNode | AST | Statement,
+        ast: AST,
         context: dict[str, Any] | None = None,
     ) -> bool:
-        """Execute the validation chain on the query AST or Statement."""
+        """Execute the validation chain on the given AST."""
         self.errors.clear()
-        return self.handler.validate(ast_or_statement, context, self.errors)
+        return self.handler.validate(ast, context, self.errors)

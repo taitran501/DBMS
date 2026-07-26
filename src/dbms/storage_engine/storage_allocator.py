@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 
-from dbms.storage_engine.exceptions import StorageExhaustedError
+from dbms.storage_engine.exceptions import (
+    StorageExhaustedError,
+    InvalidAllocationSizeError,
+    AddressNotAllocatedError
+)
 
 
 class StorageAllocationStrategy(ABC):
@@ -46,6 +50,9 @@ class ContiguousAllocationStrategy(StorageAllocationStrategy):
         allocations: dict[int, int],
         bytes_needed: int,
     ) -> int:
+        if bytes_needed <= 0:
+            raise InvalidAllocationSizeError("Allocation size must be > 0")
+
         used_space = sum(allocations.values())
         free_space = total_space - used_space
 
@@ -74,7 +81,7 @@ class ContiguousAllocationStrategy(StorageAllocationStrategy):
         address: int,
     ) -> bool:
         if address not in allocations:
-            raise Exception(f"Address {address} is already free or invalid")
+            raise AddressNotAllocatedError(f"Address {address} is already free or invalid")
         del allocations[address]
         return True
 
@@ -85,8 +92,10 @@ class ContiguousAllocationStrategy(StorageAllocationStrategy):
         address: int,
         new_bytes: int,
     ) -> int:
+        if new_bytes <= 0:
+            raise InvalidAllocationSizeError("Reallocation size must be > 0")
         if address not in allocations:
-            raise Exception(f"Address {address} is not allocated")
+            raise AddressNotAllocatedError(f"Address {address} is not allocated")
 
         old_bytes = allocations[address]
         used_space_excluding_target = sum(allocations.values()) - old_bytes
@@ -130,6 +139,8 @@ class StorageAllocator:
         total_space: int,
         strategy: StorageAllocationStrategy | None = None,
     ) -> None:
+        if total_space <= 0:
+            raise InvalidAllocationSizeError("Total space must be > 0")
         self.total_space: int = total_space
         self.strategy: StorageAllocationStrategy = strategy or ContiguousAllocationStrategy()
         self.allocations: dict[int, int] = {}

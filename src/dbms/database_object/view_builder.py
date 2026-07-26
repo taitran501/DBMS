@@ -41,6 +41,8 @@ class ViewBuilder:
             or not self._query_definition.strip()
         ):
             raise ValueError("Query definition cannot be empty")
+        if self._query_executor is None:
+            raise ValueError("Query executor must be provided for views")
 
         view_id = self._view_id if self._view_id is not None else f"view_{self._name}"
         return View(

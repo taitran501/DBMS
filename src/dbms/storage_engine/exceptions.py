@@ -16,3 +16,11 @@ class StorageExhaustedError(Exception):
 
 class StorageEngineNotInitializedError(Exception):
     pass
+
+
+class InvalidAllocationSizeError(Exception):
+    pass
+
+
+class AddressNotAllocatedError(Exception):
+    pass

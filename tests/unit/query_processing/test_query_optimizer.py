@@ -131,7 +131,7 @@ def test_projection_pruning():
 
     # Assert
     # Unused columns are removed from the scan as early as possible.
-    assert result.operators == ["TableScan(users: id)", "Project(id)"]
+    assert result.operators == ["SequentialScan(users: id)", "Project(id)"]
 
 def test_estimate_cardinality():
     # Arrange
@@ -163,7 +163,7 @@ def test_generate_physical_plan():
     plan = LogicalPlan(["TableScan(users)"])
 
     # Act
-    result = QueryOptimizer().generate_physical_plan(plan)
+    result = QueryOptimizer().optimize(plan)
 
     # Assert
     assert isinstance(result, PhysicalPlan)
@@ -187,4 +187,31 @@ def test_custom_optimization_strategy_injection():
     opt_plan = optimizer.optimize(plan)
     assert opt_plan.operators == ["CustomScan(users)"]
     assert optimizer.estimate_cost(plan) == 1.0
+
+
+def test_cost_based_optimization_strategy_picks_cheaper_plan():
+    from dbms.query_processing.query_optimizer import CostBasedOptimizationStrategy
+    
+    plan = LogicalPlan(["TableScan(users)", "Filter(id = 1)"])
+    plan.available_indexes = {"id": "users_pk"}
+    # Without index, base cost is 20.0
+    plan.operator_costs = [10.0, 10.0] 
+    
+    strategy = CostBasedOptimizationStrategy()
+    physical_plan = strategy.optimize(plan)
+    
+    # The strategy should test the index variation and pick it.
+    # Base cost = 20.0. Index variation cost = 10.0.
+    assert "IndexScan(users, users_pk, id = 1)" in physical_plan.operators
+    assert physical_plan.cost == 10.0
+
+
+def test_query_optimizer_set_strategy():
+    from dbms.query_processing.query_optimizer import RuleBasedOptimizationStrategy, CostBasedOptimizationStrategy
+    
+    optimizer = QueryOptimizer(strategy=RuleBasedOptimizationStrategy())
+    assert isinstance(optimizer.strategy, RuleBasedOptimizationStrategy)
+    
+    optimizer.set_strategy(CostBasedOptimizationStrategy())
+    assert isinstance(optimizer.strategy, CostBasedOptimizationStrategy)
 

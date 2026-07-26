@@ -33,7 +33,8 @@ class View:
     def validate_definition(self, sql_parser: object) -> bool:
         # Check if query definition is a valid SELECT query
         try:
-            ast = sql_parser.parse(self.query_definition)
-            return ast.statement_type == "SELECT"
+            from dbms.query_processing.ast import SelectNode
+            ast = sql_parser.parse_sql(self.query_definition)
+            return isinstance(ast.root_node, SelectNode)
         except Exception:
             return False

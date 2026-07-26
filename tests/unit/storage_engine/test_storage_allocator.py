@@ -136,3 +136,37 @@ def test_custom_allocation_strategy_injection():
     assert allocator.release_space(100) is True
     assert allocator.get_free_space() == 4096
 
+
+def test_reject_invalid_total_space():
+    from dbms.storage_engine.exceptions import InvalidAllocationSizeError
+    with pytest.raises(InvalidAllocationSizeError):
+        StorageAllocator(total_space=0)
+    with pytest.raises(InvalidAllocationSizeError):
+        StorageAllocator(total_space=-100)
+
+
+def test_reject_invalid_allocate_size():
+    from dbms.storage_engine.exceptions import InvalidAllocationSizeError
+    allocator = StorageAllocator(total_space=4096)
+    with pytest.raises(InvalidAllocationSizeError):
+        allocator.allocate_space(0)
+    with pytest.raises(InvalidAllocationSizeError):
+        allocator.allocate_space(-50)
+
+
+def test_reject_invalid_reallocate_size():
+    from dbms.storage_engine.exceptions import InvalidAllocationSizeError
+    allocator = StorageAllocator(total_space=4096)
+    address = allocator.allocate_space(100)
+    with pytest.raises(InvalidAllocationSizeError):
+        allocator.reallocate_space(address, 0)
+    with pytest.raises(InvalidAllocationSizeError):
+        allocator.reallocate_space(address, -100)
+
+
+def test_reject_unallocated_reallocate():
+    from dbms.storage_engine.exceptions import AddressNotAllocatedError
+    allocator = StorageAllocator(total_space=4096)
+    with pytest.raises(AddressNotAllocatedError):
+        allocator.reallocate_space(999, 100)
+

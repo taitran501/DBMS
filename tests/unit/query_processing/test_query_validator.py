@@ -65,7 +65,7 @@ def test_syntax_validation_handler_rejects_empty_ast():
 
     # Assert
     assert is_valid is False
-    assert "Syntax error: AST statement is None" in validator.errors
+    assert "Syntax error: AST is None" in validator.errors
 
 
 def test_syntax_validation_handler_rejects_missing_table():

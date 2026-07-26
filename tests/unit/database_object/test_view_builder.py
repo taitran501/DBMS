@@ -39,9 +39,10 @@ def test_build_successful_view():
 
 def test_build_with_default_view_id():
     # Arrange
+    executor = Mock()
     builder = ViewBuilder(
         name="sales_summary", query_definition="SELECT sum(amount) FROM sales"
-    )
+    ).set_query_executor(executor)
 
     # Act
     view = builder.build()
@@ -72,6 +73,7 @@ def test_build_fails_when_query_definition_empty():
 
 def test_builder_setters_mutate_and_return_self():
     # Arrange
+    executor = Mock()
     builder = ViewBuilder()
 
     # Act
@@ -79,6 +81,7 @@ def test_builder_setters_mutate_and_return_self():
         builder.set_name("my_view")
         .set_query_definition("SELECT * FROM t")
         .set_view_id("v123")
+        .set_query_executor(executor)
     )
 
     # Assert
