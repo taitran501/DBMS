@@ -108,3 +108,31 @@ def test_failed_reallocation_preserves_original_allocation():
     # Verify original 512 bytes stay allocated and can still be freed
     assert allocator.get_free_space() == 512
     assert allocator.release_space(address) is True
+
+
+def test_custom_allocation_strategy_injection():
+    """Ensure StorageAllocator accepts a custom StorageAllocationStrategy."""
+    from dbms.storage_engine.storage_allocator import StorageAllocationStrategy
+
+    class CustomStrategy(StorageAllocationStrategy):
+        def allocate(self, total_space, allocations, bytes_needed):
+            allocations[100] = bytes_needed
+            return 100
+
+        def release(self, allocations, address):
+            del allocations[address]
+            return True
+
+        def reallocate(self, total_space, allocations, address, new_bytes):
+            allocations[address] = new_bytes
+            return address
+
+    custom_strat = CustomStrategy()
+    allocator = StorageAllocator(total_space=4096, strategy=custom_strat)
+
+    addr = allocator.allocate_space(500)
+    assert addr == 100
+    assert allocator.get_free_space() == 3596
+    assert allocator.release_space(100) is True
+    assert allocator.get_free_space() == 4096
+

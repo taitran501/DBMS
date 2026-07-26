@@ -1008,6 +1008,27 @@ sequenceDiagram
     SUT-->>Test: True
 ```
 
+### 8.9 test_custom_allocation_strategy_injection()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_storage_allocator.py
+    participant CustomStrat as CustomStrategy
+    participant SUT as StorageAllocator
+
+    Test->>CustomStrat: CustomStrategy()
+    Test->>SUT: StorageAllocator(4096, strategy=custom_strat)
+    Test->>SUT: allocate_space(500)
+    SUT->>CustomStrat: allocate(4096, allocations, 500)
+    CustomStrat-->>SUT: address (100)
+    SUT-->>Test: 100
+    Test->>SUT: release_space(100)
+    SUT->>CustomStrat: release(allocations, 100)
+    CustomStrat-->>SUT: True
+    SUT-->>Test: True
+```
+
 ---
 
 ## 9. test_storage_engine.py
