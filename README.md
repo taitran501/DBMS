@@ -1006,7 +1006,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | **Query Processing** | SQL Parsing | [Interpreter](docs/diagrams/sequence/design_patterns/query_processing.md#1-interpreter-pattern-sql-parsing) | `SQLParser`, `Lexer`, `AST`, `ASTNode`, `SelectNode` | Implemented |
 | | AST Construction | Builder | `SQLParser`, `AST` | Planned |
 | | AST Traversal | [Visitor](docs/diagrams/sequence/design_patterns/query_processing.md#3-visitor-pattern-ast-traversal) | `AST`, `ASTVisitor`, `ValidationVisitor`, `PhysicalPlanGeneratorVisitor` | Implemented |
-| | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` | Planned |
+| | Query Validation | [Chain of Responsibility](docs/diagrams/sequence/design_patterns/query_processing.md#4-chain-of-responsibility-pattern-query-validation) | `QueryValidator`, `ValidationHandler`, `SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler` | Implemented |
 | | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` | Planned |
 | | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` | Planned |
 | | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
@@ -2217,6 +2217,90 @@ sequenceDiagram
   * **Open/Closed Principle:** New compiler passes (e.g. type checking, cost estimation) can be added as new `ASTVisitor` subclasses without altering `ASTNode` classes.
   * **Cohesion:** Validations and plan transformations are centralized inside specialized visitor classes.
 * **Reason**: AST representations require distinct processing passes (validation, optimization, code generation) that evolve independently from syntax node definitions.
+
+**Chain of Responsibility Pattern (Query Validation)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class QueryValidator {
+        +handler: ValidationHandler
+        +errors: list[str]
+        +set_handler(handler: ValidationHandler) None
+        +validate(ast_or_statement, context: dict) bool
+    }
+
+    class ValidationHandler {
+        <<abstract>>
+        +next_handler: ValidationHandler | None
+        +set_next(handler: ValidationHandler) ValidationHandler
+        +validate(ast_node, context, errors) bool
+        #_validate_current(ast_node, context, errors)* bool
+    }
+
+    class SyntaxValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    class SchemaValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    class PermissionValidationHandler {
+        #_validate_current(ast_node, context, errors) bool
+    }
+
+    QueryValidator --> ValidationHandler : executes chain via
+    SyntaxValidationHandler --|> ValidationHandler
+    SchemaValidationHandler --|> ValidationHandler
+    PermissionValidationHandler --|> ValidationHandler
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Validator as QueryValidator
+    participant Syntax as SyntaxValidationHandler
+    participant Schema as SchemaValidationHandler
+    participant Perm as PermissionValidationHandler
+
+    Client->>Validator: validate(ast, context)
+    Validator->>Syntax: validate(ast, context, errors)
+    Syntax->>Syntax: verify AST structure
+    alt Syntax valid
+        Syntax->>Schema: validate(ast, context, errors)
+        Schema->>Schema: check table & column in schema
+        alt Schema valid
+            Schema->>Perm: validate(ast, context, errors)
+            Perm->>Perm: check user permissions
+            alt Permission valid
+                Perm-->>Validator: True
+                Validator-->>Client: True
+            else Permission denied
+                Perm-->>Validator: False
+                Validator-->>Client: False
+            end
+        else Schema invalid
+            Schema-->>Validator: False
+            Validator-->>Client: False
+        end
+    else Syntax invalid
+        Syntax-->>Validator: False
+        Validator-->>Client: False
+    end
+```
+
+* **Description**: `QueryValidator` executes a sequential validation pipeline where each handler (`SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler`) performs a specific validation pass before passing execution to the next link.
+* **Use Case**: Validating incoming queries step-by-step for syntax correctness, schema existence, and user access rights prior to compilation.
+* **Advantages**:
+  * **Decoupled Validation Pass**: Validation rules are cleanly separated into focused handler classes.
+  * **Dynamic Chain Composition**: Handlers can be reordered, added, or removed dynamically using `.set_next()`.
+* **Reason**: Query validation comprises multiple independent concerns (syntax, schema, security) that should execute sequentially and short-circuit early on failure.
+
 
 ---
 

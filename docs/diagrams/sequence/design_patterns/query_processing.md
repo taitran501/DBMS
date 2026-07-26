@@ -97,3 +97,47 @@ sequenceDiagram
 ```
 
 The double-dispatch mechanism enables new compiler passes (validation, plan generation, optimization) to be added as independent Visitors without altering AST node classes.
+
+---
+
+## 4. Chain of Responsibility Pattern (Query Validation)
+
+`QueryValidator` executes a sequential validation pipeline through linked `ValidationHandler` objects (`SyntaxValidationHandler -> SchemaValidationHandler -> PermissionValidationHandler`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Validator as QueryValidator
+    participant Syntax as SyntaxValidationHandler
+    participant Schema as SchemaValidationHandler
+    participant Perm as PermissionValidationHandler
+
+    Client->>Validator: validate(ast, context)
+    Validator->>Syntax: validate(ast, context, errors)
+    Syntax->>Syntax: verify AST structure
+    alt Syntax valid
+        Syntax->>Schema: validate(ast, context, errors)
+        Schema->>Schema: check table & column in schema
+        alt Schema valid
+            Schema->>Perm: validate(ast, context, errors)
+            Perm->>Perm: check user permissions
+            alt Permission valid
+                Perm-->>Validator: True
+                Validator-->>Client: True
+            else Permission denied
+                Perm-->>Validator: False
+                Validator-->>Client: False
+            end
+        else Schema invalid
+            Schema-->>Validator: False
+            Validator-->>Client: False
+        end
+    else Syntax invalid
+        Syntax-->>Validator: False
+        Validator-->>Client: False
+    end
+```
+
+The validation chain short-circuits early upon encountering any syntax, schema, or permission error.
+
