@@ -1001,16 +1001,16 @@ This section outlines the design patterns planned for the core modules, linking 
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
 | | Buffer Pool Management | [Singleton](docs/diagrams/sequence/design_patterns/storage_engine.md#5-singleton-pattern-buffer-pool-management) | `BufferPool` | Implemented |
 | | Record Read/Write | [Data Mapper](docs/diagrams/sequence/design_patterns/storage_engine.md#1-data-mapper-record-readwrite) | `RecordMapper`, `RecordManager`, `PageManager`, `Page`, `Record`, `Row` | Implemented |
-| | Storage Allocation | Strategy | `StorageEngine`, `FileManager`, `Partition` | Planned |
+| | Storage Allocation | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#7-strategy-storage-allocation) | `StorageAllocator`, `StorageAllocationStrategy`, `ContiguousAllocationStrategy` | Implemented |
 | | Page Loading | [Proxy](docs/diagrams/sequence/design_patterns/storage_engine.md#3-proxy-page-loading) | `BufferPool`, `PageStoreProtocol`, `FileManager`, `Page` | Implemented |
 | **Query Processing** | SQL Parsing | [Interpreter](docs/diagrams/sequence/design_patterns/query_processing.md#1-interpreter-pattern-sql-parsing) | `SQLParser`, `Lexer`, `AST`, `ASTNode`, `SelectNode` | Implemented |
 | | AST Construction | Builder | `SQLParser`, `AST` | Planned |
-| | AST Traversal | Visitor | `AST`, `QueryOptimizer`, `QueryExecutor` | Planned |
+| | AST Traversal | [Visitor](docs/diagrams/sequence/design_patterns/query_processing.md#3-visitor-pattern-ast-traversal) | `AST`, `ASTVisitor`, `ValidationVisitor`, `PhysicalPlanGeneratorVisitor` | Implemented |
 | | Query Validation | Chain of Responsibility | `AST`, `CatalogManager`, `Schema`, `Table`, `Column` | Planned |
 | | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` | Planned |
 | | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` | Planned |
 | | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
-| | Execution Operators | Iterator | `QueryExecutor`, `PhysicalPlan`, `Row` | Planned |
+| | Execution Operators | [Iterator](docs/diagrams/sequence/design_patterns/query_processing.md#2-iterator-pattern-execution-operators) | `ExecutionOperator`, `SeqScanOperator`, `FilterOperator`, `ProjectOperator` | Implemented |
 
 ### Design Patterns Deep Dive
 
@@ -1893,6 +1893,67 @@ sequenceDiagram
   * **Loose Coupling:** Higher-level storage and query operators depend only on abstract `PageFactory` and `Page` abstractions.
   * **Extensibility:** New page types (e.g., `OverflowPage`, `HeaderPage`) can be added by creating a new `Page` subclass and corresponding factory without modifying existing code.
 * **Reason**: Different storage subsystems require distinct page layouts and behaviors while sharing the underlying `Page` byte payload contract.
+
+**Strategy Pattern (Storage Allocation)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class StorageAllocator {
+        +total_space: int
+        +strategy: StorageAllocationStrategy
+        +allocations: dict
+        +allocate_space(bytes_needed: int) int
+        +release_space(address: int) bool
+        +reallocate_space(address: int, new_bytes: int) int
+        +get_free_space() int
+    }
+
+    class StorageAllocationStrategy {
+        <<abstract>>
+        +allocate(total_space: int, allocations: dict, bytes_needed: int) int
+        +release(allocations: dict, address: int) bool
+        +reallocate(total_space: int, allocations: dict, address: int, new_bytes: int) int
+    }
+
+    class ContiguousAllocationStrategy {
+        +allocate(total_space: int, allocations: dict, bytes_needed: int) int
+        +release(allocations: dict, address: int) bool
+        +reallocate(total_space: int, allocations: dict, address: int, new_bytes: int) int
+    }
+
+    StorageAllocator --> StorageAllocationStrategy : delegates allocation to
+    ContiguousAllocationStrategy --|> StorageAllocationStrategy
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant StorageAllocator
+    participant Strategy as StorageAllocationStrategy
+
+    Client->>StorageAllocator: allocate_space(1024)
+    StorageAllocator->>Strategy: allocate(total_space, allocations, 1024)
+    alt Free space available
+        Strategy->>Strategy: find offset & update allocations
+        Strategy-->>StorageAllocator: address (0)
+        StorageAllocator-->>Client: address (0)
+    else Storage exhausted
+        Strategy-->>StorageAllocator: StorageExhaustedError
+        StorageAllocator-->>Client: StorageExhaustedError
+    end
+```
+
+* **Description**: `StorageAllocator` delegates physical byte offset allocation, deallocation, and reallocation to an injected `StorageAllocationStrategy`.
+* **Use Case**: Defaulting to `ContiguousAllocationStrategy` while allowing custom allocation strategies (e.g. Best-Fit, Segmented Allocation) to be injected dynamically.
+* **Advantages**:
+  * **Algorithm Flexibility**: Allocation strategies can be swapped without modifying storage management logic.
+  * **Atomic Safety**: Failed reallocation attempts leave existing allocations untouched and preserve memory state.
+* **Reason**: Separating physical allocation strategies from storage context ownership keeps memory management clean, safe, and testable.
 
 #### 3. Query Processing
 

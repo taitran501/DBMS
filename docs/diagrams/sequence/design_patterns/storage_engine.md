@@ -190,3 +190,36 @@ sequenceDiagram
 ```
 
 The concrete factory handles creation while callers interact only with the created `Page` abstraction.
+
+---
+
+## 7. Strategy Pattern (Storage Allocation)
+
+`StorageAllocator` delegates storage byte allocation, release, and reallocation to `StorageAllocationStrategy`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Allocator as StorageAllocator
+    participant Strategy as StorageAllocationStrategy
+
+    Client->>Allocator: allocate_space(1024)
+    Allocator->>Strategy: allocate(total_space, allocations, 1024)
+    alt Storage space available
+        Strategy->>Strategy: compute contiguous offset
+        Strategy-->>Allocator: address (0)
+        Allocator-->>Client: address (0)
+    else Storage space exhausted
+        Strategy-->>Allocator: StorageExhaustedError
+        Allocator-->>Client: StorageExhaustedError
+    end
+
+    Client->>Allocator: release_space(address=0)
+    Allocator->>Strategy: release(allocations, 0)
+    Strategy-->>Allocator: True
+    Allocator-->>Client: True
+```
+
+`StorageAllocationStrategy` separates allocation decisions from storage context management, ensuring atomic rollbacks on reallocation failure.
+

@@ -278,3 +278,43 @@ classDiagram
 ```
 
 `DataPageFactory` creates tuple data pages, while `IndexPageFactory` creates index node pages. Callers depend only on the abstract `PageFactory` contract.
+
+---
+
+## 7. Strategy Pattern (Storage Allocation)
+
+`StorageAllocator` delegates physical byte block allocation, space releasing, and size reallocation to an injected `StorageAllocationStrategy` (`ContiguousAllocationStrategy`).
+
+```mermaid
+classDiagram
+    direction TB
+
+    class StorageAllocator {
+        +total_space: int
+        +strategy: StorageAllocationStrategy
+        +allocations: dict[int, int]
+        +allocate_space(bytes_needed: int) int
+        +release_space(address: int) bool
+        +reallocate_space(address: int, new_bytes: int) int
+        +get_free_space() int
+    }
+
+    class StorageAllocationStrategy {
+        <<abstract>>
+        +allocate(total_space: int, allocations: dict, bytes_needed: int) int
+        +release(allocations: dict, address: int) bool
+        +reallocate(total_space: int, allocations: dict, address: int, new_bytes: int) int
+    }
+
+    class ContiguousAllocationStrategy {
+        +allocate(total_space: int, allocations: dict, bytes_needed: int) int
+        +release(allocations: dict, address: int) bool
+        +reallocate(total_space: int, allocations: dict, address: int, new_bytes: int) int
+    }
+
+    StorageAllocator --> StorageAllocationStrategy : delegates allocation to
+    ContiguousAllocationStrategy --|> StorageAllocationStrategy
+```
+
+`ContiguousAllocationStrategy` is the default allocation strategy. Custom strategies (such as Best-Fit or Segmented allocation) can be injected without altering `StorageAllocator`.
+
