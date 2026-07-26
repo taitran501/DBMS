@@ -60,8 +60,17 @@ class RuleBasedOptimizationStrategy(OptimizationStrategy):
         # Rule 6: Join reordering (e.g. "Join(large_table, small_table)" with cardinalities)
         ops = self._apply_join_reordering(ops, plan.table_cardinalities)
 
+        # Finally, map generic logical operators to physical execution operators
+        physical_ops = []
+        for op in ops:
+            if isinstance(op, str) and op.startswith("TableScan("):
+                tbl = op[len("TableScan(") : -1]
+                physical_ops.append(f"SequentialScan({tbl})")
+            else:
+                physical_ops.append(op)
+
         return PhysicalPlan(
-            operators=ops,
+            operators=physical_ops,
             output_columns=plan.output_columns,
             cost=est_cost,
         )
@@ -135,8 +144,28 @@ class CostBasedOptimizationStrategy(OptimizationStrategy):
         return float(len(plan.operators) * 10.0 if plan.operators else 10.0)
 
     def optimize(self, plan: LogicalPlan) -> PhysicalPlan:
+        # Generate plan variations (e.g. baseline vs. index scan vs. parallel scan)
+        variations = [plan]
+        
+        # Variation: Attempt index scan if possible
+        if plan.available_indexes:
+            idx_plan = LogicalPlan(list(plan.operators))
+            idx_plan.available_indexes = plan.available_indexes
+            # Mock lower cost for index usage
+            idx_plan.estimated_cost = self.estimate_cost(plan) * 0.5
+            variations.append(idx_plan)
+
+        # Evaluate and pick the lowest cost plan variation
+        best_plan = min(variations, key=self.estimate_cost)
+        best_cost = self.estimate_cost(best_plan)
+        
+        # Use RuleBased strategy to finalize the physical operator mapping
         rb_strategy = RuleBasedOptimizationStrategy()
-        return rb_strategy.optimize(plan)
+        physical_plan = rb_strategy.optimize(best_plan)
+        
+        # Override cost with the evaluated cost-based estimate
+        physical_plan.cost = best_cost
+        return physical_plan
 
 
 class QueryOptimizer:
@@ -169,14 +198,3 @@ class QueryOptimizer:
         row_count = plan.row_count if plan.row_count is not None else 1.0
         selectivity = plan.selectivity if plan.selectivity is not None else 1.0
         return float(row_count * selectivity)
-
-    def generate_physical_plan(self, plan: LogicalPlan) -> PhysicalPlan:
-        """Directly map a LogicalPlan to a default PhysicalPlan."""
-        ops = []
-        for op in plan.operators:
-            if isinstance(op, str) and op.startswith("TableScan("):
-                tbl = op[len("TableScan(") : -1]
-                ops.append(f"SequentialScan({tbl})")
-            else:
-                ops.append(op)
-        return PhysicalPlan(operators=ops, output_columns=plan.output_columns)
