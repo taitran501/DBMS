@@ -141,3 +141,29 @@ sequenceDiagram
 
 The validation chain short-circuits early upon encountering any syntax, schema, or permission error.
 
+---
+
+## 5. Strategy Pattern (Query Optimization)
+
+`QueryOptimizer` delegates plan transformation and cost estimation to an injected `OptimizationStrategy`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Optimizer as QueryOptimizer
+    participant Strategy as RuleBasedOptimizationStrategy
+
+    Client->>Optimizer: optimize(logical_plan)
+    Optimizer->>Strategy: optimize(logical_plan)
+    Strategy->>Strategy: estimate_cost(logical_plan)
+    Strategy->>Strategy: apply constant folding & projection pruning
+    Strategy->>Strategy: apply predicate pushdown & index selection
+    Strategy->>Strategy: reorder joins by cardinality
+    Strategy-->>Optimizer: PhysicalPlan
+    Optimizer-->>Client: PhysicalPlan
+```
+
+The strategy pattern decouples transformation heuristics from optimizer lifecycle management.
+
+

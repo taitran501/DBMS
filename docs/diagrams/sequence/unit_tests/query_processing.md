@@ -800,6 +800,27 @@ sequenceDiagram
     SUT-->>Test: PP
 ```
 
+### 7.15 test_custom_optimization_strategy_injection()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_query_optimizer.py
+    participant CustomStrat as CustomOptimizationStrategy
+    participant SUT as QueryOptimizer
+
+    Test->>CustomStrat: CustomOptimizationStrategy()
+    Test->>SUT: QueryOptimizer(strategy=custom_strat)
+    Test->>SUT: optimize(plan)
+    SUT->>CustomStrat: optimize(plan)
+    CustomStrat-->>SUT: PhysicalPlan(["CustomScan(users)"])
+    SUT-->>Test: PhysicalPlan
+    Test->>SUT: estimate_cost(plan)
+    SUT->>CustomStrat: estimate_cost(plan)
+    CustomStrat-->>SUT: 1.0
+    SUT-->>Test: 1.0
+```
+
 ---
 
 ## 8. test_query_processor.py

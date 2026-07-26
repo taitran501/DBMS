@@ -1007,7 +1007,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | AST Construction | Builder | `SQLParser`, `AST` | Planned |
 | | AST Traversal | [Visitor](docs/diagrams/sequence/design_patterns/query_processing.md#3-visitor-pattern-ast-traversal) | `AST`, `ASTVisitor`, `ValidationVisitor`, `PhysicalPlanGeneratorVisitor` | Implemented |
 | | Query Validation | [Chain of Responsibility](docs/diagrams/sequence/design_patterns/query_processing.md#4-chain-of-responsibility-pattern-query-validation) | `QueryValidator`, `ValidationHandler`, `SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler` | Implemented |
-| | Query Optimization | Strategy | `QueryOptimizer`, `LogicalPlan`, `PhysicalPlan` | Planned |
+| | Query Optimization | [Strategy](docs/diagrams/sequence/design_patterns/query_processing.md#5-strategy-pattern-query-optimization) | `QueryOptimizer`, `OptimizationStrategy`, `RuleBasedOptimizationStrategy`, `CostBasedOptimizationStrategy` | Implemented |
 | | Execution Plan Creation | Factory Method | `LogicalPlan`, `PhysicalPlan`, `QueryOptimizer` | Planned |
 | | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
 | | Execution Operators | [Iterator](docs/diagrams/sequence/design_patterns/query_processing.md#2-iterator-pattern-execution-operators) | `ExecutionOperator`, `SeqScanOperator`, `FilterOperator`, `ProjectOperator` | Implemented |
@@ -2300,6 +2300,68 @@ sequenceDiagram
   * **Decoupled Validation Pass**: Validation rules are cleanly separated into focused handler classes.
   * **Dynamic Chain Composition**: Handlers can be reordered, added, or removed dynamically using `.set_next()`.
 * **Reason**: Query validation comprises multiple independent concerns (syntax, schema, security) that should execute sequentially and short-circuit early on failure.
+
+**Strategy Pattern (Query Optimization)**
+
+##### Class Diagram
+```mermaid
+classDiagram
+    direction TB
+
+    class QueryOptimizer {
+        +strategy: OptimizationStrategy
+        +rules: list
+        +set_strategy(strategy: OptimizationStrategy) None
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+        +select_lowest_cost_plan(plans: list) LogicalPlan
+        +estimate_cardinality(plan: LogicalPlan) float
+        +generate_physical_plan(plan: LogicalPlan) PhysicalPlan
+    }
+
+    class OptimizationStrategy {
+        <<abstract>>
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    class RuleBasedOptimizationStrategy {
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    class CostBasedOptimizationStrategy {
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    QueryOptimizer --> OptimizationStrategy : delegates optimization to
+    RuleBasedOptimizationStrategy --|> OptimizationStrategy
+    CostBasedOptimizationStrategy --|> OptimizationStrategy
+```
+
+##### Sequence Diagram
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Optimizer as QueryOptimizer
+    participant Strategy as OptimizationStrategy
+
+    Client->>Optimizer: optimize(logical_plan)
+    Optimizer->>Strategy: optimize(logical_plan)
+    Strategy->>Strategy: apply rule transformations & cost estimations
+    Strategy-->>Optimizer: PhysicalPlan
+    Optimizer-->>Client: PhysicalPlan
+```
+
+* **Description**: `QueryOptimizer` delegates logical query plan optimization and physical plan generation to an injected `OptimizationStrategy` (`RuleBasedOptimizationStrategy` or `CostBasedOptimizationStrategy`).
+* **Use Case**: Applying rule-based transformations (constant folding, projection pruning, predicate pushdown, index selection, parallel scan selection) or cost-based plan selection without altering optimizer management code.
+* **Advantages**:
+  * **Algorithm Independence**: Optimization strategies can be replaced or extended dynamically.
+  * **Rule Modularity**: Transformations like join reordering and index selection are encapsulated inside concrete optimization strategies.
+* **Reason**: Query optimization algorithms vary significantly between rule-based heuristics and cost-based statistics estimation; isolating them behind a Strategy contract keeps the engine flexible and extensible.
+
 
 
 ---

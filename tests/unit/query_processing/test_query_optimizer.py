@@ -168,4 +168,23 @@ def test_generate_physical_plan():
     # Assert
     assert isinstance(result, PhysicalPlan)
     assert result.operators == ["SequentialScan(users)"]
-    # Assert
+
+
+def test_custom_optimization_strategy_injection():
+    from dbms.query_processing.query_optimizer import OptimizationStrategy
+
+    class CustomOptimizationStrategy(OptimizationStrategy):
+        def optimize(self, plan: LogicalPlan) -> PhysicalPlan:
+            return PhysicalPlan(operators=["CustomScan(users)"], cost=1.0)
+
+        def estimate_cost(self, plan: LogicalPlan) -> float:
+            return 1.0
+
+    custom_strat = CustomOptimizationStrategy()
+    optimizer = QueryOptimizer(strategy=custom_strat)
+    plan = LogicalPlan(["TableScan(users)"])
+
+    opt_plan = optimizer.optimize(plan)
+    assert opt_plan.operators == ["CustomScan(users)"]
+    assert optimizer.estimate_cost(plan) == 1.0
+
