@@ -227,3 +227,48 @@ classDiagram
 
 Each handler processes its own validation concerns and passes control to `next_handler` unless a validation check fails.
 
+---
+
+## 5. Strategy Pattern (Query Optimization)
+
+`QueryOptimizer` delegates logical plan optimization, cost estimation, and physical plan generation to an injected `OptimizationStrategy` (`RuleBasedOptimizationStrategy` or `CostBasedOptimizationStrategy`).
+
+```mermaid
+classDiagram
+    direction TB
+
+    class QueryOptimizer {
+        +strategy: OptimizationStrategy
+        +rules: list
+        +set_strategy(strategy: OptimizationStrategy) None
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+        +select_lowest_cost_plan(plans: list) LogicalPlan
+        +estimate_cardinality(plan: LogicalPlan) float
+        +generate_physical_plan(plan: LogicalPlan) PhysicalPlan
+    }
+
+    class OptimizationStrategy {
+        <<abstract>>
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    class RuleBasedOptimizationStrategy {
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    class CostBasedOptimizationStrategy {
+        +optimize(plan: LogicalPlan) PhysicalPlan
+        +estimate_cost(plan: LogicalPlan) float
+    }
+
+    QueryOptimizer --> OptimizationStrategy : delegates optimization to
+    RuleBasedOptimizationStrategy --|> OptimizationStrategy
+    CostBasedOptimizationStrategy --|> OptimizationStrategy
+```
+
+`RuleBasedOptimizationStrategy` handles rule transformations (predicate pushdown, projection pruning, constant folding, index selection), while `CostBasedOptimizationStrategy` evaluates cost-based plan selections.
+
+
