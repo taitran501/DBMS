@@ -271,4 +271,51 @@ classDiagram
 
 `RuleBasedOptimizationStrategy` handles rule transformations (predicate pushdown, projection pruning, constant folding, index selection), while `CostBasedOptimizationStrategy` evaluates cost-based plan selections.
 
+---
+
+## 6. Factory Method (Execution Plan Creation)
+
+`ExecutionOperatorFactory` defines the abstract Factory Method interface for constructing physical `ExecutionOperator` nodes (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) out of physical plan descriptors. `ExecutionPlanFactory` acts as the coordinator.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class ExecutionOperatorFactory {
+        <<abstract>>
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) ExecutionOperator
+    }
+
+    class SeqScanOperatorFactory {
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) SeqScanOperator
+    }
+
+    class FilterOperatorFactory {
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) FilterOperator
+    }
+
+    class ProjectOperatorFactory {
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) ProjectOperator
+    }
+
+    class ExecutionPlanFactory {
+        +data_sources: dict
+        +build_operator(op_descriptor: str, child: ExecutionOperator) ExecutionOperator
+        +build_pipeline(physical_descriptors: list) ExecutionOperator
+    }
+
+    class ExecutionOperator {
+        <<abstract>>
+    }
+
+    SeqScanOperatorFactory --|> ExecutionOperatorFactory
+    FilterOperatorFactory --|> ExecutionOperatorFactory
+    ProjectOperatorFactory --|> ExecutionOperatorFactory
+    SeqScanOperatorFactory ..> ExecutionOperator : creates
+    FilterOperatorFactory ..> ExecutionOperator : creates
+    ProjectOperatorFactory ..> ExecutionOperator : creates
+    ExecutionPlanFactory o-- ExecutionOperatorFactory : uses
+```
+
+`ExecutionPlanFactory` maps descriptor prefixes to concrete `ExecutionOperatorFactory` implementations, shielding callers from direct operator instantiation.
 

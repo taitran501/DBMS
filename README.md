@@ -1,6 +1,6 @@
 # DBMS
 
-Python DBMS architecture project. The repository is currently at the class-design stage: selected core classes define their initial attributes and method stubs, while business logic has not been implemented yet.
+Python DBMS architecture project. Selected core classes and design patterns have early implementations, while many subsystems still contain method stubs and are not yet integrated into a complete DBMS flow.
 
 ---
 
@@ -812,7 +812,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | AST Traversal | [Visitor](docs/diagrams/sequence/design_patterns/query_processing.md#3-visitor-pattern-ast-traversal) | `AST`, `ASTVisitor`, `ValidationVisitor`, `PhysicalPlanGeneratorVisitor` | Implemented |
 | | Query Validation | [Chain of Responsibility](docs/diagrams/sequence/design_patterns/query_processing.md#4-chain-of-responsibility-pattern-query-validation) | `QueryValidator`, `ValidationHandler`, `SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler` | Implemented |
 | | Query Optimization | [Strategy](docs/diagrams/sequence/design_patterns/query_processing.md#5-strategy-pattern-query-optimization) | `QueryOptimizer`, `OptimizationStrategy`, `RuleBasedOptimizationStrategy`, `CostBasedOptimizationStrategy` | Implemented |
-| | Execution Plan Creation | [Factory Method](docs/diagrams/sequence/design_patterns/query_processing.md#6-factory-method-execution-plan-creation) | `ExecutionPlanFactory`, `ExecutionOperatorFactory`, `SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory` | Implemented |
+| | Execution Plan Creation | [Factory Method](docs/diagrams/sequence/design_patterns/query_processing.md#6-factory-method-execution-plan-creation) | `ExecutionPlanFactory`, `ExecutionOperatorFactory`, `SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory` | Partial |
 | | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
 | | Execution Operators | [Iterator](docs/diagrams/sequence/design_patterns/query_processing.md#2-iterator-pattern-execution-operators) | `ExecutionOperator`, `SeqScanOperator`, `FilterOperator`, `ProjectOperator` | Implemented |
 
