@@ -2,7 +2,7 @@ import re
 from abc import ABC, abstractmethod
 from typing import Any
 
-from dbms.query_processing.ast import ASTNode
+from dbms.query_processing.ast import ASTNode, BinaryOpNode, IdentifierNode, LiteralNode
 from dbms.query_processing.execution_operator import (
     ExecutionOperator,
     FilterOperator,
@@ -52,6 +52,43 @@ class SeqScanOperatorFactory(ExecutionOperatorFactory):
 class FilterOperatorFactory(ExecutionOperatorFactory):
     """Factory Method creator for FilterOperator physical iterator."""
 
+    @staticmethod
+    def _parse_predicate(expression: str) -> ASTNode:
+        """Convert a supported physical-plan filter expression into an AST predicate."""
+        normalized = expression.strip()
+        if normalized.lower() == "true":
+            return LiteralNode(True)
+        if normalized.lower() == "false":
+            return LiteralNode(False)
+
+        match = re.fullmatch(r"([A-Za-z_]\w*)\s*(=|!=|>=|<=|>|<)\s*(.+)", normalized)
+        if not match:
+            raise UnknownOperatorError(f"Invalid filter predicate: {expression}")
+
+        column_name, operator, raw_value = match.groups()
+        return BinaryOpNode(
+            IdentifierNode(column_name),
+            operator,
+            LiteralNode(FilterOperatorFactory._parse_literal(raw_value.strip())),
+        )
+
+    @staticmethod
+    def _parse_literal(raw_value: str) -> Any:
+        """Parse the simple literal forms emitted by the current optimizer."""
+        if len(raw_value) >= 2 and raw_value[0] == raw_value[-1] and raw_value[0] in {"'", '"'}:
+            return raw_value[1:-1]
+        if raw_value.lower() == "true":
+            return True
+        if raw_value.lower() == "false":
+            return False
+        if raw_value.lower() == "null":
+            return None
+        if re.fullmatch(r"[+-]?\d+", raw_value):
+            return int(raw_value)
+        if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+)", raw_value):
+            return float(raw_value)
+        return raw_value
+
     def create_operator(
         self,
         op_descriptor: str,
@@ -60,8 +97,10 @@ class FilterOperatorFactory(ExecutionOperatorFactory):
     ) -> ExecutionOperator:
         if not child:
             raise ValueError("FilterOperator requires a valid child ExecutionOperator.")
-        match = re.match(r"Filter\(([^)]+)\)", op_descriptor)
-        predicate: Any = match.group(1).strip() if match else None
+        match = re.fullmatch(r"Filter\((.*)\)", op_descriptor)
+        if not match:
+            raise UnknownOperatorError(f"Invalid filter descriptor: {op_descriptor}")
+        predicate = self._parse_predicate(match.group(1))
         return FilterOperator(child=child, predicate=predicate)
 
 
