@@ -166,4 +166,41 @@ sequenceDiagram
 
 The strategy pattern decouples transformation heuristics from optimizer lifecycle management.
 
+---
+
+## 6. Factory Method (Execution Plan Creation)
+
+`ExecutionPlanFactory` coordinates physical operator creation by dispatching operator descriptors to concrete `ExecutionOperatorFactory` subclasses (`SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Factory as ExecutionPlanFactory
+    participant ScanFac as SeqScanOperatorFactory
+    participant FilterFac as FilterOperatorFactory
+    participant ProjFac as ProjectOperatorFactory
+    participant ScanOp as SeqScanOperator
+    participant FilterOp as FilterOperator
+    participant ProjOp as ProjectOperator
+
+    Client->>Factory: build_pipeline(["SequentialScan(users)", "Filter(id = 1)", "Project(name)"])
+
+    Factory->>ScanFac: create_operator("SequentialScan(users)", data_sources)
+    ScanFac->>ScanOp: create(records, "users")
+    ScanOp-->>Factory: scan_op
+
+    Factory->>FilterFac: create_operator("Filter(id = 1)", data_sources, scan_op)
+    FilterFac->>FilterFac: parse "id = 1" into BinaryOpNode
+    FilterFac->>FilterOp: create(child=scan_op, predicate=BinaryOpNode)
+    FilterOp-->>Factory: filter_op
+
+    Factory->>ProjFac: create_operator("Project(name)", data_sources, filter_op)
+    ProjFac->>ProjOp: create(child=filter_op, columns=["name"])
+    ProjOp-->>Factory: proj_op
+
+    Factory-->>Client: proj_op (ExecutionOperator pipeline)
+```
+
+The Factory Method pattern hides construction of the currently supported physical iterators: sequential scan, filter, and project. Adding another physical operator requires adding its concrete factory and registering it in `ExecutionPlanFactory`.
 
