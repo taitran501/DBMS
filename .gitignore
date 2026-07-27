@@ -3,6 +3,7 @@ __pycache__/
 .ruff_cache/
 .codegraph/
 .venv/
+.vscode/
 .coverage
 *.py[cod]
 docs/diagrams/full_version/
