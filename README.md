@@ -672,6 +672,7 @@ Our testing strategy organizes unit tests around the core capabilities of the DB
 - `test_ast.py`
 - `test_ast_visitor.py`
 - `test_execution_operator.py`
+- `test_execution_plan_factory.py`
 - `test_execution_planner.py`
 - `test_lexer.py`
 - `test_logical_plan.py`
@@ -905,6 +906,17 @@ sequenceDiagram
   * **Keeps Built Tables Independent:** Copies builder collections so later builder changes, or changes to another built table, do not mutate an existing table.
 * **Reason**: A `TableBuilder` provides a fluent API for optional columns, constraints, and indexes without exposing the `Table` constructor's collection details.
 
+##### Applied Code Snippet
+```python
+table = (
+    TableBuilder("users")
+    .add_column("id", "INT", nullable=False)
+    .add_column("name", "VARCHAR")
+    .add_constraint(Constraint("pk_users", "PRIMARY KEY", strategy=PrimaryKeyStrategy(("id",))))
+    .build()
+)
+```
+
 **Strategy Pattern (Constraint Validation)**
 
 ##### Class Diagram
@@ -996,6 +1008,14 @@ sequenceDiagram
   * **Easy to Extend:** A new rule only needs another `ConstraintStrategy` implementation; `Table` continues calling the same context API.
   * **Isolated Unit Testing:** Enables testing each validation rule independently (e.g., verifying Primary Key rules separately from Foreign Key rules).
 * **Reason**: `Table` owns when validation happens, `Constraint` acts as the Strategy context, and each concrete strategy owns one validation algorithm. Invalid rows are rejected before table state changes.
+
+##### Applied Code Snippet
+```python
+# Constraint delegates row validation to an injected strategy (e.g. CheckStrategy)
+constraint = Constraint("chk_age", "CHECK", strategy=CheckStrategy(lambda row: row["age"] >= 18))
+table.add_constraint(constraint)
+table.insert(Row("r1", {"id": 1, "age": 20}))  # Strategy validates before state mutates
+```
 
 **Factory Method (Index & DataType Creation)**
 
@@ -1100,6 +1120,14 @@ sequenceDiagram
   * **Preserves Product State:** Factory-created indexes copy the supplied column collection before exposing it as immutable tuple metadata.
 * **Reason**: `IndexFactory` and `DataTypeFactory` supply the common creation contract; their concrete subclasses choose the concrete product. `TableBuilder` accepts the resulting `Index` and `DataType` without knowing which concrete factory created them.
 
+##### Applied Code Snippet
+```python
+# Creator interface delegates concrete product instantiation to subclasses
+factory: IndexFactory = BTreeIndexFactory()
+btree_index = factory.create_index("idx_1", "idx_users_id", columns=["id"], unique=True)
+builder.add_index(btree_index)
+```
+
 **Composite Pattern (Database Hierarchy)**
 
 ##### Class Diagram
@@ -1169,6 +1197,15 @@ sequenceDiagram
   * **Safe Default Schema:** Renaming the default schema updates its name, while dropping it is rejected.
 * **Reason**: The hierarchy keeps catalog ownership local: `Database` manages schemas, while each schema manages its own table, view, and stored-procedure metadata. Dropping a schema removes that direct association; leaf lifecycle cascade is not implemented.
 
+##### Applied Code Snippet
+```python
+# Tree hierarchy: Database owns Schemas, Schema owns Tables/Views/Procedures
+db = Database("production_db")
+schema = Schema("s1", "public")
+db.create_schema(schema)
+schema.create_table(users_table)
+```
+
 **Repository Pattern (Metadata Management)**
 
 ##### Class Diagram
@@ -1228,6 +1265,14 @@ sequenceDiagram
   * **Keeps Lookup Semantics Clear:** A missing descriptor becomes `KeyError`, while backend duplicate or missing-remove errors are propagated.
 * **Reason**: `CatalogManager` acts as the Repository facade; the cache remains replaceable behind the protocol.
 
+##### Applied Code Snippet
+```python
+# Centralized Repository facade injecting MetadataCacheProtocol
+catalog = CatalogManager(metadata_cache=InMemoryCache())
+catalog.register_object("public.users", table_descriptor)
+table_meta = catalog.lookup_object("public.users")
+```
+
 **Builder Pattern (View Creation)**
 
 ##### Class Diagram
@@ -1280,6 +1325,16 @@ sequenceDiagram
   * **Flexible Construction:** Provides a fluent interface for configuring optional parameters (`view_id`, `query_executor`, `cached_results`).
   * **Validation Before Creation:** Ensures view name and query definition are valid and non-empty prior to creating the `View` instance.
 * **Reason**: A `ViewBuilder` encapsulates view creation rules cleanly without polluting the `View` domain entity constructor.
+
+##### Applied Code Snippet
+```python
+view = (
+    ViewBuilder("active_users", "SELECT * FROM users WHERE active = 1")
+    .set_view_id("v_001")
+    .set_query_executor(executor)
+    .build()
+)
+```
 
 #### 2. Storage Engine
 
@@ -1343,6 +1398,13 @@ sequenceDiagram
   * **Decoupled Eviction Logic:** `BufferPool` maintains cache pins while strategy handles selection logic.
 * **Reason**: Page replacement policy is isolated from the cache proxy. More policies can be added without editing `BufferPool`.
 
+##### Applied Code Snippet
+```python
+# BufferPool delegates eviction to an interchangeable replacement strategy
+buffer_pool = BufferPool(capacity=100, replacement_strategy=LruReplacementStrategy())
+buffer_pool.cache_page(new_page)  # LRU strategy selects victim unpinned page if full
+```
+
 **Proxy Pattern (Page Loading & Buffer Pool)**
 
 ##### Class Diagram
@@ -1405,6 +1467,13 @@ sequenceDiagram
   * **Transparent Caching:** Intercepts page requests to manage in-memory caching automatically.
   * **Pin/Unpin Protection:** Prevents in-use pages from being evicted during active transactions.
 * **Reason**: Callers use one page-access API and do not manage cache state, pin counts, or filesystem reads directly.
+
+##### Applied Code Snippet
+```python
+# BufferPool acts as a caching Proxy intercepting disk I/O requests
+buffer_pool = BufferPool(page_store=FileManager())
+page = buffer_pool.pin_page(page_id=42)  # Serves from cache or fetches from disk
+```
 
 **Adapter Pattern (File Access)**
 
@@ -1474,6 +1543,13 @@ sequenceDiagram
   * **Abstraction of I/O:** Isolates low-level file I/O operations from upper database layers.
   * **Protocol Compliance:** Fulfills `PageStoreProtocol` so `BufferPool` can read/write without knowing filesystem details.
 * **Reason**: Storage clients use one safe API without handling paths, offsets, binary modes, or page-file names directly.
+
+##### Applied Code Snippet
+```python
+# FileManager adapts local filesystem I/O to the PageStoreProtocol contract
+file_mgr: PageStoreProtocol = FileManager(root_path="./data")
+file_mgr.write_page(page)  # Serializes page & writes binary payload to disk
+```
 
 **Data Mapper Pattern (Record Read/Write)**
 
@@ -1570,6 +1646,13 @@ sequenceDiagram
   * **Format Independence:** Storage payload format can evolve without mutating `Row` or higher-level database code.
 * **Reason**: `Row` does not need to know the page-slot or byte format.
 
+##### Applied Code Snippet
+```python
+# RecordMapper translates between domain Row and physical Record byte payload
+record = RecordMapper.to_record(row)        # Domain Row -> Record byte payload
+domain_row = RecordMapper.to_row(record)   # Record byte payload -> Domain Row
+```
+
 **Singleton Pattern (Buffer Pool Management)**
 
 ##### Class Diagram
@@ -1617,6 +1700,14 @@ sequenceDiagram
   * **Controlled Configuration:** The first creation sets capacity, page store, and replacement strategy; later conflicting explicit configuration raises `ValueError`.
   * **Controlled Lifetime:** A lock protects creation/reset, while `reset_instance()` exists only for isolated unit testing.
 * **Reason**: Memory buffer caching requires centralized state management; Singleton guarantees one cache state for the process.
+
+##### Applied Code Snippet
+```python
+# Guarantees a single process-wide BufferPool cache instance
+pool1 = BufferPoolSingleton.get_instance(capacity=50, page_store=file_mgr)
+pool2 = BufferPoolSingleton.get_instance()
+assert pool1 is pool2  # True
+```
 
 **Factory Method Pattern (Page Allocation)**
 
@@ -1698,6 +1789,13 @@ sequenceDiagram
   * **Extensibility:** New page types (e.g., `OverflowPage`, `HeaderPage`) can be added by creating a new `Page` subclass and corresponding factory without modifying existing code.
 * **Reason**: Different storage subsystems require distinct page layouts and behaviors while sharing the underlying `Page` byte payload contract.
 
+##### Applied Code Snippet
+```python
+# Abstract creator delegates concrete Page subclass creation
+factory: PageFactory = DataPageFactory()
+data_page = factory.create_page(page_id=1, data=b"...")  # Instantiates DataPage
+```
+
 **Strategy Pattern (Storage Allocation)**
 
 ##### Class Diagram
@@ -1758,6 +1856,13 @@ sequenceDiagram
   * **Algorithm Flexibility**: Allocation strategies can be swapped without modifying storage management logic.
   * **Atomic Safety**: Failed reallocation attempts leave existing allocations untouched and preserve memory state.
 * **Reason**: Separating physical allocation strategies from storage context ownership keeps memory management clean, safe, and testable.
+
+##### Applied Code Snippet
+```python
+# Allocator delegates offset calculation to an injected allocation strategy
+allocator = StorageAllocator(total_space=4096, strategy=ContiguousAllocationStrategy())
+offset = allocator.allocate_space(bytes_needed=512)
+```
 
 #### 3. Query Processing
 
@@ -1867,6 +1972,14 @@ sequenceDiagram
   * **Separation of Concerns:** Tokenization (`Lexer`), grammar parsing (`SQLParser`), and expression evaluation (`ASTNode`) are completely decoupled.
 * **Reason**: SQL query parsing and condition evaluation require a grammatical representation that can be dynamically interpreted against table row data.
 
+##### Applied Code Snippet
+```python
+# SQLParser builds AST, ASTNode interprets expression against row context
+parser = SQLParser()
+ast = parser.parse_sql("SELECT name FROM users WHERE age >= 18")
+is_match = ast.interpret({"age": 20})  # True
+```
+
 **Iterator Pattern (Execution Operators)**
 
 ##### Class Diagram
@@ -1956,6 +2069,17 @@ sequenceDiagram
   * **Composability:** Operators implement a uniform iterator contract and can be composed into arbitrary query execution trees.
 * **Reason**: Execution engines require a pull-based interface to pipeline tuple processing across multiple operators efficiently.
 
+##### Applied Code Snippet
+```python
+# Volcano Iterator model streams rows row-by-row (open -> next -> close)
+scan_op = SeqScanOperator(records, table_name="users")
+filter_op = FilterOperator(child=scan_op, predicate=where_ast)
+filter_op.open()
+while (row := filter_op.next()) is not None:
+    print(row)
+filter_op.close()
+```
+
 **Visitor Pattern (AST Traversal)**
 
 ##### Class Diagram
@@ -2021,6 +2145,13 @@ sequenceDiagram
   * **Open/Closed Principle:** New compiler passes (e.g. type checking, cost estimation) can be added as new `ASTVisitor` subclasses without altering `ASTNode` classes.
   * **Cohesion:** Validations and plan transformations are centralized inside specialized visitor classes.
 * **Reason**: AST representations require distinct processing passes (validation, optimization, code generation) that evolve independently from syntax node definitions.
+
+##### Applied Code Snippet
+```python
+# Double-dispatch traversal separates compiler passes from AST node definitions
+visitor = ValidationVisitor(schema_catalog={"users": ["id", "name", "age"]})
+is_valid = ast.accept(visitor)  # Double dispatch accept()
+```
 
 **Chain of Responsibility Pattern (Query Validation)**
 
@@ -2105,6 +2236,14 @@ sequenceDiagram
   * **Dynamic Chain Composition**: Handlers can be reordered, added, or removed dynamically using `.set_next()`.
 * **Reason**: Query validation comprises multiple independent concerns (syntax, schema, security) that should execute sequentially and short-circuit early on failure.
 
+##### Applied Code Snippet
+```python
+# Handlers form a sequential validation chain (Syntax -> Schema -> Permission)
+chain = SyntaxValidationHandler()
+chain.set_next(SchemaValidationHandler()).set_next(PermissionValidationHandler())
+is_valid = chain.validate(ast, context, errors=[])
+```
+
 **Strategy Pattern (Query Optimization)**
 
 ##### Class Diagram
@@ -2165,6 +2304,13 @@ sequenceDiagram
   * **Algorithm Independence**: Optimization strategies can be replaced or extended dynamically.
   * **Rule Modularity**: Transformations like join reordering and index selection are encapsulated inside concrete optimization strategies.
 * **Reason**: Query optimization algorithms vary significantly between rule-based heuristics and cost-based statistics estimation; isolating them behind a Strategy contract keeps the engine flexible and extensible.
+
+##### Applied Code Snippet
+```python
+# Inter-changeable optimization algorithms (Rule-Based vs Cost-Based)
+optimizer = QueryOptimizer(strategy=CostBasedOptimizationStrategy())
+physical_plan = optimizer.optimize(logical_plan)
+```
 
 
 
