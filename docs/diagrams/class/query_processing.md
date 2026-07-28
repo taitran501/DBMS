@@ -319,3 +319,43 @@ classDiagram
 
 `ExecutionPlanFactory` maps descriptor prefixes to concrete `ExecutionOperatorFactory` implementations, shielding callers from direct operator instantiation.
 
+---
+
+## 7. Query Execution Pipeline (SELECT)
+
+`QueryProcessor` coordinates the fixed processing stages. This is a pipeline, not a second Chain of Responsibility: parsing, validation, planning, and execution all run in order when the previous stage succeeds.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class QueryProcessor {
+        +process(sql: str, session: dict) object
+    }
+
+    class SQLParser {
+        +parse_sql(sql: str) AST
+    }
+
+    class QueryValidator {
+        +validate(ast: AST, context: dict) bool
+    }
+
+    class ExecutionPlanner {
+        +build(ast: AST) ExecutionOperator
+    }
+
+    class QueryExecutor {
+        +execute(plan: PhysicalPlan | ExecutionOperator) object
+    }
+
+    QueryProcessor --> SQLParser : parse
+    QueryProcessor --> QueryValidator : validate
+    QueryProcessor --> ExecutionPlanner : plan
+    QueryProcessor --> QueryExecutor : execute
+    ExecutionPlanner ..> PhysicalPlanGeneratorVisitor : uses
+    QueryExecutor ..> ExecutionOperator : consumes
+```
+
+The implemented boundary is `SELECT`; write-statement planning remains explicit `NotImplementedError` work.
+

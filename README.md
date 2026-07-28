@@ -814,7 +814,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Query Validation | [Chain of Responsibility](docs/diagrams/sequence/design_patterns/query_processing.md#4-chain-of-responsibility-pattern-query-validation) | `QueryValidator`, `ValidationHandler`, `SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler` | Implemented |
 | | Query Optimization | [Strategy](docs/diagrams/sequence/design_patterns/query_processing.md#5-strategy-pattern-query-optimization) | `QueryOptimizer`, `OptimizationStrategy`, `RuleBasedOptimizationStrategy`, `CostBasedOptimizationStrategy` | Implemented |
 | | Execution Plan Creation | [Factory Method](docs/diagrams/sequence/design_patterns/query_processing.md#6-factory-method-execution-plan-creation) | `ExecutionPlanFactory`, `ExecutionOperatorFactory`, `SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory` | Partial |
-| | Query Execution Pipeline | Chain of Responsibility | `QueryExecutor`, `PhysicalPlan` | Planned |
+| | Query Execution Pipeline | [Processing Pipeline](docs/diagrams/sequence/design_patterns/query_processing.md#7-query-execution-pipeline-select) | `QueryProcessor`, `ExecutionPlanner`, `QueryExecutor`, `PhysicalPlanGeneratorVisitor` | Partial (SELECT) |
 | | Execution Operators | [Iterator](docs/diagrams/sequence/design_patterns/query_processing.md#2-iterator-pattern-execution-operators) | `ExecutionOperator`, `SeqScanOperator`, `FilterOperator`, `ProjectOperator` | Implemented |
 
 ### Design Patterns Deep Dive
@@ -2311,6 +2311,46 @@ sequenceDiagram
 optimizer = QueryOptimizer(strategy=CostBasedOptimizationStrategy())
 physical_plan = optimizer.optimize(logical_plan)
 ```
+
+**Processing Pipeline (SELECT Execution)**
+
+##### Class Diagram
+
+```mermaid
+classDiagram
+    QueryProcessor --> SQLParser : parses SQL
+    QueryProcessor --> QueryValidator : validates AST
+    QueryProcessor --> ExecutionPlanner : builds iterator pipeline
+    QueryProcessor --> QueryExecutor : executes pipeline
+    ExecutionPlanner --> PhysicalPlanGeneratorVisitor : uses
+    QueryExecutor --> ExecutionOperator : consumes
+```
+
+##### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Processor as QueryProcessor
+    participant Parser as SQLParser
+    participant Validator as QueryValidator
+    participant Planner as ExecutionPlanner
+    participant Executor as QueryExecutor
+
+    Client->>Processor: process(SELECT SQL, session)
+    Processor->>Parser: parse_sql(sql)
+    Parser-->>Processor: AST
+    Processor->>Validator: validate(AST, session)
+    Validator-->>Processor: valid
+    Processor->>Planner: build(AST)
+    Planner-->>Processor: ExecutionOperator pipeline
+    Processor->>Executor: execute(pipeline)
+    Executor-->>Processor: result rows
+    Processor-->>Client: result rows
+```
+
+* **Description**: `QueryProcessor` coordinates the sequential parse, validation, planning, and execution stages for supported `SELECT` statements. This is a processing pipeline, not a second Chain of Responsibility: every stage runs in a fixed order and produces the input for the next stage.
+* **Current boundary**: `SELECT` is supported. Planning `INSERT` and `CREATE TABLE` deliberately raises `NotImplementedError` until their write paths are implemented.
 
 
 
