@@ -794,13 +794,13 @@ This section outlines the design patterns planned for the core modules, linking 
 
 | Module | Core Feature | Pattern | Target Classes | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Database Objects** | Create Table | Builder | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` | Implemented |
-| | Constraint Validation | Strategy | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
-| | Index Creation | Factory Method | `IndexFactory`, `BTreeIndexFactory`, `HashIndexFactory`, `Index`, `BTreeIndex`, `HashIndex` | Implemented |
-| | Database → Schema → Table Hierarchy | Composite | `Database`, `Schema`, `Table`, `View`, `StoredProcedure` | Implemented |
-| | Metadata Management | Repository | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
-| | Data Type Creation | Factory Method | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
-| | View Creation | Builder | `ViewBuilder`, `View`, `AST`, `CatalogManager` | Implemented |
+| **Database Objects** | Create Table | [Builder](docs/diagrams/sequence/design_patterns/database_object.md#1-builder-pattern-table-creation) | `TableBuilder`, `Table`, `Column`, `Constraint`, `Index` | Implemented |
+| | Constraint Validation | [Strategy](docs/diagrams/sequence/design_patterns/database_object.md#2-strategy-pattern-constraint-validation) | `ConstraintStrategy`, `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`, `Constraint`, `Table` | Implemented |
+| | Index Creation | [Factory Method](docs/diagrams/sequence/design_patterns/database_object.md#3-factory-method-index--data-type-creation) | `IndexFactory`, `BTreeIndexFactory`, `HashIndexFactory`, `Index`, `BTreeIndex`, `HashIndex` | Implemented |
+| | Database → Schema → Table Hierarchy | [Composite](docs/diagrams/sequence/design_patterns/database_object.md#4-composite-pattern-database-hierarchy) | `Database`, `Schema`, `Table`, `View`, `StoredProcedure` | Implemented |
+| | Metadata Management | [Repository](docs/diagrams/sequence/design_patterns/database_object.md#5-repository-pattern-metadata-management) | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
+| | Data Type Creation | [Factory Method](docs/diagrams/sequence/design_patterns/database_object.md#3-factory-method-index--data-type-creation) | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
+| | View Creation | [Builder](docs/diagrams/sequence/design_patterns/database_object.md#6-builder-pattern-view-creation) | `ViewBuilder`, `View`, `AST`, `CatalogManager` | Implemented |
 | **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
 | | Page Allocation | [Factory Method](docs/diagrams/sequence/design_patterns/storage_engine.md#6-factory-method-page-allocation) | `PageFactory`, `DataPageFactory`, `IndexPageFactory`, `Page`, `DataPage`, `IndexPage` | Implemented |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
@@ -897,7 +897,7 @@ sequenceDiagram
     TableBuilder-->>Client: tableInstance
 ```
 
-* **Description**: Separates the construction of a complex object from its representation, allowing the same construction process to create various representations.
+* **Description**: Assembles complex `Table` metadata step-by-step (`add_column`, `add_constraint`, `add_index`) via `TableBuilder`, preventing telescoping constructor signatures with 10+ optional arguments during DDL parsing while validating component uniqueness prior to instantiating an immutable `Table` model.
 * **Use Case**: Creating a `Table` with multiple attributes (columns, data types, constraints).
 * **Advantages**:
   * **Prevents Parameter Confusion:** Avoids forcing callers to pass an overwhelming list of parameters or `None`/`null` values when building tables with varying complexity.
@@ -1000,7 +1000,7 @@ sequenceDiagram
     end
 ```
 
-* **Description**: Defines a family of algorithms, encapsulates each one, and makes them interchangeable.
+* **Description**: Delegates row validation from `Constraint` to injected strategy subclasses (`CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, `ForeignKeyStrategy`), preventing `Table` mutation methods (`insert`/`update`) from becoming clogged with complex `if/else` conditionals while allowing new validation rules to be added independently.
 * **Use Case**: Validating rows with injected `CheckStrategy`, `PrimaryKeyStrategy`, `UniqueStrategy`, or `ForeignKeyStrategy` before insert/update mutation.
 * **Advantages**:
   * **One Interchangeable Contract:** Every concrete strategy implements `validate(row, existing_rows=...)` through `ConstraintStrategy`.
@@ -1112,7 +1112,7 @@ sequenceDiagram
     TableBuilder->>Column: Column(..., dataType)
 ```
 
-* **Description**: Defines a creator interface while concrete factories decide which product class to instantiate.
+* **Description**: Declares creator interfaces (`IndexFactory`, `DataTypeFactory`) whose concrete factory subclasses instantiate concrete product classes (`BTreeIndex`, `HashIndex`, `IntegerDataType`, `VarcharDataType`), decoupling `TableBuilder` from concrete constructors and enabling new types to be introduced without modifying table creation code.
 * **Use Case**: The client chooses `BTreeIndexFactory` or `HashIndexFactory` for an index, and a concrete data-type factory for a configured `DataType` used by `TableBuilder`.
 * **Advantages**:
   * **Encapsulates Instantiation Details:** The caller calls one factory method and receives the common `Index` or `DataType` abstraction.
@@ -1189,7 +1189,7 @@ sequenceDiagram
     Database-->>Client: true
 ```
 
-* **Description**: Organizes `Database`, `Schema`, and child objects into a hierarchy for schema and component management.
+* **Description**: Structures `Database`, `Schema`, `Table`, `View`, and `StoredProcedure` into a tree hierarchy where container nodes manage domain object ownership and lifecycle, enforcing local catalog ownership and consistent lookup, rename, and drop semantics across container levels.
 * **Use Case**: `Database` manages `Schema` objects; each `Schema` manages its `Table`, `View`, and `StoredProcedure` collections.
 * **Advantages**:
   * **Clear Ownership:** Each level owns only its direct child collection and exposes typed create, lookup, rename, and drop operations.
@@ -1258,7 +1258,7 @@ sequenceDiagram
     CatalogManager-->>Client: true
 ```
 
-* **Description**: Provides a single API for storing, retrieving, and removing catalog metadata through an injected cache abstraction.
+* **Description**: Provides a centralized Repository facade in `CatalogManager` for registering, looking up, and deleting object descriptors via an injected `MetadataCacheProtocol`, decoupling schema management from specific in-memory cache or persistent storage implementations.
 * **Use Case**: Callers manage a descriptor such as `"public.users"` without depending on the cache implementation.
 * **Advantages**:
   * **Decouples Storage:** `CatalogManager` calls only the `MetadataCacheProtocol` contract.
@@ -1319,7 +1319,7 @@ sequenceDiagram
     ViewBuilder-->>Client: viewInstance
 ```
 
-* **Description**: Separates the multi-step construction of a `View` object from its representation, validating query parameters before object instantiation.
+* **Description**: Constructs `View` instances incrementally (`set_name`, `set_query_definition`, `set_query_executor`) while validating SQL query definitions and executor dependencies prior to object instantiation, preventing invalid view configurations from corrupting schema state.
 * **Use Case**: Constructing a `View` with custom query definitions, executors, and cached results.
 * **Advantages**:
   * **Flexible Construction:** Provides a fluent interface for configuring optional parameters (`view_id`, `query_executor`, `cached_results`).
@@ -1391,7 +1391,7 @@ sequenceDiagram
     BufferPool->>BufferPool: remove victim and cache new_page
 ```
 
-* **Description**: `BufferPool` passes the unpinned page ids to a `BufferReplacementStrategy`, which selects one victim.
+* **Description**: Delegates unpinned victim page selection from `BufferPool` to an injected `BufferReplacementStrategy` (`FifoReplacementStrategy`, `LruReplacementStrategy`), allowing page eviction algorithms to be swapped at runtime according to workload characteristics without modifying buffer pool core memory management logic.
 * **Use Case**: FIFO is the default strategy; callers can inject LRU without changing cache, pin, dirty-page, or flush logic.
 * **Advantages**:
   * **Algorithm Pluggability:** Easily switch between FIFO, LRU, or custom eviction strategies.
@@ -1461,7 +1461,7 @@ sequenceDiagram
     BufferPool-->>Client: Page
 ```
 
-* **Description**: `BufferPool` is a cache proxy in front of a `PageStoreProtocol` implementation such as `FileManager`.
+* **Description**: Acts as a Caching & Protection Proxy in `BufferPool` in front of `FileManager`, intercepting `pin_page` calls to serve cached RAM pages or fetch misses from disk while tracking transaction pin counts to prevent active transaction pages from being prematurely evicted.
 * **Use Case**: `pin_page()` returns a cached page when possible; on a miss it loads the page through the store and caches it before returning.
 * **Advantages**:
   * **Transparent Caching:** Intercepts page requests to manage in-memory caching automatically.
@@ -1537,7 +1537,7 @@ sequenceDiagram
     FileManager-->>Client: Page
 ```
 
-* **Description**: `FileManager` adapts root-relative DBMS file operations to Python's local filesystem API and implements `PageStoreProtocol`.
+* **Description**: Adapts raw OS filesystem I/O (`Path`, `open`, binary bytes) inside `FileManager` to the DBMS `PageStoreProtocol` contract (`load_page`, `write_page`), bridging incompatible byte/offset file APIs with the higher-level DBMS `Page` domain contract while hiding file path resolution and serialization details.
 * **Use Case**: It reads/writes byte ranges and persists a serialized `Page` through `load_page()` and `write_page()`.
 * **Advantages**:
   * **Abstraction of I/O:** Isolates low-level file I/O operations from upper database layers.
@@ -1639,7 +1639,7 @@ sequenceDiagram
     RecordManager-->>Client: "page_id:slot_id"
 ```
 
-* **Description**: `RecordMapper` converts a database-object `Row` to a storage `Record` and its byte payload; it performs the reverse conversion when the row is read.
+* **Description**: Translates between in-memory domain `Row` objects and physical storage `Record` binary payloads via `RecordMapper`, keeping domain row models decoupled from page-slot binary layouts and allowing storage serialization formats to evolve independently.
 * **Use Case**: `RecordManager` stores that payload in a `Page` slot and returns a `page_id:slot_id` location.
 * **Advantages**:
   * **Separation of Concerns:** `Row` remains a clean domain entity; binary serialization logic is encapsulated in `RecordMapper`.
@@ -1693,7 +1693,7 @@ sequenceDiagram
     BufferPool-->>Client: _instance
 ```
 
-* **Description**: Both `BufferPool(...)` and `BufferPool.get_instance()` return the same process-wide cache instance, coordinating memory caching across the database engine.
+* **Description**: Restricts `BufferPool` to a single thread-safe process-wide instance via `__new__` and `RLock`, ensuring all DBMS components share one unified RAM buffer cache instead of competing duplicate caches and preventing dirty page write-back conflicts.
 * **Use Case**: Storage components access one shared buffer pool instead of creating independent caches.
 * **Advantages**:
   * **Global Cache Consistency:** Prevents duplicate buffer pool instances from polluting RAM or creating dirty page conflicts.
@@ -1782,7 +1782,7 @@ sequenceDiagram
     end
 ```
 
-* **Description**: Encapsulates concrete `Page` subclass instantiation behind factory methods (`DataPageFactory`, `IndexPageFactory`).
+* **Description**: Defines a `PageFactory` creator interface whose subclasses (`DataPageFactory`, `IndexPageFactory`) encapsulate header, slot, and byte payload initialization for specialized `Page` products, allowing storage operators to interact with abstract pages without coupling to concrete constructors.
 * **Use Case**: Allocating specialized page types (`DataPage` for tuple records, `IndexPage` for B-Tree index nodes) without coupling callers to concrete constructors.
 * **Advantages**:
   * **Loose Coupling:** Higher-level storage and query operators depend only on abstract `PageFactory` and `Page` abstractions.
@@ -1850,7 +1850,7 @@ sequenceDiagram
     end
 ```
 
-* **Description**: `StorageAllocator` delegates physical byte offset allocation, deallocation, and reallocation to an injected `StorageAllocationStrategy`.
+* **Description**: Delegates physical memory and byte offset allocation algorithms from `StorageAllocator` to an injected `StorageAllocationStrategy` (`ContiguousAllocationStrategy`), enabling physical space allocation techniques to be swapped without modifying storage allocator context logic.
 * **Use Case**: Defaulting to `ContiguousAllocationStrategy` while allowing custom allocation strategies (e.g. Best-Fit, Segmented Allocation) to be injected dynamically.
 * **Advantages**:
   * **Algorithm Flexibility**: Allocation strategies can be swapped without modifying storage management logic.
@@ -1965,7 +1965,7 @@ sequenceDiagram
     AST-->>Client: True
 ```
 
-* **Description**: Tokenizes raw SQL string input via `Lexer`, parses syntax into an `AST` via `SQLParser`, and evaluates expressions dynamically against row data using `interpret(context)` on `ASTNode`.
+* **Description**: Evaluates SQL grammar expression nodes (`BinaryOpNode`, `LiteralNode`, `IdentifierNode`) dynamically against table row data at runtime via `interpret(context)`, enabling dynamic SQL `WHERE` predicate evaluation without hardcoded filtering logic.
 * **Use Case**: Serving as the entrypoint parser for `SELECT`, `INSERT`, and `CREATE TABLE` SQL statements, allowing query condition evaluation without hardcoded logic.
 * **Advantages**:
   * **Extensible Grammar:** New expressions and operators can be added by declaring a new `ASTNode` subclass implementing `interpret(context)`.
@@ -2062,7 +2062,7 @@ sequenceDiagram
     Filter->>Scan: close()
 ```
 
-* **Description**: Implements the Volcano Iterator model (`open()`, `next()`, `close()`) allowing physical operators (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) to stream tuple results row-by-row.
+* **Description**: Implements the Volcano Iterator stream interface (`open()`, `next()`, `close()`) across physical operators (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) to process query tuples row-by-row in a pull-based pipeline, guaranteeing constant $O(1)$ memory overhead per operator.
 * **Use Case**: Chaining physical operators into a pull-based query execution pipeline for sequential scanning, filtering, and projecting result attributes.
 * **Advantages**:
   * **Memory Efficiency (Streaming):** Tuples are fetched and processed one row at a time without loading entire result sets into RAM.
@@ -2139,7 +2139,7 @@ sequenceDiagram
     AST-->>Client: ProjectOperator (pipeline)
 ```
 
-* **Description**: Separates query compilation operations (schema validation, plan generation, optimization) from the AST syntax tree nodes using double-dispatch `accept(visitor)`.
+* **Description**: Separates query compilation operations (`ValidationVisitor`, `PhysicalPlanGeneratorVisitor`) from AST syntax tree nodes using double dispatch (`ASTNode.accept(visitor)`), complying with the Open/Closed Principle by allowing new compiler passes to be added without modifying AST node classes.
 * **Use Case**: Traversing AST nodes via `ValidationVisitor` to check table/column permissions or `PhysicalPlanGeneratorVisitor` to construct physical `ExecutionOperator` pipelines.
 * **Advantages**:
   * **Open/Closed Principle:** New compiler passes (e.g. type checking, cost estimation) can be added as new `ASTVisitor` subclasses without altering `ASTNode` classes.
@@ -2229,7 +2229,7 @@ sequenceDiagram
     end
 ```
 
-* **Description**: `QueryValidator` executes a sequential validation pipeline where each handler (`SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler`) performs a specific validation pass before passing execution to the next link.
+* **Description**: Chains validation handlers in `QueryValidator` (`SyntaxValidationHandler` -> `SchemaValidationHandler` -> `PermissionValidationHandler`) to process query validation rules sequentially with early short-circuiting on failure, decoupling validation passes into reorderable, modular handlers.
 * **Use Case**: Validating incoming queries step-by-step for syntax correctness, schema existence, and user access rights prior to compilation.
 * **Advantages**:
   * **Decoupled Validation Pass**: Validation rules are cleanly separated into focused handler classes.
@@ -2298,7 +2298,7 @@ sequenceDiagram
     Optimizer-->>Client: PhysicalPlan
 ```
 
-* **Description**: `QueryOptimizer` delegates logical query plan optimization and physical plan generation to an injected `OptimizationStrategy` (`RuleBasedOptimizationStrategy` or `CostBasedOptimizationStrategy`).
+* **Description**: Delegates logical query plan transformation and physical plan optimization from `QueryOptimizer` to an injected `OptimizationStrategy` (`RuleBasedOptimizationStrategy`, `CostBasedOptimizationStrategy`), enabling optimization algorithms to be swapped dynamically without altering the core optimizer framework.
 * **Use Case**: Applying rule-based transformations (constant folding, projection pruning, predicate pushdown, index selection, parallel scan selection) or cost-based plan selection without altering optimizer management code.
 * **Advantages**:
   * **Algorithm Independence**: Optimization strategies can be replaced or extended dynamically.
