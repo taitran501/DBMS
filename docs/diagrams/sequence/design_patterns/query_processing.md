@@ -204,3 +204,45 @@ sequenceDiagram
 
 The Factory Method pattern hides construction of the currently supported physical iterators: sequential scan, filter, and project. Adding another physical operator requires adding its concrete factory and registering it in `ExecutionPlanFactory`.
 
+---
+
+## 7. Query Execution Pipeline (SELECT)
+
+`QueryProcessor` runs a fixed parse → validate → plan → execute flow for `SELECT`. It is not another Chain of Responsibility because the stages do not choose whether to delegate to alternate handlers; each successful stage supplies the next stage's input.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Processor as QueryProcessor
+    participant Parser as SQLParser
+    participant Validator as QueryValidator
+    participant Planner as ExecutionPlanner
+    participant Visitor as PhysicalPlanGeneratorVisitor
+    participant Executor as QueryExecutor
+    participant Pipeline as ExecutionOperator pipeline
+
+    Client->>Processor: process("SELECT ...", session)
+    Processor->>Parser: parse_sql(sql)
+    Parser-->>Processor: AST
+    Processor->>Validator: validate(AST, session)
+
+    alt invalid query
+        Validator-->>Processor: false with errors
+        Processor-->>Client: ValueError
+    else valid SELECT
+        Validator-->>Processor: true
+        Processor->>Planner: build(AST)
+        Planner->>Visitor: AST.accept(visitor)
+        Visitor-->>Planner: iterator pipeline
+        Planner-->>Processor: ExecutionOperator
+        Processor->>Executor: execute(pipeline)
+        Executor->>Pipeline: iterate rows
+        Pipeline-->>Executor: result rows
+        Executor-->>Processor: result rows
+        Processor-->>Client: result rows
+    end
+```
+
+`ExecutionPlanner` deliberately rejects unsupported write statements with `NotImplementedError` until write execution is implemented.
+

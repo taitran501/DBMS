@@ -1,4 +1,5 @@
 from dbms.query_processing.physical_plan import PhysicalPlan
+from dbms.query_processing.execution_operator import ExecutionOperator
 
 class QueryExecutor:
     def __init__(self) -> None:
@@ -6,10 +7,13 @@ class QueryExecutor:
 
     def execute(
         self,
-        plan: PhysicalPlan,
+        plan: PhysicalPlan | ExecutionOperator,
         transaction: object | None = None,
     ) -> object | None:
         try:
+            if isinstance(plan, ExecutionOperator):
+                self.results = list(plan)
+                return self.results
             self.results = plan.rows if hasattr(plan, "rows") else []
             if hasattr(plan, "error") and plan.error:
                 raise plan.error
