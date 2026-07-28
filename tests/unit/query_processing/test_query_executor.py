@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from dbms.query_processing.query_executor import QueryExecutor
+from dbms.query_processing.execution_operator import SeqScanOperator
 from dbms.query_processing.physical_plan import PhysicalPlan
 
 
@@ -16,6 +17,14 @@ def test_execute_query_plan():
 
     # Assert
     assert result == [{"id": 1}, {"id": 2}]
+
+
+def test_execute_iterator_pipeline():
+    executor = QueryExecutor()
+    pipeline = SeqScanOperator([{"id": 1}, {"id": 2}], "users")
+
+    assert executor.execute(pipeline) == [{"id": 1}, {"id": 2}]
+    assert executor.fetch() == [{"id": 1}, {"id": 2}]
 
 
 def test_fetch():
