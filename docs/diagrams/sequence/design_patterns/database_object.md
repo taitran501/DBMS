@@ -198,4 +198,43 @@ sequenceDiagram
     ViewBuilder-->>Client: viewInstance
 ```
 
+---
+
+## 7. Observer Pattern (Trigger Notifications)
+
+`TriggerManager` registers named `Trigger` observers by event, then dispatches
+the changed row to each observer in registration order. A callback may return
+`None` after its side effect; only an explicit `False` stops the dispatch.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Manager as TriggerManager
+    participant Audit as Trigger(audit_insert)
+    participant Cache as Trigger(refresh_cache)
+    participant AuditCallback
+    participant CacheCallback
+
+    Client->>Manager: create_trigger("audit_insert", "INSERT", "users", audit_callback)
+    Manager->>Manager: reject duplicate trigger name
+    Manager->>Manager: register Trigger under INSERT
+    Client->>Manager: create_trigger("refresh_cache", "INSERT", "users", cache_callback)
+    Manager->>Manager: register Trigger under INSERT
+    Client->>Manager: execute_triggers("INSERT", row)
+    Manager->>Audit: fire(row)
+    Audit->>AuditCallback: callback(row)
+    AuditCallback-->>Audit: None
+    Audit-->>Manager: True
+    Manager->>Cache: fire(row)
+    Cache->>CacheCallback: callback(row)
+    CacheCallback-->>Cache: None
+    Cache-->>Manager: True
+    Manager-->>Client: True
+```
+
+If a callback raises an exception, `Trigger.fire()` raises `TriggerError` so
+the caller can handle a failed notification. The current registry is
+event-scoped; `Table` integration is not implied by this pattern.
+
 

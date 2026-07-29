@@ -1,6 +1,9 @@
 from dbms.database_object.trigger_manager import TriggerManager
 from dbms.database_object.trigger import Trigger
+from dbms.database_object.exceptions import DuplicateTriggerError
 from unittest.mock import Mock
+
+import pytest
 
 
 def test_trigger_manager_can_be_created():
@@ -70,3 +73,25 @@ def test_execute_triggers():
     # Assert
     assert result is True
     trigger.fire.assert_called_once_with(row)
+
+
+def test_create_trigger_rejects_duplicate_names_across_events():
+    manager = TriggerManager({})
+    manager.create_trigger("audit_change", "INSERT", "users", Mock())
+
+    with pytest.raises(DuplicateTriggerError, match="audit_change"):
+        manager.create_trigger("audit_change", "UPDATE", "users", Mock())
+
+
+def test_execute_triggers_notifies_observers_in_registration_order():
+    manager = TriggerManager({})
+    calls: list[str] = []
+    manager.create_trigger(
+        "audit_change", "INSERT", "users", lambda row: calls.append("audit")
+    )
+    manager.create_trigger(
+        "refresh_cache", "INSERT", "users", lambda row: calls.append("cache")
+    )
+
+    assert manager.execute_triggers("INSERT", {"id": 1}) is True
+    assert calls == ["audit", "cache"]

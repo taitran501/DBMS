@@ -137,12 +137,16 @@
   - Trigger
     - test_trigger_can_be_created()
     - test_fire()
+    - test_fire_treats_none_callback_result_as_success()
+    - test_fire_wraps_callback_error()
   - TriggerManager
     - test_trigger_manager_can_be_created()
     - test_create_trigger()
     - test_drop_trigger()
     - test_bind_event()
     - test_execute_triggers()
+    - test_create_trigger_rejects_duplicate_names_across_events()
+    - test_execute_triggers_notifies_observers_in_registration_order()
   - View
     - test_view_can_be_created()
     - test_refresh()
