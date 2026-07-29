@@ -14,6 +14,22 @@ The high-level visual representation of the subsystems within the Mini DBMS:
 
 ---
 
+### API Architecture Proposal
+
+The proposed Django REST API presentation layer is documented separately. It
+shows how a future HTTP API can call the existing query-processing and storage
+engine layers without replacing them:
+
+![Proposed DBMS API implementation with Django](docs/diagrams/api/django_dbms_api_architecture.png)
+
+See the full scope, boundary rules, and implementation-status table in
+[DBMS API Architecture Proposal](docs/api_readme.md).
+
+This is a planned architecture reference; the Django API files shown in the
+diagram are not yet implemented in this repository.
+
+---
+
 ### 2. Class Diagram Overview
 
 The architectural components and how they interact conceptually:
