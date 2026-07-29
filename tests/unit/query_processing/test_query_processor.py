@@ -55,3 +55,19 @@ def test_query_processor_stops_before_execution_when_validation_fails():
         processor.process("SELECT name FROM users", session)
 
     executor.execute.assert_not_called()
+
+
+def test_query_processor_runs_create_insert_and_select_in_one_session():
+    processor = QueryProcessor(SQLParser(), QueryValidator(), QueryExecutor())
+    session = {
+        "data_sources": {},
+        "schema_catalog": {},
+        "username": "engineer",
+        "user_permissions": {"engineer": {"CREATE", "INSERT", "SELECT"}},
+    }
+
+    assert processor.process("CREATE TABLE users (id INT, name TEXT)", session) is True
+    assert processor.process("INSERT INTO users VALUES (1, 'Ada')", session) == 1
+    assert processor.process("SELECT name FROM users", session) == [{"name": "Ada"}]
+    assert session["schema_catalog"] == {"users": ["id", "name"]}
+    assert session["data_sources"] == {"users": [{"id": 1, "name": "Ada"}]}

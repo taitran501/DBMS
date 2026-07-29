@@ -108,17 +108,18 @@ class RuleBasedOptimizationStrategy(OptimizationStrategy):
     def _apply_index_selection(self, ops: list[Any], available_indexes: dict[str, str]) -> list[Any]:
         if not available_indexes:
             return ops
-        if len(ops) == 2 and isinstance(ops[0], str) and isinstance(ops[1], str):
-            if ops[0].startswith("TableScan(") and ops[1].startswith("Filter("):
-                tbl_name = ops[0][len("TableScan(") : -1].strip()
-                filter_expr = ops[1][len("Filter(") : -1].strip()
-                # Check for "col = val" pattern
-                m = re.match(r"(\w+)\s*=\s*(.+)", filter_expr)
-                if m:
-                    col_name = m.group(1).strip()
-                    if col_name in available_indexes:
-                        idx_name = available_indexes[col_name]
-                        return [f"IndexScan({tbl_name}, {idx_name}, {filter_expr})"]
+        for index in range(len(ops) - 1):
+            scan, filter_op = ops[index], ops[index + 1]
+            if not isinstance(scan, str) or not isinstance(filter_op, str):
+                continue
+            if not scan.startswith("TableScan(") or not filter_op.startswith("Filter("):
+                continue
+            tbl_name = scan[len("TableScan(") : -1].strip()
+            filter_expr = filter_op[len("Filter(") : -1].strip()
+            m = re.match(r"(\w+)\s*=\s*(.+)", filter_expr)
+            if m and m.group(1).strip() in available_indexes:
+                idx_name = available_indexes[m.group(1).strip()]
+                return ops[:index] + [f"IndexScan({tbl_name}, {idx_name}, {filter_expr})"] + ops[index + 2 :]
         return ops
 
     def _apply_join_reordering(self, ops: list[Any], cardinalities: dict[str, int]) -> list[Any]:

@@ -275,7 +275,7 @@ classDiagram
 
 ## 6. Factory Method (Execution Plan Creation)
 
-`ExecutionOperatorFactory` defines the abstract Factory Method interface for constructing physical `ExecutionOperator` nodes (`SeqScanOperator`, `FilterOperator`, `ProjectOperator`) out of physical plan descriptors. `ExecutionPlanFactory` acts as the coordinator.
+`ExecutionOperatorFactory` defines the abstract Factory Method interface for constructing physical `ExecutionOperator` nodes from optimizer descriptors. `ExecutionPlanFactory` coordinates sequential, index-selected, parallel, filter, and project operators.
 
 ```mermaid
 classDiagram
@@ -294,6 +294,14 @@ classDiagram
         +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) FilterOperator
     }
 
+    class IndexScanOperatorFactory {
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) IndexScanOperator
+    }
+
+    class ParallelTableScanOperatorFactory {
+        +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) ParallelTableScanOperator
+    }
+
     class ProjectOperatorFactory {
         +create_operator(op_descriptor: str, data_sources: dict, child: ExecutionOperator) ProjectOperator
     }
@@ -310,18 +318,22 @@ classDiagram
 
     SeqScanOperatorFactory --|> ExecutionOperatorFactory
     FilterOperatorFactory --|> ExecutionOperatorFactory
+    IndexScanOperatorFactory --|> ExecutionOperatorFactory
+    ParallelTableScanOperatorFactory --|> ExecutionOperatorFactory
     ProjectOperatorFactory --|> ExecutionOperatorFactory
     SeqScanOperatorFactory ..> ExecutionOperator : creates
     FilterOperatorFactory ..> ExecutionOperator : creates
+    IndexScanOperatorFactory ..> ExecutionOperator : creates
+    ParallelTableScanOperatorFactory ..> ExecutionOperator : creates
     ProjectOperatorFactory ..> ExecutionOperator : creates
     ExecutionPlanFactory o-- ExecutionOperatorFactory : uses
 ```
 
-`ExecutionPlanFactory` maps descriptor prefixes to concrete `ExecutionOperatorFactory` implementations, shielding callers from direct operator instantiation.
+`ExecutionPlanFactory` maps descriptor prefixes to concrete `ExecutionOperatorFactory` implementations, including optimizer-produced `IndexScan` and `ParallelTableScan`. The in-memory index scan preserves predicate semantics; persistent index lookup remains a Storage Engine concern.
 
 ---
 
-## 7. Query Execution Pipeline (SELECT)
+## 7. Query Execution Pipeline (In-Memory Session)
 
 `QueryProcessor` coordinates the fixed processing stages. This is a pipeline, not a second Chain of Responsibility: parsing, validation, planning, and execution all run in order when the previous stage succeeds.
 
@@ -342,20 +354,36 @@ classDiagram
     }
 
     class ExecutionPlanner {
-        +build(ast: AST) ExecutionOperator
+        +configure_context(data_sources, schema_catalog, available_indexes, table_cardinalities) None
+        +build(ast: AST) ExecutionOperator | MutationOperator
+    }
+
+    class QueryOptimizer {
+        +optimize(plan: LogicalPlan) PhysicalPlan
+    }
+
+    class ExecutionPlanFactory {
+        +build_pipeline(physical_descriptors: list) ExecutionOperator
     }
 
     class QueryExecutor {
-        +execute(plan: PhysicalPlan | ExecutionOperator) object
+        +execute(plan: PhysicalPlan | ExecutionOperator | MutationOperator) object
+    }
+
+    class MutationOperator {
+        <<abstract>>
+        +execute() object
     }
 
     QueryProcessor --> SQLParser : parse
     QueryProcessor --> QueryValidator : validate
     QueryProcessor --> ExecutionPlanner : plan
     QueryProcessor --> QueryExecutor : execute
-    ExecutionPlanner ..> PhysicalPlanGeneratorVisitor : uses
+    ExecutionPlanner --> QueryOptimizer : optimizes
+    ExecutionPlanner --> ExecutionPlanFactory : builds SELECT operators
     QueryExecutor ..> ExecutionOperator : consumes
+    QueryExecutor ..> MutationOperator : executes
 ```
 
-The implemented boundary is `SELECT`; write-statement planning remains explicit `NotImplementedError` work.
+The pipeline supports `SELECT`, `INSERT`, and `CREATE TABLE` against request-session `data_sources` and `schema_catalog`. Storage-engine persistence and physical index lookup are explicitly outside this in-memory boundary.
 

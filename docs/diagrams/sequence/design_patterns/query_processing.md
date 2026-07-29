@@ -170,45 +170,39 @@ The strategy pattern decouples transformation heuristics from optimizer lifecycl
 
 ## 6. Factory Method (Execution Plan Creation)
 
-`ExecutionPlanFactory` coordinates physical operator creation by dispatching operator descriptors to concrete `ExecutionOperatorFactory` subclasses (`SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory`).
+`ExecutionPlanFactory` coordinates physical operator creation by dispatching optimizer descriptors to concrete `ExecutionOperatorFactory` subclasses, including `IndexScanOperatorFactory` and `ParallelTableScanOperatorFactory`.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
     participant Factory as ExecutionPlanFactory
-    participant ScanFac as SeqScanOperatorFactory
-    participant FilterFac as FilterOperatorFactory
+    participant IndexFac as IndexScanOperatorFactory
     participant ProjFac as ProjectOperatorFactory
-    participant ScanOp as SeqScanOperator
-    participant FilterOp as FilterOperator
+    participant IndexOp as IndexScanOperator
     participant ProjOp as ProjectOperator
 
-    Client->>Factory: build_pipeline(["SequentialScan(users)", "Filter(id = 1)", "Project(name)"])
+    Client->>Factory: build_pipeline(["IndexScan(users, users_pk, id = 1)", "Project(name)"])
 
-    Factory->>ScanFac: create_operator("SequentialScan(users)", data_sources)
-    ScanFac->>ScanOp: create(records, "users")
-    ScanOp-->>Factory: scan_op
+    Factory->>IndexFac: create_operator("IndexScan(users, users_pk, id = 1)", data_sources)
+    IndexFac->>IndexFac: parse "id = 1" into BinaryOpNode
+    IndexFac->>IndexOp: create(records, "users", "users_pk", predicate)
+    IndexOp-->>Factory: index_op
 
-    Factory->>FilterFac: create_operator("Filter(id = 1)", data_sources, scan_op)
-    FilterFac->>FilterFac: parse "id = 1" into BinaryOpNode
-    FilterFac->>FilterOp: create(child=scan_op, predicate=BinaryOpNode)
-    FilterOp-->>Factory: filter_op
-
-    Factory->>ProjFac: create_operator("Project(name)", data_sources, filter_op)
-    ProjFac->>ProjOp: create(child=filter_op, columns=["name"])
+    Factory->>ProjFac: create_operator("Project(name)", data_sources, index_op)
+    ProjFac->>ProjOp: create(child=index_op, columns=["name"])
     ProjOp-->>Factory: proj_op
 
     Factory-->>Client: proj_op (ExecutionOperator pipeline)
 ```
 
-The Factory Method pattern hides construction of the currently supported physical iterators: sequential scan, filter, and project. Adding another physical operator requires adding its concrete factory and registering it in `ExecutionPlanFactory`.
+The Factory Method pattern hides construction of sequential, index-selected, parallel, filter, and project iterators. The in-memory `IndexScanOperator` preserves index-selected predicate semantics; persistent index lookup remains a Storage Engine concern.
 
 ---
 
-## 7. Query Execution Pipeline (SELECT)
+## 7. Query Execution Pipeline (In-Memory Session)
 
-`QueryProcessor` runs a fixed parse → validate → plan → execute flow for `SELECT`. It is not another Chain of Responsibility because the stages do not choose whether to delegate to alternate handlers; each successful stage supplies the next stage's input.
+`QueryProcessor` runs a fixed parse → validate → optimize/plan → execute flow for `SELECT`, `INSERT`, and `CREATE TABLE` in an in-memory session. It is not another Chain of Responsibility because the stages do not choose whether to delegate to alternate handlers; each successful stage supplies the next stage's input.
 
 ```mermaid
 sequenceDiagram
@@ -218,7 +212,8 @@ sequenceDiagram
     participant Parser as SQLParser
     participant Validator as QueryValidator
     participant Planner as ExecutionPlanner
-    participant Visitor as PhysicalPlanGeneratorVisitor
+    participant Optimizer as QueryOptimizer
+    participant Factory as ExecutionPlanFactory
     participant Executor as QueryExecutor
     participant Pipeline as ExecutionOperator pipeline
 
@@ -230,11 +225,13 @@ sequenceDiagram
     alt invalid query
         Validator-->>Processor: false with errors
         Processor-->>Client: ValueError
-    else valid SELECT
+    else valid statement
         Validator-->>Processor: true
         Processor->>Planner: build(AST)
-        Planner->>Visitor: AST.accept(visitor)
-        Visitor-->>Planner: iterator pipeline
+        Planner->>Optimizer: optimize(logical SELECT plan)
+        Optimizer-->>Planner: physical descriptors
+        Planner->>Factory: build_pipeline(descriptors)
+        Factory-->>Planner: iterator pipeline
         Planner-->>Processor: ExecutionOperator
         Processor->>Executor: execute(pipeline)
         Executor->>Pipeline: iterate rows
@@ -244,5 +241,5 @@ sequenceDiagram
     end
 ```
 
-`ExecutionPlanner` deliberately rejects unsupported write statements with `NotImplementedError` until write execution is implemented.
+For `CREATE TABLE` and `INSERT`, `ExecutionPlanner` returns a `MutationOperator`; `QueryExecutor` applies it to session `schema_catalog` and `data_sources`. Persistence and physical storage/index work remain out of scope.
 

@@ -28,9 +28,14 @@ class QueryProcessor:
             details = "; ".join(self.query_validator.errors)
             raise ValueError(f"Query validation failed: {details}")
 
-        data_sources = context.get("data_sources")
-        if data_sources is not None:
-            self.execution_planner.data_sources = data_sources
+        data_sources = context.setdefault("data_sources", {})
+        schema_catalog = context.setdefault("schema_catalog", {})
+        self.execution_planner.configure_context(
+            data_sources,
+            schema_catalog,
+            context.get("available_indexes"),
+            context.get("table_cardinalities"),
+        )
 
         pipeline = self.execution_planner.build(ast)
         return self.query_executor.execute(pipeline, transaction=context.get("transaction"))

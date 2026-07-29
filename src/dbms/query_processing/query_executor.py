@@ -1,5 +1,5 @@
 from dbms.query_processing.physical_plan import PhysicalPlan
-from dbms.query_processing.execution_operator import ExecutionOperator
+from dbms.query_processing.execution_operator import ExecutionOperator, MutationOperator
 
 class QueryExecutor:
     def __init__(self) -> None:
@@ -7,10 +7,13 @@ class QueryExecutor:
 
     def execute(
         self,
-        plan: PhysicalPlan | ExecutionOperator,
+        plan: PhysicalPlan | ExecutionOperator | MutationOperator,
         transaction: object | None = None,
     ) -> object | None:
         try:
+            if isinstance(plan, MutationOperator):
+                self.results = []
+                return plan.execute()
             if isinstance(plan, ExecutionOperator):
                 self.results = list(plan)
                 return self.results

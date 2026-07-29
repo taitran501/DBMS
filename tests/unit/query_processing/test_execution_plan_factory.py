@@ -2,6 +2,8 @@ import pytest
 
 from dbms.query_processing.execution_operator import (
     FilterOperator,
+    IndexScanOperator,
+    ParallelTableScanOperator,
     ProjectOperator,
     SeqScanOperator,
 )
@@ -105,3 +107,25 @@ def test_execution_plan_factory_unknown_operator_raises_error():
     plan_factory = ExecutionPlanFactory()
     with pytest.raises(UnknownOperatorError, match="No factory registered"):
         plan_factory.build_operator("UnknownOp(users)")
+
+
+def test_execution_plan_factory_builds_index_scan_for_optimizer_descriptor():
+    factory = ExecutionPlanFactory(
+        {"users": [{"id": 1, "name": "Ada"}, {"id": 2, "name": "Grace"}]}
+    )
+
+    pipeline = factory.build_pipeline(["IndexScan(users, users_pk, id = 2)"])
+
+    assert isinstance(pipeline, IndexScanOperator)
+    assert pipeline.index_name == "users_pk"
+    assert list(pipeline) == [{"id": 2, "name": "Grace"}]
+
+
+def test_execution_plan_factory_builds_parallel_scan_in_source_order():
+    records = [{"id": 1}, {"id": 2}, {"id": 3}]
+    factory = ExecutionPlanFactory({"users": records})
+
+    pipeline = factory.build_pipeline(["ParallelTableScan(users)"])
+
+    assert isinstance(pipeline, ParallelTableScanOperator)
+    assert list(pipeline) == records

@@ -6,6 +6,8 @@ from dbms.query_processing.ast import ASTNode, BinaryOpNode, IdentifierNode, Lit
 from dbms.query_processing.execution_operator import (
     ExecutionOperator,
     FilterOperator,
+    IndexScanOperator,
+    ParallelTableScanOperator,
     ProjectOperator,
     SeqScanOperator,
 )
@@ -104,6 +106,41 @@ class FilterOperatorFactory(ExecutionOperatorFactory):
         return FilterOperator(child=child, predicate=predicate)
 
 
+class IndexScanOperatorFactory(ExecutionOperatorFactory):
+    """Factory Method creator for indexed selection scans."""
+
+    def create_operator(
+        self,
+        op_descriptor: str,
+        data_sources: dict[str, list[dict]] | None = None,
+        child: ExecutionOperator | None = None,
+    ) -> ExecutionOperator:
+        match = re.fullmatch(r"IndexScan\(([^,]+),\s*([^,]+),\s*(.+)\)", op_descriptor)
+        if not match:
+            raise UnknownOperatorError(f"Invalid index scan descriptor: {op_descriptor}")
+        table_name, index_name, expression = (value.strip() for value in match.groups())
+        records = (data_sources or {}).get(table_name, [])
+        predicate = FilterOperatorFactory._parse_predicate(expression)
+        return IndexScanOperator(records, table_name, index_name, predicate)
+
+
+class ParallelTableScanOperatorFactory(ExecutionOperatorFactory):
+    """Factory Method creator for partitioned table scans."""
+
+    def create_operator(
+        self,
+        op_descriptor: str,
+        data_sources: dict[str, list[dict]] | None = None,
+        child: ExecutionOperator | None = None,
+    ) -> ExecutionOperator:
+        match = re.fullmatch(r"ParallelTableScan\(([^)]+)\)", op_descriptor)
+        if not match:
+            raise UnknownOperatorError(f"Invalid parallel scan descriptor: {op_descriptor}")
+        table_name = match.group(1).strip()
+        records = (data_sources or {}).get(table_name, [])
+        return ParallelTableScanOperator(records, table_name)
+
+
 class ProjectOperatorFactory(ExecutionOperatorFactory):
     """Factory Method creator for ProjectOperator physical iterator."""
 
@@ -126,10 +163,12 @@ class ExecutionPlanFactory:
     """Coordinator Factory utilizing concrete ExecutionOperatorFactory creators to construct physical operator trees."""
 
     def __init__(self, data_sources: dict[str, list[dict]] | None = None) -> None:
-        self.data_sources: dict[str, list[dict]] = data_sources or {}
+        self.data_sources: dict[str, list[dict]] = {} if data_sources is None else data_sources
         self._factories: dict[str, ExecutionOperatorFactory] = {
             "TableScan": SeqScanOperatorFactory(),
             "SequentialScan": SeqScanOperatorFactory(),
+            "IndexScan": IndexScanOperatorFactory(),
+            "ParallelTableScan": ParallelTableScanOperatorFactory(),
             "Filter": FilterOperatorFactory(),
             "Project": ProjectOperatorFactory(),
         }
