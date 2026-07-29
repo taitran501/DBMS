@@ -817,6 +817,7 @@ This section outlines the design patterns planned for the core modules, linking 
 | | Metadata Management | [Repository](docs/diagrams/sequence/design_patterns/database_object.md#5-repository-pattern-metadata-management) | `CatalogManager`, `MetadataCacheProtocol` | Implemented |
 | | Data Type Creation | [Factory Method](docs/diagrams/sequence/design_patterns/database_object.md#3-factory-method-index--data-type-creation) | `DataTypeFactory`, `IntegerDataTypeFactory`, `FloatDataTypeFactory`, `TextDataTypeFactory`, `DataType`, `TableBuilder`, `Column` | Implemented |
 | | View Creation | [Builder](docs/diagrams/sequence/design_patterns/database_object.md#6-builder-pattern-view-creation) | `ViewBuilder`, `View`, `AST`, `CatalogManager` | Implemented |
+| | Trigger Notifications | [Observer](docs/diagrams/sequence/design_patterns/database_object.md#7-observer-pattern-trigger-notifications) | `TriggerManager`, `Trigger` | Implemented |
 | **Storage Engine** | Buffer Replacement | [Strategy](docs/diagrams/sequence/design_patterns/storage_engine.md#4-strategy-buffer-replacement) | `BufferPool`, `BufferReplacementStrategy`, `FifoReplacementStrategy`, `LruReplacementStrategy`, `Page` | Implemented |
 | | Page Allocation | [Factory Method](docs/diagrams/sequence/design_patterns/storage_engine.md#6-factory-method-page-allocation) | `PageFactory`, `DataPageFactory`, `IndexPageFactory`, `Page`, `DataPage`, `IndexPage` | Implemented |
 | | File Access | [Adapter](docs/diagrams/sequence/design_patterns/storage_engine.md#2-adapter-file-access) | `FileManager`, `PageStoreProtocol`, `Page` | Implemented |
@@ -1351,6 +1352,24 @@ view = (
     .build()
 )
 ```
+
+**Observer Pattern (Trigger Notifications)**
+
+`TriggerManager` is the event publisher: it registers named `Trigger`
+observers under an event and dispatches a row to them in registration order.
+Callbacks that return `None` count as successful side-effect notifications;
+only an explicit `False` stops dispatch. Callback exceptions are surfaced as
+`TriggerError`, and trigger names are unique across the registry.
+
+```python
+manager = TriggerManager()
+manager.create_trigger("audit_insert", "INSERT", "users", write_audit_log)
+manager.execute_triggers("INSERT", {"id": 1})
+```
+
+The current contract is event-scoped. `Table` integration remains a separate
+domain change because the `Table` interface does not yet own a
+`TriggerManager`.
 
 #### 2. Storage Engine
 

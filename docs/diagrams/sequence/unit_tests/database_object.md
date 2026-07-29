@@ -1764,6 +1764,36 @@ sequenceDiagram
     Test->>Test: assert result and callback call
 ```
 
+### 16.3 test_fire_treats_none_callback_result_as_success()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger.py
+    participant SUT as Trigger
+    participant Callback as callback
+
+    Test->>SUT: fire(row)
+    SUT->>Callback: callback(row)
+    Callback-->>SUT: None
+    SUT-->>Test: True
+```
+
+### 16.4 test_fire_wraps_callback_error()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger.py
+    participant SUT as Trigger
+    participant Callback as failing_callback
+
+    Test->>SUT: fire(row)
+    SUT->>Callback: callback(row)
+    Callback-->>SUT: RuntimeError
+    SUT-->>Test: TriggerError
+```
+
 ---
 
 ## 17. test_trigger_manager.py
@@ -1841,6 +1871,39 @@ sequenceDiagram
     Trigger-->>SUT: True
     SUT-->>Test: True
     Test->>Test: assert result and Trigger call
+```
+
+### 17.6 test_create_trigger_rejects_duplicate_names_across_events()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger_manager.py
+    participant SUT as TriggerManager
+
+    Test->>SUT: create_trigger("audit_change", "INSERT", ...)
+    SUT-->>Test: Trigger
+    Test->>SUT: create_trigger("audit_change", "UPDATE", ...)
+    SUT-->>Test: DuplicateTriggerError
+```
+
+### 17.7 test_execute_triggers_notifies_observers_in_registration_order()
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Test as test_trigger_manager.py
+    participant SUT as TriggerManager
+    participant Audit as Trigger(audit_change)
+    participant Cache as Trigger(refresh_cache)
+
+    Test->>SUT: execute_triggers("INSERT", row)
+    SUT->>Audit: fire(row)
+    Audit-->>SUT: True
+    SUT->>Cache: fire(row)
+    Cache-->>SUT: True
+    SUT-->>Test: True
+    Test->>Test: assert callbacks ran ["audit", "cache"]
 ```
 
 ---

@@ -7,6 +7,7 @@ Class diagrams for the design patterns currently implemented in the **Database O
 - Factory Method for creating `Index` and `DataType` objects.
 - Composite Pattern for managing the `Database` and `Schema` hierarchy.
 - Repository Pattern for catalog metadata management.
+- Observer Pattern for trigger notifications.
 
 ---
 
@@ -320,3 +321,44 @@ classDiagram
 ```
 
 `ViewBuilder` validates that both `name` and `query_definition` are provided and non-empty during `build()`.
+
+---
+
+## 7. Observer Pattern (Trigger Notifications)
+
+`TriggerManager` publishes an event to its registered `Trigger` observers.
+Observers run in registration order. A callback returning `None` is a
+successful side-effect notification, while an explicit `False` rejects the
+dispatch and a callback exception becomes `TriggerError`.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class TriggerManager {
+        +triggers: dict[str, list[Trigger]]
+        +create_trigger(name, event, table_name, callback) Trigger
+        +drop_trigger(name) bool
+        +bind_event(event, callback) bool
+        +execute_triggers(event, row) bool
+    }
+
+    class Trigger {
+        +name: str
+        +event: str
+        +table_name: str
+        +callback: Callable
+        +fire(row) bool
+    }
+
+    class TriggerError
+    class DuplicateTriggerError
+
+    TriggerManager o-- "0..*" Trigger : registers by event
+    Trigger ..> TriggerError : wraps callback failure
+    TriggerManager ..> DuplicateTriggerError : rejects duplicate name
+```
+
+The current observer registry is event-scoped. Associating dispatch with a
+specific `Table` is intentionally deferred until `Table` owns a
+`TriggerManager` dependency.
