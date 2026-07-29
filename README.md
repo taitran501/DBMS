@@ -830,8 +830,8 @@ This section outlines the design patterns planned for the core modules, linking 
 | | AST Traversal | [Visitor](docs/diagrams/sequence/design_patterns/query_processing.md#3-visitor-pattern-ast-traversal) | `AST`, `ASTVisitor`, `ValidationVisitor`, `PhysicalPlanGeneratorVisitor` | Implemented |
 | | Query Validation | [Chain of Responsibility](docs/diagrams/sequence/design_patterns/query_processing.md#4-chain-of-responsibility-pattern-query-validation) | `QueryValidator`, `ValidationHandler`, `SyntaxValidationHandler`, `SchemaValidationHandler`, `PermissionValidationHandler` | Implemented |
 | | Query Optimization | [Strategy](docs/diagrams/sequence/design_patterns/query_processing.md#5-strategy-pattern-query-optimization) | `QueryOptimizer`, `OptimizationStrategy`, `RuleBasedOptimizationStrategy`, `CostBasedOptimizationStrategy` | Implemented |
-| | Execution Plan Creation | [Factory Method](docs/diagrams/sequence/design_patterns/query_processing.md#6-factory-method-execution-plan-creation) | `ExecutionPlanFactory`, `ExecutionOperatorFactory`, `SeqScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory` | Partial |
-| | Query Execution Pipeline | [Processing Pipeline](docs/diagrams/sequence/design_patterns/query_processing.md#7-query-execution-pipeline-select) | `QueryProcessor`, `ExecutionPlanner`, `QueryExecutor`, `PhysicalPlanGeneratorVisitor` | Partial (SELECT) |
+| | Execution Plan Creation | [Factory Method](docs/diagrams/sequence/design_patterns/query_processing.md#6-factory-method-execution-plan-creation) | `ExecutionPlanFactory`, `ExecutionOperatorFactory`, `SeqScanOperatorFactory`, `IndexScanOperatorFactory`, `ParallelTableScanOperatorFactory`, `FilterOperatorFactory`, `ProjectOperatorFactory` | Implemented (in-memory runtime) |
+| | Query Execution Pipeline | [Processing Pipeline](docs/diagrams/sequence/design_patterns/query_processing.md#7-query-execution-pipeline-in-memory-session) | `QueryProcessor`, `ExecutionPlanner`, `QueryOptimizer`, `ExecutionPlanFactory`, `QueryExecutor`, `MutationOperator` | Implemented (in-memory SELECT/INSERT/CREATE) |
 | | Execution Operators | [Iterator](docs/diagrams/sequence/design_patterns/query_processing.md#2-iterator-pattern-execution-operators) | `ExecutionOperator`, `SeqScanOperator`, `FilterOperator`, `ProjectOperator` | Implemented |
 
 ### Design Patterns Deep Dive
@@ -2347,7 +2347,7 @@ optimizer = QueryOptimizer(strategy=CostBasedOptimizationStrategy())
 physical_plan = optimizer.optimize(logical_plan)
 ```
 
-**Processing Pipeline (SELECT Execution)**
+**Processing Pipeline (In-Memory Query Execution)**
 
 ##### Class Diagram
 
@@ -2355,9 +2355,10 @@ physical_plan = optimizer.optimize(logical_plan)
 classDiagram
     QueryProcessor --> SQLParser : parses SQL
     QueryProcessor --> QueryValidator : validates AST
-    QueryProcessor --> ExecutionPlanner : builds iterator pipeline
+    QueryProcessor --> ExecutionPlanner : builds executable plan
     QueryProcessor --> QueryExecutor : executes pipeline
-    ExecutionPlanner --> PhysicalPlanGeneratorVisitor : uses
+    ExecutionPlanner --> QueryOptimizer : optimizes SELECT plan
+    ExecutionPlanner --> ExecutionPlanFactory : builds SELECT operators
     QueryExecutor --> ExecutionOperator : consumes
 ```
 
@@ -2370,22 +2371,28 @@ sequenceDiagram
     participant Parser as SQLParser
     participant Validator as QueryValidator
     participant Planner as ExecutionPlanner
+    participant Optimizer as QueryOptimizer
+    participant Factory as ExecutionPlanFactory
     participant Executor as QueryExecutor
 
-    Client->>Processor: process(SELECT SQL, session)
+    Client->>Processor: process(SQL, session)
     Processor->>Parser: parse_sql(sql)
     Parser-->>Processor: AST
     Processor->>Validator: validate(AST, session)
     Validator-->>Processor: valid
     Processor->>Planner: build(AST)
-    Planner-->>Processor: ExecutionOperator pipeline
+    Planner->>Optimizer: optimize(logical SELECT plan)
+    Optimizer-->>Planner: physical descriptors
+    Planner->>Factory: build_pipeline(descriptors)
+    Factory-->>Planner: execution operator pipeline
+    Planner-->>Processor: executable plan
     Processor->>Executor: execute(pipeline)
     Executor-->>Processor: result rows
     Processor-->>Client: result rows
 ```
 
-* **Description**: `QueryProcessor` coordinates the sequential parse, validation, planning, and execution stages for supported `SELECT` statements. This is a processing pipeline, not a second Chain of Responsibility: every stage runs in a fixed order and produces the input for the next stage.
-* **Current boundary**: `SELECT` is supported. Planning `INSERT` and `CREATE TABLE` deliberately raises `NotImplementedError` until their write paths are implemented.
+* **Description**: `QueryProcessor` coordinates parse, validation, optimization, planning, and execution for `SELECT`, `INSERT`, and `CREATE TABLE`. This is a processing pipeline, not a second Chain of Responsibility: every stage runs in a fixed order and produces the input for the next stage.
+* **Current boundary**: operations run against session `data_sources` and `schema_catalog`; persistent storage-engine writes and physical B-Tree lookup remain separate work.
 
 
 
